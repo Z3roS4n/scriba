@@ -1,0 +1,36 @@
+# Ambiente Python del core, e l'interprete che uv installa dentro al progetto
+# (sta qui e non in AppData per non dipendere da cartelle sincronizzate su cloud)
+core/.venv/
+.tools/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Output degli spike: audio e trascrizioni di prova
+spikes/out/
+
+# Modelli e binari scaricati a runtime, non versionati
+models/
+vendor/
+*.gguf
+*.onnx
+
+# Dati dell'utente: registrazioni, screenshot, database
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# Segreti
+.env
+.env.local
+
+# UI
+ui/node_modules/
+ui/dist/
+ui/release/
+
+# Sistema
+Thumbs.db
+.DS_Store
