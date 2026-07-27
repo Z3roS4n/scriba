@@ -355,3 +355,26 @@ class TestEstrazioneJson:
 
         with pytest.raises(LLMError):
             _estrai_json("non c'e' nulla qui")
+
+
+class TestTroncamento:
+    """Una risposta incompleta e una malformata sono guasti diversi.
+
+    Confonderli fa perdere tempo: un JSON tagliato a meta' perche' sono finiti
+    i token somiglia a un JSON scritto male, ma si risolve alzando un numero.
+    """
+
+    def test_il_troncamento_viene_riconosciuto(self) -> None:
+        from scriba_core.llm.base import LLMError
+        from scriba_core.llm.providers import _controlla_troncamento
+
+        with pytest.raises(LLMError, match="limite di token"):
+            _controlla_troncamento("length")
+        with pytest.raises(LLMError, match="limite di token"):
+            _controlla_troncamento("max_tokens")
+
+    def test_una_risposta_completa_passa(self) -> None:
+        from scriba_core.llm.providers import _controlla_troncamento
+
+        _controlla_troncamento("stop")
+        _controlla_troncamento(None)

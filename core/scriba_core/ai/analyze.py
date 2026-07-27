@@ -177,7 +177,11 @@ class Analizzatore:
                 prompts.SYSTEM_ESTRAZIONE,
                 prompts.EXTRACT_CANDIDATES_PROMPT.format(finestra=formatta_segmenti(finestra)),
                 schema=prompts.SCHEMA_CANDIDATES,
-                max_tokens=3000,
+                # Provato a 1500 per risparmiare tempo su CPU: il JSON usciva
+                # troncato a metà. Lo spazio deve bastare al caso peggiore —
+                # una finestra fitta di impegni — perché una risposta tagliata
+                # non è parzialmente utile, è persa.
+                max_tokens=2600,
             )
             completions.append(c)
             for n, cand in enumerate((c.data or {}).get("candidati", [])):

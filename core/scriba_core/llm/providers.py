@@ -15,7 +15,24 @@ import httpx
 
 from .base import Completion, LLMError, LLMProvider
 
-TIMEOUT = httpx.Timeout(600.0, connect=10.0)
+# Generoso di proposito. Un modello locale su CPU produce ~4,5 token al secondo:
+# una singola estrazione può richiedere una decina di minuti, e interromperla a
+# metà significa buttare via tutto il lavoro fatto fino a quel punto.
+TIMEOUT = httpx.Timeout(1800.0, connect=10.0)
+
+
+def _controlla_troncamento(motivo: str | None) -> None:
+    """Distingue una risposta incompleta da una malformata.
+
+    Sono due guasti diversi con due rimedi diversi, e confonderli fa perdere
+    tempo: un JSON tagliato a metà perché sono finiti i token disponibili
+    somiglia molto a un JSON scritto male, ma si risolve alzando un numero.
+    """
+    if motivo in ("length", "max_tokens"):
+        raise LLMError(
+            "La risposta è stata interrotta perché ha raggiunto il limite di token. "
+            "Il JSON è incompleto: serve alzare max_tokens."
+        )
 
 
 def _estrai_json(testo: str) -> dict[str, Any]:
@@ -94,7 +111,10 @@ class LocalProvider(LLMProvider):
             raise LLMError(f"Il modello locale non risponde: {exc}") from exc
 
         body = r.json()
-        messaggio = body["choices"][0]["message"]
+        scelta = body["choices"][0]
+        if schema is not None:
+            _controlla_troncamento(scelta.get("finish_reason"))
+        messaggio = scelta["message"]
         testo = messaggio.get("content") or ""
         if not testo.strip():
             # I modelli con ragionamento separano il pensiero dalla risposta. Se
@@ -176,6 +196,7 @@ class AnthropicProvider(LLMProvider):
         body = r.json()
         testo = "".join(b.get("text", "") for b in body.get("content", []))
         if schema is not None:
+            _controlla_troncamento(body.get("stop_reason"))
             testo = "{" + testo  # si restituisce la graffa che avevamo messo noi
 
         uso = body.get("usage", {})
@@ -242,7 +263,10 @@ class OpenAIProvider(LLMProvider):
             raise LLMError(f"OpenAI: {exc}") from exc
 
         body = r.json()
-        testo = body["choices"][0]["message"]["content"] or ""
+        scelta = body["choices"][0]
+        if schema is not None:
+            _controlla_troncamento(scelta.get("finish_reason"))
+        testo = scelta["message"]["content"] or ""
         uso = body.get("usage", {})
         tin, tout = uso.get("prompt_tokens"), uso.get("completion_tokens")
         pin, pout = self.PREZZI.get(self.model, (0.0, 0.0))
