@@ -308,22 +308,38 @@ def _cli() -> int:  # pragma: no cover - utilità da riga di comando
         return 0
 
     if args.azione == "installa":
+        import sys
+
+        # Su un terminale la barra si riscrive sulla stessa riga. Quando l'output
+        # e' ridiretto o passa da una pipe, il ritorno a capo carrello non serve
+        # a nulla e il progresso resta invisibile: li' si stampa una riga ogni
+        # tanto, cosi' si vede comunque che sta succedendo qualcosa.
+        interattivo = sys.stdout.isatty()
         ultimo = [-1]
+        passo = 1 if interattivo else 5
 
         def mostra(p: Progresso) -> None:
             pct = int(p.percentuale)
-            if pct != ultimo[0]:
-                ultimo[0] = pct
-                gb = p.scaricati / 1e9
-                tot = p.totale / 1e9
-                print(f"\r  {p.fase}: {pct:3d}%  {gb:.2f}/{tot:.2f} GB   ", end="", flush=True)
+            if pct < ultimo[0] + passo and pct != 100:
+                return
+            ultimo[0] = pct
+            gb, tot = p.scaricati / 1e9, p.totale / 1e9
+            testo = f"  {p.fase}: {pct:3d}%  {gb:.2f}/{tot:.2f} GB"
+            if interattivo:
+                print(f"\r{testo}   ", end="", flush=True)
+            else:
+                print(testo, flush=True)
 
-        print("Motore llama.cpp (Vulkan)...")
+        def fine_fase() -> None:
+            ultimo[0] = -1
+            print("\n  installato." if interattivo else "  installato.", flush=True)
+
+        print("Motore llama.cpp (Vulkan)...", flush=True)
         mgr.installa_motore(mostra)
-        print("\n  installato.")
-        print(f"Modello {args.model}...")
+        fine_fase()
+        print(f"Modello {args.model}...", flush=True)
         mgr.installa_modello(args.model, mostra)
-        print("\n  installato.")
+        fine_fase()
         return 0
 
     if args.azione == "avvia":
