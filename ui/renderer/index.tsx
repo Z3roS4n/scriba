@@ -9,6 +9,8 @@
 import { memo, StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
+import { PannelloAnalisi } from './Analisi'
+
 declare global {
   interface Window {
     scriba: {
@@ -71,7 +73,8 @@ function dataBreve(epochMs: number): string {
  */
 const Riga = memo(function Riga({ s }: { s: Segmento }) {
   return (
-    <div className={`riga ${s.source} ${s.is_final ? '' : 'provvisoria'}`}>
+    // data-t serve a ritrovare la riga quando si clicca il minuto di una task.
+    <div className={`riga ${s.source} ${s.is_final ? '' : 'provvisoria'}`} data-t={s.t_start_ms}>
       <span className="tempo">{tempo(s.t_start_ms)}</span>
       <span className="chi">{ETICHETTA[s.source] ?? s.source}</span>
       <span className="testo">{s.testo}</span>
@@ -146,7 +149,28 @@ function App() {
   const [hotkey, setHotkey] = useState<string | null>(null)
 
   const fine = useRef<HTMLDivElement>(null)
+  const contenitore = useRef<HTMLElement>(null)
   const inizioLocale = useRef(Date.now())
+
+  /**
+   * Porta la trascrizione al minuto indicato, e lo evidenzia.
+   *
+   * E' il gesto che rende verificabile una task: si legge il campo, si clicca
+   * il minuto, si vede da cosa il modello l'ha ricavato.
+   */
+  const vaiA = useCallback((t_ms: number) => {
+    const el = contenitore.current
+    if (!el) return
+    // Si smette di seguire il parlato: l'utente e' andato a leggere altrove.
+    seguiInFondo.current = false
+    const righe = Array.from(el.querySelectorAll<HTMLElement>('[data-t]'))
+    const bersaglio =
+      righe.find((r) => Number(r.dataset.t) >= t_ms) ?? righe[righe.length - 1]
+    if (!bersaglio) return
+    bersaglio.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    bersaglio.classList.add('evidenziata')
+    setTimeout(() => bersaglio.classList.remove('evidenziata'), 2200)
+  }, [])
   // La trascrizione segue automaticamente il parlato, ma solo finche' l'utente
   // non scorre indietro a rileggere: strappargli via la vista mentre legge e'
   // il modo piu' rapido di rendere inutile la funzione.
@@ -362,6 +386,7 @@ function App() {
 
         <main
           className="trascrizione"
+          ref={contenitore}
           onScroll={(e) => {
             const el = e.currentTarget
             seguiInFondo.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
@@ -406,6 +431,14 @@ function App() {
           )}
           <div ref={fine} />
         </main>
+
+        <section className="analisi">
+          <PannelloAnalisi
+            sessionId={sessioneVista}
+            registrando={registrando && sessioneVista === sessioneCorrente}
+            onVaiA={vaiA}
+          />
+        </section>
       </div>
 
       {dialogo && <DialogoAvvio onAnnulla={() => setDialogo(false)} onConferma={avvia} />}
