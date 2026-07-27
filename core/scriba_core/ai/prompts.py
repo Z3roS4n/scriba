@@ -56,6 +56,13 @@ SCHEMA_CANDIDATES = {
     "properties": {
         "candidati": {
             "type": "array",
+            # Il limite non è un dettaglio di comodo. Con la generazione
+            # vincolata da grammatica un array senza tetto permette al modello di
+            # continuare ad aggiungere elementi senza mai chiudere la parentesi:
+            # visto succedere, la risposta veniva troncata anche con 6000 token
+            # di spazio. Una finestra da 5k token di riunione non contiene più di
+            # una decina di impegni veri.
+            "maxItems": 12,
             "items": {
                 "type": "object",
                 "additionalProperties": False,
@@ -64,19 +71,39 @@ SCHEMA_CANDIDATES = {
                 # dovendo scegliere un'etichetta da un enum, un 12B mette tutto
                 # sotto "descrizione". Il nome del campo, invece, gli dice da
                 # solo cosa ci va dentro.
-                "required": ["temp_id", "titolo", "confidence", "righe_titolo"],
+                # Tutti obbligatori, anche quelli che possono valere null.
+                # Lasciati opzionali il modello li ometteva e basta: nella prova
+                # su una riunione vera "assignee" e "righe_assignee" non
+                # comparivano nella risposta, pur essendoci nella trascrizione la
+                # riga che diceva chi se ne occupava. Obbligandolo a scrivere
+                # almeno `null` lo si costringe a porsi la domanda.
+                "required": [
+                    "temp_id",
+                    "titolo",
+                    "descrizione",
+                    "assignee",
+                    "due_raw",
+                    "priorita",
+                    "confidence",
+                    "righe_titolo",
+                    "righe_assignee",
+                    "righe_scadenza",
+                    "righe_priorita",
+                ],
                 "properties": {
-                    "temp_id": {"type": "string"},
-                    "titolo": {"type": "string"},
-                    "descrizione": {"type": ["string", "null"]},
-                    "assignee": {"type": ["string", "null"]},
-                    "due_raw": {"type": ["string", "null"]},
+                    # Anche le stringhe hanno un tetto: senza, il modello
+                    # riscrive mezza riunione dentro la descrizione.
+                    "temp_id": {"type": "string", "maxLength": 24},
+                    "titolo": {"type": "string", "maxLength": 120},
+                    "descrizione": {"type": ["string", "null"], "maxLength": 300},
+                    "assignee": {"type": ["string", "null"], "maxLength": 60},
+                    "due_raw": {"type": ["string", "null"], "maxLength": 60},
                     "priorita": {"type": ["string", "null"], "enum": ["bassa", "media", "alta", "critica", None]},
                     "confidence": {"type": "number"},
-                    "righe_titolo": {"type": "array", "items": {"type": "integer"}},
-                    "righe_assignee": {"type": "array", "items": {"type": "integer"}},
-                    "righe_scadenza": {"type": "array", "items": {"type": "integer"}},
-                    "righe_priorita": {"type": "array", "items": {"type": "integer"}},
+                    "righe_titolo": {"type": "array", "maxItems": 6, "items": {"type": "integer"}},
+                    "righe_assignee": {"type": "array", "maxItems": 4, "items": {"type": "integer"}},
+                    "righe_scadenza": {"type": "array", "maxItems": 4, "items": {"type": "integer"}},
+                    "righe_priorita": {"type": "array", "maxItems": 4, "items": {"type": "integer"}},
                 },
             },
         }
@@ -139,16 +166,17 @@ SCHEMA_MERGE = {
     "properties": {
         "tasks": {
             "type": "array",
+            "maxItems": 15,
             "items": {
                 "type": "object",
                 "additionalProperties": False,
                 "required": ["titolo", "confidence", "needs_review", "evidence"],
                 "properties": {
-                    "titolo": {"type": "string"},
-                    "descrizione": {"type": ["string", "null"]},
-                    "assignee": {"type": ["string", "null"]},
-                    "due_date": {"type": ["string", "null"]},
-                    "due_raw": {"type": ["string", "null"]},
+                    "titolo": {"type": "string", "maxLength": 120},
+                    "descrizione": {"type": ["string", "null"], "maxLength": 400},
+                    "assignee": {"type": ["string", "null"], "maxLength": 60},
+                    "due_date": {"type": ["string", "null"], "maxLength": 12},
+                    "due_raw": {"type": ["string", "null"], "maxLength": 60},
                     "priorita": {"type": ["string", "null"], "enum": ["bassa", "media", "alta", "critica", None]},
                     "confidence": {"type": "number"},
                     "needs_review": {"type": "boolean"},
