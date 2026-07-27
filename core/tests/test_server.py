@@ -206,6 +206,65 @@ class TestLettura:
         assert "fatturazione" in risultati[0]["testo"]
 
 
+class TestAnalisi:
+    def test_senza_modello_raggiungibile_si_spiega_perche(self, client: TestClient) -> None:
+        # Il locale non e' in ascolto durante i test: l'errore deve dire cosa
+        # fare, non limitarsi a fallire.
+        client.post(auth("/session/start"), json={})
+        session_id = client.get(auth("/session/state")).json()["session_id"]
+        client.post(auth("/session/stop"))
+
+        r = client.post(auth(f"/sessions/{session_id}/analyze"))
+        assert r.status_code == 412
+        assert "llama-server" in r.json()["detail"]
+
+    def test_analisi_vuota_di_una_call_mai_analizzata(self, client: TestClient) -> None:
+        client.post(auth("/session/start"), json={})
+        session_id = client.get(auth("/session/state")).json()["session_id"]
+        client.post(auth("/session/stop"))
+
+        body = client.get(auth(f"/sessions/{session_id}/analysis")).json()
+        assert body == {"riassunto": None, "punti_salienti": None, "tasks": []}
+
+    def test_modificare_una_task_toglie_il_da_rivedere(self, client: TestClient) -> None:
+        client.post(auth("/session/start"), json={})
+        session_id = client.get(auth("/session/state")).json()["session_id"]
+        store = client.app.state.store
+        seg = store.add_segment(session_id, "mic", 0, 1000, "faccio io", is_final=True)
+        task_id = store.add_task(
+            session_id, "Una task", needs_review=True,
+            evidence=[{"segment_id": seg, "supports": "titolo"}],
+        )
+        client.post(auth("/session/stop"))
+
+        r = client.post(auth(f"/tasks/{task_id}"), json={"stato": "confirmed"})
+        assert r.status_code == 200
+        assert r.json()["stato"] == "confirmed"
+        assert r.json()["needs_review"] == 0
+
+    def test_le_evidence_accompagnano_le_task(self, client: TestClient) -> None:
+        client.post(auth("/session/start"), json={})
+        session_id = client.get(auth("/session/state")).json()["session_id"]
+        store = client.app.state.store
+        seg = store.add_segment(session_id, "loopback", 42_000, 44_000,
+                                "entro venerdi", is_final=True)
+        store.add_task(session_id, "Consegnare",
+                       evidence=[{"segment_id": seg, "supports": "due_date"}])
+        client.post(auth("/session/stop"))
+
+        tasks = client.get(auth(f"/sessions/{session_id}/analysis")).json()["tasks"]
+        assert tasks[0]["evidence"][0]["quote"] == "entro venerdi"
+        assert tasks[0]["evidence"][0]["t_ms"] == 42_000
+
+
+class TestImpostazioni:
+    def test_la_chiave_non_torna_indietro(self, client: TestClient) -> None:
+        client.post(auth("/settings"), json={"llm": {"api_key": "segreto"}})
+        body = client.get(auth("/settings")).json()
+        assert "api_key" not in body["llm"]
+        assert body["llm"]["api_key_presente"] is True
+
+
 class TestRecorder:
     def test_lo_stop_ferma_prima_la_cattura(self, tmp_path: Path) -> None:
         """L'ordine di spegnimento non e' un dettaglio.

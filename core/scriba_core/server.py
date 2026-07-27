@@ -28,6 +28,7 @@ from pydantic import BaseModel
 
 from .db.store import Store
 from .recorder import Recorder
+from .settings import Settings
 from .stt.base import TranscriptEvent
 
 
@@ -132,8 +133,14 @@ def create_app(
     app = FastAPI(title="Scriba core", docs_url=None, redoc_url=None)
     broadcaster = Broadcaster()
     store = Store(db_path)
+    settings = Settings(Path(db_path).with_name("settings.json"))
 
-    state: dict[str, Any] = {"engine": None, "recorder": None, "modello": "in_attesa"}
+    state: dict[str, Any] = {
+        "engine": None,
+        "recorder": None,
+        "modello": "in_attesa",
+        "analisi_in_corso": False,
+    }
 
     def load_engine():
         """Carica il modello. Sincrono e lento: non va mai chiamato sul loop."""
@@ -283,6 +290,112 @@ def create_app(
         broadcaster.publish(payload)
         return {"id": shot_id, "t_ms": t_ms}
 
+    # ---------------------------------------------------------------- analisi
+
+    @app.post("/sessions/{session_id}/analyze", dependencies=[Depends(check_token)])
+    async def analyze(session_id: int) -> dict[str, Any]:
+        from .ai.analyze import Analizzatore
+        from .llm.base import LLMError
+        from .llm.providers import costruisci
+
+        if state["analisi_in_corso"]:
+            raise HTTPException(status_code=409, detail="un'analisi è già in corso")
+
+        provider = costruisci(settings.llm())
+        if not provider.available():
+            raise HTTPException(
+                status_code=412,
+                detail="Il modello di analisi non è raggiungibile. Se usi quello locale, "
+                "avvia llama-server; se usi un'API, controlla la chiave nelle impostazioni.",
+            )
+
+        state["analisi_in_corso"] = True
+        broadcaster.publish({"type": "analisi", "stato": "in_corso", "session_id": session_id})
+        try:
+            # In un thread: l'analisi dura minuti e sul loop bloccherebbe tutto,
+            # compresa la trascrizione di un'eventuale call successiva.
+            analisi = await asyncio.to_thread(Analizzatore(provider, store).analizza, session_id)
+        except LLMError as exc:
+            broadcaster.publish({"type": "analisi", "stato": "errore", "dettaglio": str(exc)})
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+        finally:
+            state["analisi_in_corso"] = False
+
+        esito = {
+            "session_id": session_id,
+            "tasks": len(analisi.tasks),
+            "costo_usd": round(analisi.costo_usd, 4),
+            "tokens_in": analisi.tokens_in,
+            "tokens_out": analisi.tokens_out,
+            "modello": analisi.modello,
+        }
+        broadcaster.publish({"type": "analisi", "stato": "fatto", **esito})
+        return esito
+
+    @app.get("/sessions/{session_id}/analysis", dependencies=[Depends(check_token)])
+    async def analysis(session_id: int) -> dict[str, Any]:
+        output = {
+            r["kind"]: r["content_md"]
+            for r in store.conn.execute(
+                "SELECT kind, content_md FROM ai_outputs WHERE session_id = ? AND is_current = 1",
+                (session_id,),
+            )
+        }
+        tasks = []
+        for t in store.conn.execute(
+            "SELECT * FROM tasks WHERE session_id = ? AND stato <> 'rejected' ORDER BY id",
+            (session_id,),
+        ):
+            task = dict(t)
+            task["evidence"] = [
+                {
+                    "supports": e["supports"],
+                    "t_ms": e["t_ms"],
+                    "quote": e["quote"],
+                    "segment_id": e["segment_id"],
+                }
+                for e in store.task_evidence(t["id"])
+            ]
+            tasks.append(task)
+        return {
+            "riassunto": output.get("summary"),
+            "punti_salienti": output.get("highlights"),
+            "tasks": tasks,
+        }
+
+    @app.post("/tasks/{task_id}", dependencies=[Depends(check_token)])
+    async def update_task(task_id: int, modifiche: dict[str, Any]) -> dict[str, Any]:
+        campi = {
+            k: v
+            for k, v in modifiche.items()
+            if k in {"titolo", "descrizione", "assignee_text", "due_date", "priorita", "stato"}
+        }
+        if not campi:
+            raise HTTPException(status_code=400, detail="nessun campo modificabile")
+
+        # Se l'utente ha messo mano a una task, l'ha guardata: non ha piu' senso
+        # segnalargliela come da rivedere.
+        campi["needs_review"] = 0
+        assegnazioni = ", ".join(f"{k} = ?" for k in campi)
+        with store.tx() as conn:
+            conn.execute(
+                f"UPDATE tasks SET {assegnazioni} WHERE id = ?", (*campi.values(), task_id)
+            )
+        row = store.conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="task inesistente")
+        return dict(row)
+
+    # ------------------------------------------------------------ impostazioni
+
+    @app.get("/settings", dependencies=[Depends(check_token)])
+    async def get_settings() -> dict[str, Any]:
+        return settings.tutto()
+
+    @app.post("/settings", dependencies=[Depends(check_token)])
+    async def post_settings(modifiche: dict[str, Any]) -> dict[str, Any]:
+        return settings.aggiorna(modifiche)
+
     # ---------------------------------------------------------------- lettura
 
     @app.get("/sessions", dependencies=[Depends(check_token)])
@@ -335,6 +448,7 @@ def create_app(
             broadcaster.disconnect(ws)
 
     app.state.store = store
+    app.state.settings = settings
     app.state.token = token
     return app
 
