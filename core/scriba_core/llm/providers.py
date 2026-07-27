@@ -94,7 +94,17 @@ class LocalProvider(LLMProvider):
             raise LLMError(f"Il modello locale non risponde: {exc}") from exc
 
         body = r.json()
-        testo = body["choices"][0]["message"]["content"]
+        messaggio = body["choices"][0]["message"]
+        testo = messaggio.get("content") or ""
+        if not testo.strip():
+            # I modelli con ragionamento separano il pensiero dalla risposta. Se
+            # la risposta e' vuota hanno esaurito i token pensando: si ripiega
+            # sul ragionamento, che almeno contiene qualcosa, invece di
+            # restituire il nulla. Il rimedio vero e' avviare il server con
+            # --reasoning-budget 0, che per l'estrazione strutturata e' solo
+            # spreco.
+            testo = messaggio.get("reasoning_content") or ""
+
         uso = body.get("usage", {})
         return Completion(
             text=testo,

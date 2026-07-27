@@ -261,7 +261,21 @@ class ModelsManager:
         except Exception:
             return False
 
-    def avvia_server(self, model_id: str, porta: int = 8080) -> subprocess.Popen:
+    def avvia_server(
+        self, model_id: str, porta: int = 8080, *, gpu_layers: int = 0
+    ) -> subprocess.Popen:
+        """Avvia il modello di analisi.
+
+        `gpu_layers` è 0 di proposito. Su questa macchina il backend Vulkan
+        produce output corrotto — una sequenza infinita di `<unused49>` — anche
+        scaricando pochi layer, e il difetto si presenta identico con due
+        conversioni GGUF diverse dello stesso modello, quindi non è il file. Il
+        driver della scheda risale al 2022 e il supporto Vulkan compute di
+        quell'epoca è incompleto per le operazioni che llama.cpp usa.
+
+        Aggiornato il driver, alzare questo valore: fa la differenza fra ~4,5
+        token/s su CPU e diverse decine su GPU.
+        """
         modello = next((m for m in CATALOGO if m.id == model_id), None)
         if modello is None or not self.installato(modello):
             raise RuntimeError(f"Modello {model_id} non installato.")
@@ -274,10 +288,12 @@ class ModelsManager:
             "--port", str(porta),
             "--host", "127.0.0.1",
             "-c", "32768",          # una call di un'ora sta in ~25k token
-            "-ngl", "99",           # tutti i layer sulla GPU, se ci stanno
-            "-fa", "on",            # flash attention: meno memoria per il contesto
-            "--cache-type-k", "q8_0",
-            "--cache-type-v", "q8_0",
+            "-ngl", str(gpu_layers),
+            # Gemma 4 ragiona prima di rispondere, e il ragionamento finisce in
+            # un campo separato. Per riassumere ed estrarre JSON quei token sono
+            # solo tempo speso: senza questo, con un tetto basso di max_tokens la
+            # risposta torna vuota perché il modello ha pensato e basta.
+            "--reasoning-budget", "0",
             "--no-webui",
         ]
         self._server = subprocess.Popen(

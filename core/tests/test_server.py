@@ -208,8 +208,11 @@ class TestLettura:
 
 class TestAnalisi:
     def test_senza_modello_raggiungibile_si_spiega_perche(self, client: TestClient) -> None:
-        # Il locale non e' in ascolto durante i test: l'errore deve dire cosa
-        # fare, non limitarsi a fallire.
+        # Si punta a una porta dove non c'e' nessuno invece di dare per scontato
+        # che il modello locale non sia in ascolto: sulla macchina di chi
+        # sviluppa spesso lo e', e il test fallirebbe per il motivo sbagliato.
+        client.post(auth("/settings"), json={"llm": {"base_url": "http://127.0.0.1:1"}})
+
         client.post(auth("/session/start"), json={})
         session_id = client.get(auth("/session/state")).json()["session_id"]
         client.post(auth("/session/stop"))
