@@ -1,0 +1,154 @@
+/**
+ * Avvia e sorveglia il processo core.
+ *
+ * Il core e' un processo Python separato: apre i device audio e tiene il
+ * modello di trascrizione in memoria. Due cose vanno fatte bene, o si finisce
+ * con processi orfani che tengono occupato il microfono e device che alla
+ * registrazione successiva risultano gia' in uso:
+ *
+ * 1. il core viene ucciso quando l'interfaccia si chiude;
+ * 2. il core si spegne da solo se l'interfaccia sparisce senza avvisare — se ne
+ *    accorge perche' il sistema gli chiude lo standard input.
+ */
+
+import { ChildProcess, spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
+import { createInterface } from 'node:readline'
+
+export interface CoreEndpoint {
+  port: number
+  token: string
+}
+
+export class Sidecar {
+  private child: ChildProcess | null = null
+  private endpoint: CoreEndpoint | null = null
+
+  constructor(
+    private readonly projectRoot: string,
+    private readonly dbPath: string,
+  ) {}
+
+  get address(): CoreEndpoint | null {
+    return this.endpoint
+  }
+
+  get baseUrl(): string {
+    if (!this.endpoint) throw new Error('Core non ancora avviato')
+    return `http://127.0.0.1:${this.endpoint.port}`
+  }
+
+  private pythonPath(): string {
+    const venv = join(this.projectRoot, 'core', '.venv', 'Scripts', 'python.exe')
+    if (!existsSync(venv)) {
+      throw new Error(
+        `Interprete Python non trovato in ${venv}.\n` +
+          'Crea l\'ambiente con: uv venv core/.venv --python 3.12',
+      )
+    }
+    return venv
+  }
+
+  /** Avvia il core e aspetta che annunci dove trovarlo. */
+  async start(timeoutMs = 30_000): Promise<CoreEndpoint> {
+    if (this.endpoint) return this.endpoint
+
+    this.child = spawn(this.pythonPath(), ['-m', 'scriba_core.server', this.dbPath], {
+      cwd: join(this.projectRoot, 'core'),
+      // stdin resta aperto di proposito: e' il guinzaglio con cui il core
+      // capisce che siamo ancora vivi.
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
+    })
+
+    this.child.stderr?.on('data', (chunk: Buffer) => {
+      console.error('[core]', chunk.toString().trimEnd())
+    })
+
+    this.child.on('exit', (code) => {
+      console.error(`[core] terminato con codice ${code}`)
+      this.endpoint = null
+      this.child = null
+    })
+
+    const endpoint = await this.readAnnouncement(timeoutMs)
+    await this.waitUntilReady(endpoint, timeoutMs)
+    this.endpoint = endpoint
+    return endpoint
+  }
+
+  /**
+   * Aspetta che il core risponda davvero.
+   *
+   * L'annuncio della porta arriva prima che il server sia in piedi: dire
+   * "pronto" a quel punto significa lasciare che le prime richieste falliscano
+   * senza motivo apparente.
+   */
+  private async waitUntilReady(endpoint: CoreEndpoint, timeoutMs: number): Promise<void> {
+    const scadenza = Date.now() + timeoutMs
+    while (Date.now() < scadenza) {
+      try {
+        const response = await fetch(`http://127.0.0.1:${endpoint.port}/health`)
+        if (response.ok) return
+      } catch {
+        // Non ancora in ascolto: si riprova.
+      }
+      await new Promise((r) => setTimeout(r, 200))
+    }
+    throw new Error('Il core si e\' avviato ma non risponde')
+  }
+
+  /**
+   * La prima riga che il core stampa e' un JSON con porta e token.
+   * La porta la sceglie il sistema, quindi non e' indovinabile: l'unico modo di
+   * conoscerla e' leggerla da qui.
+   */
+  private readAnnouncement(timeoutMs: number): Promise<CoreEndpoint> {
+    return new Promise((resolve, reject) => {
+      if (!this.child?.stdout) {
+        reject(new Error('Il core non ha uno standard output'))
+        return
+      }
+
+      const timer = setTimeout(() => {
+        cleanup()
+        reject(new Error(`Il core non ha risposto entro ${timeoutMs / 1000}s`))
+      }, timeoutMs)
+
+      const rl = createInterface({ input: this.child.stdout })
+      const cleanup = () => {
+        clearTimeout(timer)
+        rl.close()
+      }
+
+      rl.on('line', (line) => {
+        try {
+          const parsed = JSON.parse(line)
+          if (typeof parsed.port === 'number' && typeof parsed.token === 'string') {
+            cleanup()
+            resolve({ port: parsed.port, token: parsed.token })
+          }
+        } catch {
+          // Righe non JSON sono log del core: si lasciano passare.
+          console.log('[core]', line)
+        }
+      })
+
+      this.child.on('exit', (code) => {
+        cleanup()
+        reject(new Error(`Il core e' uscito prima di avviarsi (codice ${code})`))
+      })
+    })
+  }
+
+  stop(): void {
+    if (!this.child) return
+    // Chiudere stdin e' il segnale concordato: il core lo interpreta come
+    // "l'interfaccia se n'e' andata" e si spegne da solo.
+    this.child.stdin?.end()
+    this.child.kill()
+    this.child = null
+    this.endpoint = null
+  }
+}

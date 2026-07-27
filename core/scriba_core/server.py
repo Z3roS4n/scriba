@@ -315,6 +315,32 @@ def create_app(
     return app
 
 
+def _exit_when_orphaned() -> None:
+    """Si spegne quando il processo padre sparisce.
+
+    Se l'interfaccia viene chiusa male o va in crash, questo processo resterebbe
+    vivo tenendo occupato il microfono: alla registrazione successiva il device
+    risulta in uso e non si capisce perché. Il canale è lo standard input, che il
+    sistema chiude quando il padre muore — funziona anche se il padre non ha
+    fatto in tempo a terminarci.
+    """
+    import os
+    import sys
+
+    def watch() -> None:
+        try:
+            while sys.stdin.readline():
+                pass
+        except Exception:
+            pass
+        # Uscita brutale di proposito: a questo punto non c'è più nessuno a cui
+        # rispondere, e uno spegnimento ordinato potrebbe restare appeso.
+        os._exit(0)
+
+    if sys.stdin is not None and not sys.stdin.closed:
+        threading.Thread(target=watch, name="orphan-watch", daemon=True).start()
+
+
 def run(db_path: Path | str = "data/scriba.sqlite", host: str = "127.0.0.1") -> None:
     """Avvia il core e annuncia al processo padre dove trovarlo.
 
@@ -325,6 +351,7 @@ def run(db_path: Path | str = "data/scriba.sqlite", host: str = "127.0.0.1") -> 
 
     import uvicorn
 
+    _exit_when_orphaned()
     token = secrets.token_urlsafe(32)
 
     # Si apre il socket qui, così la porta è nota prima dell'avvio e si può
@@ -334,6 +361,12 @@ def run(db_path: Path | str = "data/scriba.sqlite", host: str = "127.0.0.1") -> 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind((host, 0))
+    # `listen` qui e non solo dentro uvicorn: fra l'annuncio della porta e il
+    # momento in cui uvicorn e' pronto passa quasi un secondo, e in quella
+    # finestra le richieste verrebbero rifiutate con "connection refused".
+    # Mettendosi in ascolto subito, restano in coda finche' non c'e' chi
+    # risponde.
+    sock.listen(128)
     port = sock.getsockname()[1]
 
     print(json.dumps({"port": port, "token": token}), flush=True)

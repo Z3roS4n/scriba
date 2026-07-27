@@ -1,0 +1,29 @@
+{
+  "name": "scriba-ui",
+  "version": "0.1.0",
+  "description": "Interfaccia di Scriba",
+  "main": "dist/main/index.js",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build:main": "esbuild main/index.ts main/preload.ts --bundle --platform=node --target=node20 --external:electron --outdir=dist/main",
+    "build:renderer": "esbuild renderer/index.tsx --bundle --minify --target=chrome120 --define:process.env.NODE_ENV=\\\"production\\\" --outfile=dist/renderer/bundle.js",
+    "copy:assets": "node -e \"const{cpSync,mkdirSync}=require('fs');mkdirSync('dist/renderer',{recursive:true});for(const f of ['index.html','style.css'])cpSync('renderer/'+f,'dist/renderer/'+f)\"",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run build:main && npm run copy:assets && npm run build:renderer",
+    "start": "npm run build && electron .",
+    "dev": "npm run build && electron . --dev"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "esbuild": "^0.24.0",
+    "electron": "39.2.7",
+    "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

@@ -1,0 +1,376 @@
+/* Scriba — foglio di stile.
+   Tema scuro: l'app resta aperta accanto alla finestra della call, spesso a
+   schermo condiviso, e un fondo chiaro a tutto schermo e' fastidioso. */
+
+:root {
+  --sfondo: #0f1115;
+  --superficie: #171a21;
+  --superficie-alta: #1e222b;
+  --bordo: #272c37;
+  --testo: #e6e9ef;
+  --testo-tenue: #8b93a3;
+  --testo-fioco: #5c6373;
+  --io: #6aa9ff;
+  --altri: #7ddba4;
+  --rosso: #f0605f;
+  --rosso-tenue: #3a1f22;
+  --raggio: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--sfondo);
+  color: var(--testo);
+  font: 14px/1.55 "Segoe UI", system-ui, sans-serif;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--bordo);
+  background: var(--superficie-alta);
+  color: var(--testo);
+  border-radius: var(--raggio);
+  padding: 8px 16px;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+button:hover:not(:disabled) {
+  background: #262b36;
+  border-color: #39404f;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button.primario {
+  background: var(--io);
+  border-color: var(--io);
+  color: #06213f;
+  font-weight: 600;
+}
+
+button.primario:hover:not(:disabled) {
+  background: #83b8ff;
+  border-color: #83b8ff;
+}
+
+button.pericolo {
+  background: var(--rosso-tenue);
+  border-color: #5b2b2e;
+  color: #ffb4b3;
+}
+
+button.pericolo:hover:not(:disabled) {
+  background: #4a262a;
+}
+
+/* Controlli di form sempre stilizzati: quelli nativi ignorano il tema scuro
+   e stonano visibilmente. */
+input[type="text"],
+textarea,
+select {
+  font: inherit;
+  background: var(--sfondo);
+  color: var(--testo);
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio);
+  padding: 8px 12px;
+  width: 100%;
+}
+
+input[type="text"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--io);
+}
+
+.checkbox {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox input {
+  appearance: none;
+  margin: 2px 0 0;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border: 1px solid var(--bordo);
+  border-radius: 5px;
+  background: var(--sfondo);
+  display: grid;
+  place-content: center;
+}
+
+.checkbox input:checked {
+  background: var(--io);
+  border-color: var(--io);
+}
+
+.checkbox input:checked::after {
+  content: "";
+  width: 5px;
+  height: 9px;
+  border: solid #06213f;
+  border-width: 0 2px 2px 0;
+  transform: translateY(-1px) rotate(45deg);
+}
+
+/* ------------------------------------------------------------------ layout */
+
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+}
+
+.barra {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--bordo);
+  background: var(--superficie);
+}
+
+.marchio {
+  font-weight: 650;
+  letter-spacing: 0.2px;
+  margin-right: auto;
+}
+
+.stato {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--testo-tenue);
+  font-size: 13px;
+}
+
+.pallino {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--testo-fioco);
+}
+
+.pallino.acceso {
+  background: var(--altri);
+}
+
+.pallino.registra {
+  background: var(--rosso);
+  animation: pulsa 1.6s ease-in-out infinite;
+}
+
+@keyframes pulsa {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.cronometro {
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  color: var(--testo);
+}
+
+.corpo {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 0;
+}
+
+.laterale {
+  border-right: 1px solid var(--bordo);
+  background: var(--superficie);
+  overflow-y: auto;
+  padding: 14px;
+}
+
+.laterale h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--testo-fioco);
+  margin: 0 0 10px;
+}
+
+.voce-sessione {
+  padding: 10px 12px;
+  border-radius: var(--raggio);
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.voce-sessione:hover {
+  background: var(--superficie-alta);
+}
+
+.voce-sessione.attiva {
+  background: var(--superficie-alta);
+  border-color: var(--bordo);
+}
+
+.voce-sessione .titolo {
+  font-weight: 550;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.voce-sessione .meta {
+  font-size: 12px;
+  color: var(--testo-fioco);
+  margin-top: 2px;
+}
+
+/* ------------------------------------------------------------ trascrizione */
+
+.trascrizione {
+  overflow-y: auto;
+  padding: 20px 24px 40px;
+  min-height: 0;
+}
+
+.riga {
+  display: grid;
+  grid-template-columns: 62px 74px 1fr;
+  gap: 14px;
+  padding: 7px 0;
+  align-items: baseline;
+}
+
+.riga .tempo {
+  color: var(--testo-fioco);
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+}
+
+.riga .chi {
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.riga.mic .chi {
+  color: var(--io);
+}
+
+.riga.loopback .chi {
+  color: var(--altri);
+}
+
+/* Il testo ancora provvisorio si distingue: sta ancora cambiando, e chi legge
+   deve sapere di non poterci fare affidamento. */
+.riga.provvisoria .testo {
+  color: var(--testo-tenue);
+  font-style: italic;
+}
+
+.scatto {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 8px 150px;
+  padding: 6px 12px;
+  background: var(--superficie-alta);
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio);
+  font-size: 12.5px;
+  color: var(--testo-tenue);
+}
+
+.vuoto {
+  color: var(--testo-fioco);
+  text-align: center;
+  margin-top: 22vh;
+  line-height: 1.9;
+}
+
+.vuoto kbd {
+  background: var(--superficie-alta);
+  border: 1px solid var(--bordo);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  padding: 2px 7px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--testo-tenue);
+}
+
+/* ---------------------------------------------------------------- dialogo */
+
+.velo {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 8, 12, 0.72);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.dialogo {
+  background: var(--superficie);
+  border: 1px solid var(--bordo);
+  border-radius: 14px;
+  padding: 26px;
+  width: min(520px, 100%);
+}
+
+.dialogo h2 {
+  margin: 0 0 6px;
+  font-size: 17px;
+}
+
+.dialogo p {
+  color: var(--testo-tenue);
+  margin: 0 0 18px;
+}
+
+.campo {
+  margin-bottom: 18px;
+}
+
+.campo label {
+  display: block;
+  font-size: 12.5px;
+  color: var(--testo-tenue);
+  margin-bottom: 6px;
+}
+
+.azioni {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.avviso {
+  background: var(--rosso-tenue);
+  border: 1px solid #5b2b2e;
+  border-radius: var(--raggio);
+  padding: 11px 14px;
+  color: #ffc9c8;
+  font-size: 13px;
+  margin: 0 18px 0 0;
+}

@@ -7,8 +7,8 @@ Gira interamente sulla tua macchina: la trascrizione usa un modello locale e anc
 l'analisi AI può girare in locale. Le API esterne ci sono, ma sono un'alternativa da
 scegliere, non il default.
 
-> **Stato: in sviluppo.** Al momento sono validate la cattura audio a due tracce e la
-> trascrizione locale. L'interfaccia non esiste ancora.
+> **Stato: in sviluppo.** Registrazione, trascrizione live e interfaccia funzionano. Le
+> funzioni AI — riassunto, punti salienti, estrazione task — non sono ancora implementate.
 
 ## Come funziona
 
@@ -34,14 +34,26 @@ traccia di quale pezzo di conversazione giustifica quale campo.
 Non serve una GPU NVIDIA né CUDA: la trascrizione gira su CPU e l'LLM locale usa Vulkan,
 che funziona su schede AMD, NVIDIA e Intel.
 
-## Provalo adesso
+## Avvio
 
 ```bash
 uv venv core/.venv --python 3.12
-uv pip install --python core/.venv/Scripts/python.exe PyAudioWPatch sounddevice numpy scipy "onnx-asr[cpu,hub]"
+uv pip install --python core/.venv/Scripts/python.exe PyAudioWPatch sounddevice numpy scipy "onnx-asr[cpu,hub]" fastapi "uvicorn[standard]"
 ```
 
-Verifica che la cattura a due tracce funzioni sulla tua macchina:
+```bash
+cd ui && npm install && npm start
+```
+
+Il modello di trascrizione (~600 MB) si scarica al primo avvio.
+
+L'app resta nell'area di notifica quando chiudi la finestra. Durante una call,
+<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> cattura uno screenshot e lo aggancia al punto
+in cui siete.
+
+## Verificare la propria macchina
+
+Verifica che la cattura a due tracce funzioni:
 
 ```bash
 core/.venv/Scripts/python.exe spikes/list_devices.py
