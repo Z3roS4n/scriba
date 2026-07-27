@@ -46,21 +46,28 @@ class ModelloDisponibile:
 CATALOGO = [
     ModelloDisponibile(
         id="gemma-4-12b",
-        repo="unsloth/gemma-4-12b-it-GGUF",
-        file="gemma-4-12b-it-UD-Q4_K_XL.gguf",
+        # Conversione ufficiale di Google, non una di terze parti. Quella di
+        # unsloth (UD-Q4_K_XL) e' stata provata e non funziona: llama.cpp
+        # segnala i suoi token di controllo come malformati e il modello, non
+        # appena gli si applica un template di chat, produce una sequenza
+        # infinita di <unused49>. Il file era integro, l'hash corrispondeva:
+        # e' proprio la conversione a essere difettosa.
+        # QAT vuol dire quantizzato durante l'addestramento: a parita' di
+        # dimensione rende meglio di una quantizzazione fatta dopo.
+        repo="google/gemma-4-12b-it-qat-q4_0-gguf",
+        file="gemma-4-12b-it-qat-q4_0.gguf",
         etichetta="Gemma 4 12B",
-        descrizione="Predefinito. Buon equilibrio fra qualità e velocità, architettura "
-        "consolidata in llama.cpp.",
-        gb=6.9,
+        descrizione="Predefinito. Conversione ufficiale Google, quantizzazione QAT.",
+        gb=6.5,
     ),
     ModelloDisponibile(
         id="qwen3.5-9b",
         repo="unsloth/Qwen3.5-9B-MTP-GGUF",
-        file="Qwen3.5-9B-MTP-UD-Q4_K_XL.gguf",
+        file="Qwen3.5-9B-Q4_0.gguf",
         etichetta="Qwen 3.5 9B",
         descrizione="Più veloce e più leggero. Segue meglio le istruzioni, ma "
         "l'architettura è recente: va verificato che la build lo supporti.",
-        gb=6.1,
+        gb=5.2,
     ),
     ModelloDisponibile(
         id="gemma-4-26b-a4b",
