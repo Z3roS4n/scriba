@@ -289,6 +289,18 @@ class Store:
             )
             return int(cur.lastrowid)
 
+    def set_screenshot_ocr(self, shot_id: int, testo: str) -> None:
+        with self.tx() as conn:
+            conn.execute("UPDATE screenshots SET ocr_text = ? WHERE id = ?", (testo, shot_id))
+
+    def screenshots(self, session_id: int) -> list[sqlite3.Row]:
+        return list(
+            self.conn.execute(
+                "SELECT * FROM screenshots WHERE session_id = ? ORDER BY t_ms",
+                (session_id,),
+            )
+        )
+
     # ---------------------------------------------------------------- output AI
 
     def add_ai_output(

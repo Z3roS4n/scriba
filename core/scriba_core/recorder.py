@@ -18,6 +18,7 @@ from pathlib import Path
 
 import numpy as np
 
+from .ai import ocr
 from .audio.capture import DeviceInfo, DualCapture
 from .db.store import Store
 from .session import SessionClock, State
@@ -175,7 +176,19 @@ class Recorder:
             raise RuntimeError("Nessuna registrazione in corso.")
         t_ms = self.now_ms()
         shot_id = self.store.add_screenshot(self.session_id, t_ms, str(path), **kwargs)
+
+        # La lettura del testo avviene dopo, su un thread suo. Chi ha premuto la
+        # scorciatoia sta seguendo una riunione: lo scatto deve risultare
+        # istantaneo, e l'OCR costa qualche decimo di secondo.
+        threading.Thread(
+            target=self._leggi_testo, args=(shot_id, str(path)), daemon=True
+        ).start()
         return shot_id, t_ms
+
+    def _leggi_testo(self, shot_id: int, path: str) -> None:
+        testo = ocr.leggi_testo(path)
+        if testo:
+            self.store.set_screenshot_ocr(shot_id, testo)
 
     # ------------------------------------------------------------ pausa/stop
 

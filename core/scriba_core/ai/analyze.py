@@ -45,18 +45,46 @@ class Analisi:
     provider: str = ""
 
 
-def formatta_segmenti(segmenti: list[Segment]) -> str:
+def formatta_segmenti(segmenti: list[Segment], schermate: list | None = None) -> str:
     """Prepara la trascrizione per il modello.
 
     Ogni riga porta l'id del segmento: è l'aggancio con cui il modello indica le
     proprie fonti senza dover copiare il testo.
+
+    Le schermate catturate durante la call vengono inserite **nel punto in cui
+    sono state prese**, non in fondo. È tutto il senso di averle: quando qualcuno
+    dice "questo qui non torna" indicando una slide, la parola "questo" acquista
+    un significato solo se la slide sta lì accanto.
     """
-    righe = []
+    voci: list[tuple[int, int, str]] = []
+
     for s in segmenti:
         minuti, secondi = divmod(s.t_start_ms // 1000, 60)
         chi = "io" if s.source == "mic" else "altri"
-        righe.append(f"[{s.id}] ({minuti:02d}:{secondi:02d}) {chi}: {s.testo}")
-    return "\n".join(righe)
+        voci.append((s.t_start_ms, 0, f"[{s.id}] ({minuti:02d}:{secondi:02d}) {chi}: {s.testo}"))
+
+    # Le slide identiche si annotano una volta sola: chi condivide uno schermo
+    # fermo produce dieci scatti dello stesso contenuto, e ripeterlo dieci volte
+    # sposta il peso dell'analisi su qualcosa che è stato detto una volta.
+    gia_viste: set[str] = set()
+    for shot in schermate or []:
+        testo = (shot["ocr_text"] or "").strip() if "ocr_text" in shot.keys() else ""
+        nota = (shot["nota_utente"] or "").strip() if "nota_utente" in shot.keys() else ""
+        if not testo and not nota:
+            continue
+        impronta = testo[:400]
+        if impronta and impronta in gia_viste:
+            continue
+        gia_viste.add(impronta)
+
+        minuti, secondi = divmod(shot["t_ms"] // 1000, 60)
+        corpo = f"schermata condivisa: {testo}" if testo else "schermata condivisa"
+        if nota:
+            corpo += f" — annotazione di chi ha catturato: {nota}"
+        voci.append((shot["t_ms"], 1, f"({minuti:02d}:{secondi:02d}) [{corpo}]"))
+
+    voci.sort(key=lambda v: (v[0], v[1]))
+    return "\n".join(testo for _, _, testo in voci)
 
 
 def finestre(segmenti: list[Segment]) -> list[list[Segment]]:
@@ -151,31 +179,47 @@ class Analizzatore:
 
     # ------------------------------------------------------------- redazione
 
-    def riassumi(self, segmenti: list[Segment]) -> Completion:
+    def riassumi(self, segmenti: list[Segment], schermate: list | None = None) -> Completion:
         return self._chiedi(
             prompts.SYSTEM_REDAZIONE,
-            prompts.SUMMARY_PROMPT.format(trascrizione=formatta_segmenti(segmenti)),
+            prompts.SUMMARY_PROMPT.format(
+                trascrizione=formatta_segmenti(segmenti, schermate)
+            ),
             max_tokens=1200,
         )
 
-    def punti_salienti(self, segmenti: list[Segment]) -> Completion:
+    def punti_salienti(
+        self, segmenti: list[Segment], schermate: list | None = None
+    ) -> Completion:
         return self._chiedi(
             prompts.SYSTEM_REDAZIONE,
-            prompts.HIGHLIGHTS_PROMPT.format(trascrizione=formatta_segmenti(segmenti)),
+            prompts.HIGHLIGHTS_PROMPT.format(
+                trascrizione=formatta_segmenti(segmenti, schermate)
+            ),
             max_tokens=1200,
         )
 
     # ------------------------------------------------------------------ task
 
-    def candidati(self, segmenti: list[Segment]) -> tuple[list[dict], list[Completion]]:
+    def candidati(
+        self, segmenti: list[Segment], schermate: list | None = None
+    ) -> tuple[list[dict], list[Completion]]:
         """Primo passaggio: raccoglie tutto, finestra per finestra."""
         tutti: list[dict] = []
         completions: list[Completion] = []
 
         for i, finestra in enumerate(finestre(segmenti)):
+            # A ogni finestra vanno solo le schermate catturate nel suo arco di
+            # tempo: una slide mostrata al minuto 40 non aiuta a capire cosa si
+            # diceva al minuto 5, e occupa spazio che serve altrove.
+            inizio, fine = finestra[0].t_start_ms, finestra[-1].t_end_ms
+            dentro = [s for s in (schermate or []) if inizio <= s["t_ms"] <= fine]
+
             c = self._chiedi(
                 prompts.SYSTEM_ESTRAZIONE,
-                prompts.EXTRACT_CANDIDATES_PROMPT.format(finestra=formatta_segmenti(finestra)),
+                prompts.EXTRACT_CANDIDATES_PROMPT.format(
+                    finestra=formatta_segmenti(finestra, dentro)
+                ),
                 schema=prompts.SCHEMA_CANDIDATES,
                 # Provato a 1500 per risparmiare tempo su CPU: il JSON usciva
                 # troncato a metà. Lo spazio deve bastare al caso peggiore —
@@ -269,19 +313,23 @@ class Analizzatore:
         ).fetchone()
         quando = datetime.fromtimestamp((sessione["started_at"] if sessione else 0) / 1000)
 
-        riassunto = self.riassumi(segmenti)
+        # Le schermate catturate durante la call entrano nel contesto insieme a
+        # quello che si diceva mentre erano sullo schermo.
+        schermate = self.store.screenshots(session_id)
+
+        riassunto = self.riassumi(segmenti, schermate)
         analisi.riassunto = riassunto.text.strip()
         self._somma(analisi, riassunto)
         self._salva_output(session_id, "summary", analisi.riassunto, riassunto, prompts.SUMMARY)
 
-        salienti = self.punti_salienti(segmenti)
+        salienti = self.punti_salienti(segmenti, schermate)
         analisi.punti_salienti = salienti.text.strip()
         self._somma(analisi, salienti)
         self._salva_output(
             session_id, "highlights", analisi.punti_salienti, salienti, prompts.HIGHLIGHTS
         )
 
-        candidati, completions = self.candidati(segmenti)
+        candidati, completions = self.candidati(segmenti, schermate)
         for c in completions:
             self._somma(analisi, c)
 
