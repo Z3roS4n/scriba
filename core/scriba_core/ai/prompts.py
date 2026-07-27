@@ -96,7 +96,7 @@ SCHEMA_CANDIDATES = {
 }
 
 
-MERGE_TASKS = ("merge_tasks", "v1")
+MERGE_TASKS = ("merge_tasks", "v2")
 MERGE_TASKS_PROMPT = """Questi sono i candidati estratti da un'unica riunione, in ordine cronologico.
 
 I dettagli di uno stesso impegno sono spesso SPARSI: il lavoro viene nominato a un certo punto,
@@ -106,17 +106,39 @@ ricomporre impegni completi e coerenti.
 Procedi così:
 1. Raggruppa i candidati che riguardano lo stesso lavoro, anche se formulati con parole diverse.
    Due candidati sono lo stesso impegno se hanno lo stesso oggetto concreto.
-2. Per ogni gruppo componi UN impegno: per ciascun campo prendi il valore più affidabile;
-   a parità, quello detto più tardi nella riunione (le decisioni successive sovrascrivono).
-3. UNISCI le evidence di tutti i candidati del gruppo, mantenendo per ognuna quale campo giustifica.
-4. Risolvi le date relative rispetto alla data della riunione ({data_riunione}, {giorno_settimana}),
-   scrivendo la data in formato AAAA-MM-GG in "due_date" e conservando in "due_raw" la formulazione
-   originale. Se il riferimento è ambiguo, metti needs_review a true e spiegalo in review_reason.
+2. Per ogni gruppo componi UN impegno. **Compila i campi**, non limitarti a raccogliere le prove:
+   se in un candidato del gruppo compare un responsabile, quel nome va nel campo "assignee"
+   dell'impegno unito. Se compare una scadenza, va in "due_raw". A parità di affidabilità vince
+   quanto detto più tardi nella riunione.
+3. UNISCI le evidence di tutti i candidati del gruppo. Per ognuna indica **quale campo giustifica**:
+   "assignee" per la riga che dice chi se ne occupa, "due_date" per quella che fissa la scadenza,
+   "titolo" per quella che nomina il lavoro. Non mettere tutto sotto "descrizione".
+4. In "due_raw" riporta la scadenza **con le parole usate nella riunione**. Lascia "due_date" a null:
+   la conversione in data la fa un altro passaggio.
 5. Scarta i candidati che, guardando l'intera riunione, non sono impegni reali (ipotesi abbandonate,
    cose già fatte, esempi). Elencali in "scartati" con il motivo.
 6. needs_review è true se: confidence sotto 0.8, oppure manca il responsabile o la scadenza,
    oppure hai dovuto dedurre un campo invece di leggerlo.
 
+Esempio di come i pezzi vanno ricomposti. Da questi tre candidati:
+
+  {{"temp_id": "f0_c1", "titolo": "Preparare i mockup", "assignee": null, "due_raw": null,
+    "evidence": [{{"segment_id": 12, "supports": "titolo"}}]}}
+  {{"temp_id": "f2_c3", "titolo": "Scadenza mockup", "due_raw": "entro il quattordici",
+    "evidence": [{{"segment_id": 88, "supports": "due_date"}}]}}
+  {{"temp_id": "f4_c1", "titolo": "Mockup a Marco", "assignee": "Marco",
+    "evidence": [{{"segment_id": 140, "supports": "assignee"}}]}}
+
+deve uscire UN impegno solo, con i campi pieni:
+
+  {{"titolo": "Preparare i mockup", "assignee": "Marco", "due_raw": "entro il quattordici",
+    "due_date": null, "confidence": 0.85, "needs_review": false,
+    "merged_from": ["f0_c1", "f2_c3", "f4_c1"],
+    "evidence": [{{"segment_id": 12, "supports": "titolo"}},
+                 {{"segment_id": 88, "supports": "due_date"}},
+                 {{"segment_id": 140, "supports": "assignee"}}]}}
+
+Data della riunione: {data_riunione}, {giorno_settimana}.
 Non inventare impegni che non compaiono fra i candidati.
 
 Candidati:

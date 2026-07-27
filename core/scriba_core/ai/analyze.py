@@ -15,8 +15,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from ..db.store import Segment, Store
-from ..llm.base import Completion, LLMError, LLMProvider
-from . import prompts
+from ..llm.base import Completion, LLMProvider
+from . import date_italiane, prompts
 
 # Ampiezza delle finestre di estrazione. Volutamente molto sotto al contesto che
 # i modelli dichiarano di reggere: la qualità del recall cala ben prima del
@@ -245,6 +245,10 @@ class Analizzatore:
         """
         salvate = []
         validi = {s.id for s in self.store.segments(session_id)}
+        sessione = self.store.conn.execute(
+            "SELECT started_at FROM sessions WHERE id = ?", (session_id,)
+        ).fetchone()
+        giorno = datetime.fromtimestamp((sessione["started_at"] if sessione else 0) / 1000).date()
 
         for t in tasks:
             evidence = [
@@ -257,12 +261,22 @@ class Analizzatore:
             if not evidence:
                 continue
 
+            # La data la calcola il codice, non il modello: tradurre "entro il
+            # quattordici" nella data giusta è aritmetica sul calendario, e un
+            # 12B la sbaglia lasciando il campo vuoto pur avendo capito la
+            # frase. Se il modello ha comunque prodotto una data, si tiene
+            # quella; altrimenti si prova a ricavarla dalle parole originali.
+            scadenza = t.get("due_date")
+            if not scadenza and t.get("due_raw"):
+                risolta = date_italiane.risolvi(t["due_raw"], giorno)
+                scadenza = risolta.isoformat() if risolta else None
+
             task_id = self.store.add_task(
                 session_id,
                 t["titolo"],
                 descrizione=t.get("descrizione"),
                 assignee_text=t.get("assignee"),
-                due_date=t.get("due_date"),
+                due_date=scadenza,
                 due_raw=t.get("due_raw"),
                 priorita=t.get("priorita"),
                 confidence=t.get("confidence"),
