@@ -156,6 +156,56 @@ class Analizzatore:
 
         return tutti, completions
 
+    @staticmethod
+    def completa_da_candidati(tasks: list[dict], candidati: list[dict]) -> list[dict]:
+        """Riempie i campi dell'impegno unito pescandoli dai candidati che lo compongono.
+
+        Divisione del lavoro emersa provando il modello su una riunione vera: il
+        raggruppamento gli riesce — la task dei mockup si portava dietro la riga
+        del minuto 48, quella in cui si dice che se ne occupa Marco — ma il
+        travaso dei valori nei campi no: responsabile vuoto, scadenza vuota,
+        tutte le prove etichettate "descrizione".
+
+        Sono due lavori diversi. Capire che due frasi lontane parlano della
+        stessa cosa è giudizio semantico, e lì il modello serve. Copiare un
+        valore da un candidato al gruppo è contabilità, e la fa il codice.
+
+        Vale anche per le prove: si ricostruiscono dai candidati originali, dove
+        ogni campo era già etichettato correttamente, invece di fidarsi
+        dell'elenco riscritto dal modello.
+        """
+        per_id = {c["temp_id"]: c for c in candidati}
+        completate = []
+
+        for task in tasks:
+            origini = [per_id[t] for t in task.get("merged_from", []) if t in per_id]
+            unita = dict(task)
+
+            for campo in ("assignee", "due_raw", "priorita", "descrizione"):
+                if unita.get(campo):
+                    continue
+                # A parità, vince quanto detto più tardi nella riunione: le
+                # decisioni successive sovrascrivono quelle precedenti.
+                for candidato in reversed(origini):
+                    if candidato.get(campo):
+                        unita[campo] = candidato[campo]
+                        break
+
+            if origini:
+                viste: set[tuple[int, str]] = set()
+                prove = []
+                for candidato in origini:
+                    for prova in candidato.get("evidence", []):
+                        chiave = (prova.get("segment_id"), prova.get("supports"))
+                        if chiave[0] is not None and chiave not in viste:
+                            viste.add(chiave)
+                            prove.append(prova)
+                if prove:
+                    unita["evidence"] = prove
+
+            completate.append(unita)
+        return completate
+
     def unisci(self, candidati: list[dict], quando: datetime) -> Completion:
         """Secondo passaggio: ricompone gli impegni sparsi.
 
@@ -216,7 +266,8 @@ class Analizzatore:
                 unione,
                 prompts.MERGE_TASKS,
             )
-            analisi.tasks = self._salva_tasks(session_id, dati.get("tasks", []), output_id)
+            tasks = self.completa_da_candidati(dati.get("tasks", []), candidati)
+            analisi.tasks = self._salva_tasks(session_id, tasks, output_id)
 
         self.store.set_session_state(session_id, "analyzed")
         return analisi
@@ -285,5 +336,7 @@ class Analizzatore:
                 ai_output_id=output_id,
                 evidence=evidence,
             )
-            salvate.append({**t, "id": task_id})
+            # Si riporta la data risolta, non quella grezza del modello:
+            # altrimenti quello che si mostra non e' quello che si e' salvato.
+            salvate.append({**t, "id": task_id, "due_date": scadenza})
         return salvate

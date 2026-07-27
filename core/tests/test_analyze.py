@@ -252,6 +252,76 @@ class TestEstrazioneTask:
         assert "provvisorio" not in provider.chiamate[0]
 
 
+class TestCompletamentoDaiCandidati:
+    """Il modello raggruppa, il codice compila i campi.
+
+    Emerso provando un modello vero su una riunione con i dettagli sparsi: il
+    raggruppamento gli riesce, il travaso dei valori nei campi no.
+    """
+
+    def test_i_campi_vuoti_si_riempiono_dai_candidati(self) -> None:
+        candidati = [
+            {"temp_id": "c1", "titolo": "Mockup", "evidence": [{"segment_id": 1, "supports": "titolo"}]},
+            {"temp_id": "c2", "titolo": "Scadenza", "due_raw": "entro il quattordici",
+             "evidence": [{"segment_id": 2, "supports": "due_date"}]},
+            {"temp_id": "c3", "titolo": "Chi", "assignee": "Marco",
+             "evidence": [{"segment_id": 3, "supports": "assignee"}]},
+        ]
+        # Il modello ha raggruppato bene ma ha lasciato i campi vuoti.
+        tasks = [{"titolo": "Preparare i mockup", "merged_from": ["c1", "c2", "c3"],
+                  "evidence": [{"segment_id": 1, "supports": "descrizione"}]}]
+
+        unita = Analizzatore.completa_da_candidati(tasks, candidati)[0]
+        assert unita["assignee"] == "Marco"
+        assert unita["due_raw"] == "entro il quattordici"
+
+    def test_le_prove_tornano_etichettate_per_campo(self) -> None:
+        # Il modello le rietichettava tutte "descrizione": si ricostruiscono
+        # dai candidati, dove erano gia' corrette.
+        candidati = [
+            {"temp_id": "c1", "titolo": "x", "evidence": [{"segment_id": 1, "supports": "titolo"}]},
+            {"temp_id": "c2", "titolo": "y", "evidence": [{"segment_id": 2, "supports": "assignee"}]},
+        ]
+        tasks = [{"titolo": "z", "merged_from": ["c1", "c2"],
+                  "evidence": [{"segment_id": 1, "supports": "descrizione"}]}]
+
+        prove = Analizzatore.completa_da_candidati(tasks, candidati)[0]["evidence"]
+        assert {p["supports"] for p in prove} == {"titolo", "assignee"}
+
+    def test_un_valore_gia_presente_non_viene_sovrascritto(self) -> None:
+        candidati = [{"temp_id": "c1", "titolo": "x", "assignee": "Luca", "evidence": []}]
+        tasks = [{"titolo": "y", "assignee": "Marco", "merged_from": ["c1"]}]
+        assert Analizzatore.completa_da_candidati(tasks, candidati)[0]["assignee"] == "Marco"
+
+    def test_a_parita_vince_quanto_detto_dopo(self) -> None:
+        # Le decisioni successive sovrascrivono le precedenti.
+        candidati = [
+            {"temp_id": "c1", "titolo": "x", "assignee": "Luca", "evidence": []},
+            {"temp_id": "c2", "titolo": "x", "assignee": "Marco", "evidence": []},
+        ]
+        tasks = [{"titolo": "x", "merged_from": ["c1", "c2"]}]
+        assert Analizzatore.completa_da_candidati(tasks, candidati)[0]["assignee"] == "Marco"
+
+    def test_le_prove_duplicate_si_contano_una_volta(self) -> None:
+        candidati = [
+            {"temp_id": "c1", "titolo": "x", "evidence": [{"segment_id": 1, "supports": "titolo"}]},
+            {"temp_id": "c2", "titolo": "x", "evidence": [{"segment_id": 1, "supports": "titolo"}]},
+        ]
+        tasks = [{"titolo": "x", "merged_from": ["c1", "c2"]}]
+        assert len(Analizzatore.completa_da_candidati(tasks, candidati)[0]["evidence"]) == 1
+
+    def test_un_riferimento_a_un_candidato_inesistente_non_rompe(self) -> None:
+        tasks = [{"titolo": "x", "merged_from": ["mai-visto"], "evidence": []}]
+        assert Analizzatore.completa_da_candidati(tasks, [])[0]["titolo"] == "x"
+
+    def test_senza_merged_from_la_task_resta_com_e(self) -> None:
+        tasks = [{"titolo": "x", "assignee": "Marco",
+                  "evidence": [{"segment_id": 1, "supports": "titolo"}]}]
+        unita = Analizzatore.completa_da_candidati(tasks, [])[0]
+        assert unita["assignee"] == "Marco"
+        assert len(unita["evidence"]) == 1
+
+
 class TestEstrazioneJson:
     def test_json_puro(self) -> None:
         assert _estrai_json('{"a": 1}') == {"a": 1}
