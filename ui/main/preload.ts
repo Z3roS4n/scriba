@@ -33,7 +33,7 @@ const api = {
       'core:event',
       'screenshot:saved',
       'screenshot:ignorato',
-      'hotkey:non-disponibile',
+      'hotkey:stato',
     ]
     if (!consentiti.includes(canale)) {
       throw new Error(`Canale non consentito: ${canale}`)

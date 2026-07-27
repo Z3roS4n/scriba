@@ -94,12 +94,17 @@ class Broadcaster:
                 self.disconnect(ws)
 
 
-def _lifespan(broadcaster: Broadcaster, state: dict[str, Any]):
+def _lifespan(broadcaster: Broadcaster, state: dict[str, Any], preload):
     """Aggancia il broadcaster al loop e chiude ciò che resta aperto."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         broadcaster.bind_loop(asyncio.get_running_loop())
+        # Il modello si carica subito e in disparte: sono quasi quattro secondi,
+        # e farli pagare a chi preme "Registra" fa sembrare l'app bloccata.
+        # Girano in un thread perché il caricamento è codice sincrono che
+        # altrimenti terrebbe fermo l'intero event loop, websocket compreso.
+        asyncio.create_task(preload())
         try:
             yield
         finally:
@@ -128,9 +133,10 @@ def create_app(
     broadcaster = Broadcaster()
     store = Store(db_path)
 
-    state: dict[str, Any] = {"engine": None, "recorder": None}
+    state: dict[str, Any] = {"engine": None, "recorder": None, "modello": "in_attesa"}
 
-    def get_engine():
+    def load_engine():
+        """Carica il modello. Sincrono e lento: non va mai chiamato sul loop."""
         if state["engine"] is None:
             if engine_factory is not None:
                 state["engine"] = engine_factory()
@@ -140,12 +146,30 @@ def create_app(
                 state["engine"] = ParakeetEngine(quantization="int8")
         return state["engine"]
 
-    def get_recorder() -> Recorder:
+    async def preload() -> None:
+        state["modello"] = "caricamento"
+        broadcaster.publish({"type": "modello", "stato": "caricamento"})
+        try:
+            await asyncio.to_thread(load_engine)
+        except Exception as exc:  # il core resta vivo: senza modello si può
+            state["modello"] = "errore"  # ancora consultare le call passate
+            broadcaster.publish({"type": "modello", "stato": "errore", "dettaglio": str(exc)})
+            return
+        state["modello"] = "pronto"
+        broadcaster.publish({"type": "modello", "stato": "pronto"})
+
+    async def get_engine_async():
+        # Se qualcuno preme "Registra" prima che il precaricamento finisca, si
+        # aspetta qui — in un thread, non sul loop.
+        return await asyncio.to_thread(load_engine)
+
+    async def get_recorder() -> Recorder:
         if state["recorder"] is None:
+            engine = await get_engine_async()
             if recorder_factory is not None:
-                state["recorder"] = recorder_factory(get_engine(), store, _publish_event)
+                state["recorder"] = recorder_factory(engine, store, _publish_event)
             else:
-                state["recorder"] = Recorder(get_engine(), store, on_event=_publish_event)
+                state["recorder"] = Recorder(engine, store, on_event=_publish_event)
         return state["recorder"]
 
     def _publish_event(ev: TranscriptEvent) -> None:
@@ -167,7 +191,7 @@ def create_app(
         if not secrets.compare_digest(token_param, token):
             raise HTTPException(status_code=401, detail="token non valido")
 
-    app.router.lifespan_context = _lifespan(broadcaster, state)
+    app.router.lifespan_context = _lifespan(broadcaster, state, preload)
 
     # ------------------------------------------------------------------- stato
 
@@ -177,7 +201,7 @@ def create_app(
         recorder = state.get("recorder")
         return {
             "ok": True,
-            "modello_caricato": state["engine"] is not None,
+            "modello": state["modello"],
             "in_registrazione": bool(recorder and recorder.is_recording),
         }
 
@@ -197,7 +221,7 @@ def create_app(
 
     @app.post("/session/start", dependencies=[Depends(check_token)])
     async def session_start(req: StartRequest) -> dict[str, Any]:
-        recorder = get_recorder()
+        recorder = await get_recorder()
         if recorder.is_recording:
             raise HTTPException(status_code=409, detail="registrazione già in corso")
 
@@ -318,11 +342,16 @@ def create_app(
 def _exit_when_orphaned() -> None:
     """Si spegne quando il processo padre sparisce.
 
-    Se l'interfaccia viene chiusa male o va in crash, questo processo resterebbe
-    vivo tenendo occupato il microfono: alla registrazione successiva il device
-    risulta in uso e non si capisce perché. Il canale è lo standard input, che il
-    sistema chiude quando il padre muore — funziona anche se il padre non ha
-    fatto in tempo a terminarci.
+    Se l'interfaccia va in crash, questo processo resterebbe vivo tenendo
+    occupato il microfono: alla registrazione successiva il device risulta in
+    uso e non si capisce perché. Il canale è lo standard input, che il sistema
+    chiude quando il padre muore — funziona anche quando il padre non ha fatto
+    in tempo a terminarci.
+
+    Va attivata esplicitamente da chi lancia il processo. Attivarla sempre
+    sarebbe un disastro: avviato da riga di comando o dai test, lo stdin è
+    chiuso in partenza, il primo `readline` restituisce EOF e il core si
+    spegnerebbe appena avviato.
     """
     import os
     import sys
@@ -337,11 +366,15 @@ def _exit_when_orphaned() -> None:
         # rispondere, e uno spegnimento ordinato potrebbe restare appeso.
         os._exit(0)
 
-    if sys.stdin is not None and not sys.stdin.closed:
-        threading.Thread(target=watch, name="orphan-watch", daemon=True).start()
+    threading.Thread(target=watch, name="orphan-watch", daemon=True).start()
 
 
-def run(db_path: Path | str = "data/scriba.sqlite", host: str = "127.0.0.1") -> None:
+def run(
+    db_path: Path | str = "data/scriba.sqlite",
+    host: str = "127.0.0.1",
+    *,
+    watch_parent: bool = False,
+) -> None:
     """Avvia il core e annuncia al processo padre dove trovarlo.
 
     La porta la sceglie il sistema: si stampa su stdout una riga JSON con porta
@@ -351,7 +384,8 @@ def run(db_path: Path | str = "data/scriba.sqlite", host: str = "127.0.0.1") -> 
 
     import uvicorn
 
-    _exit_when_orphaned()
+    if watch_parent:
+        _exit_when_orphaned()
     token = secrets.token_urlsafe(32)
 
     # Si apre il socket qui, così la porta è nota prima dell'avvio e si può
@@ -380,6 +414,16 @@ def run(db_path: Path | str = "data/scriba.sqlite", host: str = "127.0.0.1") -> 
 
 
 if __name__ == "__main__":  # pragma: no cover
-    import sys
+    import argparse
 
-    run(sys.argv[1] if len(sys.argv) > 1 else "data/scriba.sqlite")
+    parser = argparse.ArgumentParser(description="Core di Scriba")
+    parser.add_argument("db", nargs="?", default="data/scriba.sqlite")
+    parser.add_argument(
+        "--watch-parent",
+        action="store_true",
+        help="spegniti quando chi ti ha avviato chiude lo standard input. "
+        "Lo usa l'interfaccia; da riga di comando lascialo stare, o il core "
+        "esce subito.",
+    )
+    args = parser.parse_args()
+    run(args.db, watch_parent=args.watch_parent)

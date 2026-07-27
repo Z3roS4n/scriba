@@ -54,7 +54,7 @@ export class Sidecar {
   async start(timeoutMs = 30_000): Promise<CoreEndpoint> {
     if (this.endpoint) return this.endpoint
 
-    this.child = spawn(this.pythonPath(), ['-m', 'scriba_core.server', this.dbPath], {
+    this.child = spawn(this.pythonPath(), ['-m', 'scriba_core.server', this.dbPath, '--watch-parent'], {
       cwd: join(this.projectRoot, 'core'),
       // stdin resta aperto di proposito: e' il guinzaglio con cui il core
       // capisce che siamo ancora vivi.

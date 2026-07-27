@@ -6,8 +6,7 @@
  * a sua volta parla col core.
  */
 
-import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ReactElement } from 'react'
+import { memo, StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
 declare global {
@@ -63,6 +62,23 @@ function dataBreve(epochMs: number): string {
   })
 }
 
+/**
+ * Una riga di trascrizione.
+ *
+ * Memoizzata perche' durante una call arriva un evento al secondo per traccia e
+ * le righe gia' definitive non cambiano piu': senza, una call di un'ora
+ * ricostruirebbe centinaia di righe a ogni parola nuova.
+ */
+const Riga = memo(function Riga({ s }: { s: Segmento }) {
+  return (
+    <div className={`riga ${s.source} ${s.is_final ? '' : 'provvisoria'}`}>
+      <span className="tempo">{tempo(s.t_start_ms)}</span>
+      <span className="chi">{ETICHETTA[s.source] ?? s.source}</span>
+      <span className="testo">{s.testo}</span>
+    </div>
+  )
+})
+
 /** Chiede conferma prima di registrare anche gli altri partecipanti. */
 function DialogoAvvio({
   onAnnulla,
@@ -117,6 +133,7 @@ function DialogoAvvio({
 
 function App() {
   const [corePronto, setCorePronto] = useState(false)
+  const [modello, setModello] = useState<'in_attesa' | 'caricamento' | 'pronto' | 'errore'>('in_attesa')
   const [registrando, setRegistrando] = useState(false)
   const [sessioneCorrente, setSessioneCorrente] = useState<number | null>(null)
   const [sessioneVista, setSessioneVista] = useState<number | null>(null)
@@ -126,8 +143,10 @@ function App() {
   const [trascorsi, setTrascorsi] = useState(0)
   const [dialogo, setDialogo] = useState(false)
   const [avviso, setAvviso] = useState<string | null>(null)
+  const [hotkey, setHotkey] = useState<string | null>(null)
 
   const fine = useRef<HTMLDivElement>(null)
+  const inizioLocale = useRef(Date.now())
   // La trascrizione segue automaticamente il parlato, ma solo finche' l'utente
   // non scorre indietro a rileggere: strappargli via la vista mentre legge e'
   // il modo piu' rapido di rendere inutile la funzione.
@@ -182,6 +201,9 @@ function App() {
           caricaSessioni()
         } else if (ev.type === 'screenshot') {
           setScatti((prec) => [...prec, { t_ms: ev.t_ms, path: ev.path }])
+        } else if (ev.type === 'modello') {
+          setModello(ev.stato)
+          if (ev.stato === 'errore') setAvviso(`Modello non caricato: ${ev.dettaglio ?? ''}`)
         }
       }),
 
@@ -189,34 +211,57 @@ function App() {
         setAvviso('Screenshot non salvato: nessuna registrazione in corso.'),
       ),
 
-      window.scriba.on('hotkey:non-disponibile', (combo: string) =>
-        setAvviso(`La scorciatoia ${combo} e' gia' usata da un'altra applicazione.`),
-      ),
+      window.scriba.on('hotkey:stato', (combo: string | null) => {
+        setHotkey(combo)
+        if (!combo) setAvviso('Nessuna scorciatoia disponibile per gli screenshot: usa il pulsante.')
+      }),
     ]
 
-    window.scriba.endpoint().then((e) => {
-      if (e) {
-        setCorePronto(true)
-        caricaSessioni()
-      }
+    // Il core puo' essersi avviato prima che la pagina finisse di caricare: in
+    // quel caso l'evento e' gia' passato e va recuperato lo stato corrente.
+    window.scriba.endpoint().then(async (e) => {
+      if (!e) return
+      setCorePronto(true)
+      caricaSessioni()
+      const r = await window.scriba.get<{ modello: typeof modello }>('/health')
+      if (r.ok && r.body?.modello) setModello(r.body.modello)
     })
 
     return () => off.forEach((f) => f())
   }, [caricaSessioni])
 
-  // Cronometro della registrazione, chiesto al core: e' lui che possiede la
-  // timeline, e un contatore locale finirebbe per divergere.
+  // Cronometro contato in locale, riallineato al core ogni 20 secondi.
+  //
+  // Chiederlo al core a ogni tick significava un giro IPC + HTTP al secondo per
+  // aggiornare due cifre. Il riallineamento periodico serve comunque, perche' e'
+  // il core a sapere delle pause: un contatore puramente locale andrebbe avanti
+  // anche a registrazione sospesa.
   useEffect(() => {
     if (!registrando) return
-    const timer = setInterval(async () => {
+
+    let offset = trascorsi - (Date.now() - inizioLocale.current)
+    const tick = setInterval(() => {
+      setTrascorsi(Date.now() - inizioLocale.current + offset)
+    }, 500)
+
+    const risincronizza = setInterval(async () => {
       const r = await window.scriba.get<{ now_ms: number }>('/session/state')
-      if (r.ok && r.body?.now_ms != null) setTrascorsi(r.body.now_ms)
-    }, 1000)
-    return () => clearInterval(timer)
+      if (r.ok && r.body?.now_ms != null) {
+        offset = r.body.now_ms - (Date.now() - inizioLocale.current)
+      }
+    }, 20_000)
+
+    return () => {
+      clearInterval(tick)
+      clearInterval(risincronizza)
+    }
   }, [registrando])
 
   useEffect(() => {
-    if (seguiInFondo.current) fine.current?.scrollIntoView({ behavior: 'smooth' })
+    // Scorrimento istantaneo, non animato: durante una call arriva un evento al
+    // secondo per traccia e le animazioni si accavallerebbero, dando la
+    // sensazione che l'interfaccia arranchi.
+    if (seguiInFondo.current) fine.current?.scrollIntoView({ block: 'end' })
   }, [segmenti, scatti])
 
   const avvia = async (titolo: string, consenso: boolean) => {
@@ -240,28 +285,13 @@ function App() {
     setScatti([])
   }
 
+  // Si costruisce solo la sequenza, non gli elementi: renderizzare tocca alle
+  // righe memoizzate, che cosi' saltano il lavoro quando non sono cambiate.
   const righe = useMemo(() => {
-    const elementi: Array<{ chiave: string; t: number; nodo: ReactElement }> = []
-    for (const s of segmenti) {
-      elementi.push({
-        chiave: `s${s.id}`,
-        t: s.t_start_ms,
-        nodo: (
-          <div className={`riga ${s.source} ${s.is_final ? '' : 'provvisoria'}`}>
-            <span className="tempo">{tempo(s.t_start_ms)}</span>
-            <span className="chi">{ETICHETTA[s.source] ?? s.source}</span>
-            <span className="testo">{s.testo}</span>
-          </div>
-        ),
-      })
-    }
-    for (const scatto of scatti) {
-      elementi.push({
-        chiave: `i${scatto.t_ms}`,
-        t: scatto.t_ms,
-        nodo: <div className="scatto">Screenshot a {tempo(scatto.t_ms)}</div>,
-      })
-    }
+    const elementi: Array<{ chiave: string; t: number; seg?: Segmento; scatto?: Scatto }> = [
+      ...segmenti.map((s) => ({ chiave: `s${s.id}`, t: s.t_start_ms, seg: s })),
+      ...scatti.map((i) => ({ chiave: `i${i.t_ms}`, t: i.t_ms, scatto: i })),
+    ]
     return elementi.sort((a, b) => a.t - b.t)
   }, [segmenti, scatti])
 
@@ -273,8 +303,20 @@ function App() {
         {avviso && <div className="avviso">{avviso}</div>}
 
         <div className="stato">
-          <span className={`pallino ${registrando ? 'registra' : corePronto ? 'acceso' : ''}`} />
-          {registrando ? 'Registrazione' : corePronto ? 'Pronto' : 'Avvio del core...'}
+          <span
+            className={`pallino ${
+              registrando ? 'registra' : modello === 'pronto' ? 'acceso' : ''
+            }`}
+          />
+          {registrando
+            ? 'Registrazione'
+            : !corePronto
+              ? 'Avvio del core...'
+              : modello === 'caricamento' || modello === 'in_attesa'
+                ? 'Carico il modello...'
+                : modello === 'errore'
+                  ? 'Modello non disponibile'
+                  : 'Pronto'}
         </div>
 
         {registrando && <span className="cronometro">{tempo(trascorsi)}</span>}
@@ -288,7 +330,11 @@ function App() {
             Ferma
           </button>
         ) : (
-          <button className="primario" onClick={() => setDialogo(true)} disabled={!corePronto}>
+          <button
+            className="primario"
+            onClick={() => setDialogo(true)}
+            disabled={modello !== 'pronto'}
+          >
             Registra
           </button>
         )}
@@ -328,14 +374,35 @@ function App() {
               ) : (
                 <>
                   Premi <b>Registra</b> per iniziare.
-                  <br />
-                  Durante la call, <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> cattura uno
-                  screenshot e lo aggancia al punto in cui siete.
+                  {hotkey && (
+                    <>
+                      <br />
+                      Durante la call,{' '}
+                      {hotkey
+                        .replace('CommandOrControl', 'Ctrl')
+                        .split('+')
+                        .map((tasto, i) => (
+                          <span key={tasto}>
+                            {i > 0 && ' + '}
+                            <kbd>{tasto}</kbd>
+                          </span>
+                        ))}{' '}
+                      cattura uno screenshot e lo aggancia al punto in cui siete.
+                    </>
+                  )}
                 </>
               )}
             </div>
           ) : (
-            righe.map((r) => <div key={r.chiave}>{r.nodo}</div>)
+            righe.map((r) =>
+              r.seg ? (
+                <Riga key={r.chiave} s={r.seg} />
+              ) : (
+                <div key={r.chiave} className="scatto">
+                  Screenshot a {tempo(r.t)}
+                </div>
+              ),
+            )
           )}
           <div ref={fine} />
         </main>

@@ -16,7 +16,20 @@ import { Sidecar } from './sidecar'
 const PROJECT_ROOT = resolve(app.getAppPath(), '..')
 const DATA_DIR = join(app.getPath('userData'), 'data')
 const SCREENSHOT_DIR = join(DATA_DIR, 'screenshots')
-const SCREENSHOT_HOTKEY = 'CommandOrControl+Shift+S'
+/**
+ * Candidate per lo screenshot, in ordine di preferenza.
+ *
+ * Ctrl+Shift+S e' la piu' naturale ma e' spesso gia' presa (Office, strumenti di
+ * cattura, launcher): si prova la prima libera invece di rinunciare, perche' una
+ * scorciatoia che non fa niente e' peggio di una scomoda.
+ */
+const SCREENSHOT_HOTKEYS = [
+  'CommandOrControl+Shift+S',
+  'CommandOrControl+Alt+S',
+  'CommandOrControl+Shift+F9',
+  'Alt+Shift+S',
+]
+let hotkeyAttiva: string | null = null
 
 const sidecar = new Sidecar(PROJECT_ROOT, join(DATA_DIR, 'scriba.sqlite'))
 
@@ -85,7 +98,12 @@ function createTray(): void {
     Menu.buildFromTemplate([
       { label: 'Apri Scriba', click: showWindow },
       { type: 'separator' },
-      { label: `Screenshot (${SCREENSHOT_HOTKEY.replace('CommandOrControl', 'Ctrl')})`, click: captureScreenshot },
+      {
+        label: hotkeyAttiva
+          ? `Screenshot (${hotkeyAttiva.replace('CommandOrControl', 'Ctrl')})`
+          : 'Screenshot',
+        click: captureScreenshot,
+      },
       { type: 'separator' },
       {
         label: 'Esci',
@@ -204,15 +222,21 @@ app.whenReady().then(async () => {
   mkdirSync(DATA_DIR, { recursive: true })
   registerIpc()
   mainWindow = createWindow()
+
+  // Prima della tray: il menu mostra la combinazione effettivamente attiva.
+  for (const combo of SCREENSHOT_HOTKEYS) {
+    if (globalShortcut.register(combo, captureScreenshot)) {
+      hotkeyAttiva = combo
+      break
+    }
+  }
   createTray()
 
-  if (!globalShortcut.register(SCREENSHOT_HOTKEY, captureScreenshot)) {
-    // Succede quando un'altra applicazione ha gia' preso la combinazione.
-    // Silenziosamente non funzionerebbe, ed e' peggio.
-    console.warn(`Scorciatoia ${SCREENSHOT_HOTKEY} non disponibile: gia' in uso.`)
-    mainWindow.webContents.once('did-finish-load', () => {
-      mainWindow?.webContents.send('hotkey:non-disponibile', SCREENSHOT_HOTKEY)
-    })
+  mainWindow.webContents.once('did-finish-load', () => {
+    mainWindow?.webContents.send('hotkey:stato', hotkeyAttiva)
+  })
+  if (!hotkeyAttiva) {
+    console.warn('Nessuna scorciatoia disponibile: sono tutte gia\' in uso.')
   }
 
   try {
