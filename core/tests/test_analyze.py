@@ -275,6 +275,23 @@ class TestCompletamentoDaiCandidati:
         assert unita["assignee"] == "Marco"
         assert unita["due_raw"] == "entro il quattordici"
 
+    def test_gli_elenchi_per_campo_diventano_prove_etichettate(self) -> None:
+        # Il formato prodotto dall'estrazione: un elenco di righe per ciascun
+        # campo, invece di un elenco unico da etichettare voce per voce.
+        candidati = [
+            {"temp_id": "c1", "titolo": "Mockup", "righe_titolo": [12]},
+            {"temp_id": "c2", "titolo": "Scadenza", "due_raw": "entro il quattordici",
+             "righe_scadenza": [88]},
+            {"temp_id": "c3", "titolo": "Chi", "assignee": "Marco", "righe_assignee": [140]},
+        ]
+        tasks = [{"titolo": "Preparare i mockup", "merged_from": ["c1", "c2", "c3"]}]
+
+        unita = Analizzatore.completa_da_candidati(tasks, candidati)[0]
+        per_campo = {p["supports"]: p["segment_id"] for p in unita["evidence"]}
+        assert per_campo == {"titolo": 12, "due_date": 88, "assignee": 140}
+        assert unita["assignee"] == "Marco"
+        assert unita["due_raw"] == "entro il quattordici"
+
     def test_le_prove_tornano_etichettate_per_campo(self) -> None:
         # Il modello le rietichettava tutte "descrizione": si ricostruiscono
         # dai candidati, dove erano gia' corrette.

@@ -94,6 +94,41 @@ def finestre(segmenti: list[Segment]) -> list[list[Segment]]:
     return finestre_out
 
 
+# A quale campo corrisponde ciascun elenco di righe prodotto in estrazione.
+CAMPI_PROVE = {
+    "righe_titolo": "titolo",
+    "righe_assignee": "assignee",
+    "righe_scadenza": "due_date",
+    "righe_priorita": "priorita",
+}
+
+
+def _prove_dai_candidati(candidati: list[dict]) -> list[dict]:
+    """Trasforma gli elenchi per campo nelle prove da salvare.
+
+    L'estrazione elenca le righe separatamente per titolo, responsabile,
+    scadenza e priorità: è il nome del campo a dire cosa giustificano, non
+    un'etichetta che il modello deve scegliere ogni volta. Provato altrimenti,
+    finiva tutto sotto "descrizione".
+    """
+    viste: set[tuple[int, str]] = set()
+    prove: list[dict] = []
+    for candidato in candidati:
+        for elenco, campo in CAMPI_PROVE.items():
+            for segment_id in candidato.get(elenco) or []:
+                chiave = (segment_id, campo)
+                if chiave not in viste:
+                    viste.add(chiave)
+                    prove.append({"segment_id": segment_id, "supports": campo})
+        # Formato precedente, ancora presente nelle analisi già salvate.
+        for prova in candidato.get("evidence") or []:
+            chiave = (prova.get("segment_id"), prova.get("supports"))
+            if chiave[0] is not None and chiave not in viste:
+                viste.add(chiave)
+                prove.append(prova)
+    return prove
+
+
 class Analizzatore:
     def __init__(self, provider: LLMProvider, store: Store) -> None:
         self.provider = provider
@@ -191,17 +226,9 @@ class Analizzatore:
                         unita[campo] = candidato[campo]
                         break
 
-            if origini:
-                viste: set[tuple[int, str]] = set()
-                prove = []
-                for candidato in origini:
-                    for prova in candidato.get("evidence", []):
-                        chiave = (prova.get("segment_id"), prova.get("supports"))
-                        if chiave[0] is not None and chiave not in viste:
-                            viste.add(chiave)
-                            prove.append(prova)
-                if prove:
-                    unita["evidence"] = prove
+            prove = _prove_dai_candidati(origini)
+            if prove:
+                unita["evidence"] = prove
 
             completate.append(unita)
         return completate

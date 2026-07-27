@@ -22,7 +22,7 @@ Tono asciutto e professionale. Nessuna formula di apertura o chiusura, nessun co
 Ogni affermazione deve derivare dalla trascrizione."""
 
 
-EXTRACT_CANDIDATES = ("extract_candidates", "v1")
+EXTRACT_CANDIDATES = ("extract_candidates", "v2")
 EXTRACT_CANDIDATES_PROMPT = """Questa è una finestra della riunione. Ogni riga ha la forma:
 
 [id] (mm:ss) CHI: testo
@@ -38,8 +38,10 @@ Regole:
   e aggiungilo a "campi_mancanti". Non inventarlo e non dedurlo.
 - Le date relative ("entro venerdì", "fine mese") vanno in "due_raw" così come sono state dette.
   Non convertirle in date.
-- In "evidence" indica gli ID delle righe che giustificano ogni campo. NON riportare il testo:
-  quello viene riletto dalla trascrizione.
+- Per ogni campo che valorizzi, metti nel corrispondente elenco "righe_..." gli ID delle righe che
+  lo giustificano. NON riportare il testo: quello viene riletto dalla trascrizione.
+  Esempio: se scrivi assignee "Marco" perché la riga [140] dice "se ne occupa Marco", allora
+  "righe_assignee" deve contenere 140.
 - confidence: 0.9 o più se l'impegno è esplicito e accettato; fra 0.6 e 0.9 se probabile;
   sotto 0.6 se è un'ipotesi o una discussione non conclusa.
 - Se un'azione viene proposta e poi esplicitamente scartata, non estrarla.
@@ -57,7 +59,12 @@ SCHEMA_CANDIDATES = {
             "items": {
                 "type": "object",
                 "additionalProperties": False,
-                "required": ["temp_id", "titolo", "confidence", "evidence"],
+                # Un elenco di righe per ciascun campo, invece di un unico
+                # elenco in cui il modello deve etichettare ogni voce. Provato:
+                # dovendo scegliere un'etichetta da un enum, un 12B mette tutto
+                # sotto "descrizione". Il nome del campo, invece, gli dice da
+                # solo cosa ci va dentro.
+                "required": ["temp_id", "titolo", "confidence", "righe_titolo"],
                 "properties": {
                     "temp_id": {"type": "string"},
                     "titolo": {"type": "string"},
@@ -65,30 +72,11 @@ SCHEMA_CANDIDATES = {
                     "assignee": {"type": ["string", "null"]},
                     "due_raw": {"type": ["string", "null"]},
                     "priorita": {"type": ["string", "null"], "enum": ["bassa", "media", "alta", "critica", None]},
-                    "campi_mancanti": {"type": "array", "items": {"type": "string"}},
                     "confidence": {"type": "number"},
-                    "evidence": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "required": ["segment_id", "supports"],
-                            "properties": {
-                                "segment_id": {"type": "integer"},
-                                "supports": {
-                                    "type": "string",
-                                    "enum": [
-                                        "titolo",
-                                        "descrizione",
-                                        "assignee",
-                                        "due_date",
-                                        "priorita",
-                                        "esistenza",
-                                    ],
-                                },
-                            },
-                        },
-                    },
+                    "righe_titolo": {"type": "array", "items": {"type": "integer"}},
+                    "righe_assignee": {"type": "array", "items": {"type": "integer"}},
+                    "righe_scadenza": {"type": "array", "items": {"type": "integer"}},
+                    "righe_priorita": {"type": "array", "items": {"type": "integer"}},
                 },
             },
         }
