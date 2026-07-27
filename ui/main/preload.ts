@@ -26,6 +26,10 @@ const api = {
 
   screenshot: (): Promise<void> => ipcRenderer.invoke('screenshot:capture'),
 
+  /** Apre la cartella di un file prodotto dall'app, con il file selezionato. */
+  mostraFile: (percorso: string): Promise<void> =>
+    ipcRenderer.invoke('file:mostra', percorso),
+
   /** Eventi in arrivo dal processo principale. Restituisce la funzione per disiscriversi. */
   on: (canale: string, callback: (payload: unknown) => void): (() => void) => {
     const consentiti = [

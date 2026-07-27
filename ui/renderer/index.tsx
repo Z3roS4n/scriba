@@ -19,6 +19,7 @@ declare global {
       get<T>(path: string): Promise<{ ok: boolean; status: number; body: T }>
       post<T>(path: string, body?: unknown): Promise<{ ok: boolean; status: number; body: T }>
       screenshot(): Promise<void>
+      mostraFile(percorso: string): Promise<void>
       on(canale: string, callback: (payload: any) => void): () => void
     }
   }
@@ -146,6 +147,7 @@ function App() {
   const [trascorsi, setTrascorsi] = useState(0)
   const [dialogo, setDialogo] = useState(false)
   const [avviso, setAvviso] = useState<string | null>(null)
+  const [esportando, setEsportando] = useState(false)
   const [hotkey, setHotkey] = useState<string | null>(null)
 
   const fine = useRef<HTMLDivElement>(null)
@@ -303,6 +305,27 @@ function App() {
     if (!r.ok) setAvviso(`Arresto non riuscito (${r.status}).`)
   }
 
+  const esporta = async () => {
+    if (sessioneVista === null) return
+    setEsportando(true)
+    setAvviso(null)
+    try {
+      const r = await window.scriba.post<{ percorso: string }>(
+        `/sessions/${sessioneVista}/export/markdown`,
+      )
+      if (r.ok) {
+        // Si apre la cartella invece di limitarsi a dire che è andata bene: il
+        // file serve, e cercarlo a mano è un passaggio in più senza motivo.
+        await window.scriba.mostraFile(r.body.percorso)
+        setAvviso(`Esportato in ${r.body.percorso}`)
+      } else {
+        setAvviso(`Export non riuscito (${r.status}).`)
+      }
+    } finally {
+      setEsportando(false)
+    }
+  }
+
   const apriSessione = async (id: number) => {
     setSessioneVista(id)
     await caricaSegmenti(id)
@@ -347,6 +370,10 @@ function App() {
 
         <button onClick={() => window.scriba.screenshot()} disabled={!registrando}>
           Screenshot
+        </button>
+
+        <button onClick={esporta} disabled={sessioneVista === null || esportando}>
+          {esportando ? 'Esporto…' : 'Esporta'}
         </button>
 
         {registrando ? (

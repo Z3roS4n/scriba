@@ -215,6 +215,16 @@ function registerIpc(): void {
 
   ipcMain.handle('screenshot:capture', captureScreenshot)
 
+  ipcMain.handle('file:mostra', (_event, percorso: string) => {
+    // Solo dentro la cartella dati dell'app: il renderer non deve poter far
+    // aprire un percorso qualsiasi del disco.
+    const risolto = resolve(percorso)
+    if (!risolto.startsWith(DATA_DIR)) {
+      throw new Error('Percorso fuori dalla cartella dati')
+    }
+    shell.showItemInFolder(risolto)
+  })
+
   ipcMain.handle('app:paths', () => ({ dataDir: DATA_DIR, screenshotDir: SCREENSHOT_DIR }))
 }
 

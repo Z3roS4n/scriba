@@ -41,6 +41,12 @@ class StartRequest(BaseModel):
     consenso_confermato: bool = False
 
 
+class ExportRequest(BaseModel):
+    # Una cartella, oppure il percorso preciso di un .md. Se manca, si scrive
+    # accanto al database.
+    destinazione: str | None = None
+
+
 class ScreenshotRequest(BaseModel):
     path: str
     nota_utente: str | None = None
@@ -424,6 +430,17 @@ def create_app(
             }
             for s in store.segments(session_id)
         ]
+
+    @app.post("/sessions/{session_id}/export/markdown", dependencies=[Depends(check_token)])
+    async def export_markdown(session_id: int, req: ExportRequest) -> dict[str, Any]:
+        from .export.markdown import esporta
+
+        destinazione = Path(req.destinazione) if req.destinazione else db_path.parent / "export"
+        try:
+            percorso = await asyncio.to_thread(esporta, store, session_id, destinazione)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return {"percorso": str(percorso)}
 
     @app.get("/search", dependencies=[Depends(check_token)])
     async def search(q: str, limit: int = 50) -> list[dict[str, Any]]:

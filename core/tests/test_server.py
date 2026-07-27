@@ -184,6 +184,32 @@ class TestEventi:
             assert ws.receive_json()["type"] == "session_stopped"
 
 
+class TestExport:
+    def test_esporta_una_call(self, client: TestClient, tmp_path: Path) -> None:
+        client.post(auth("/session/start"), json={"titolo": "Da esportare"})
+        session_id = client.get(auth("/session/state")).json()["session_id"]
+        client.app.state.store.add_segment(
+            session_id, "mic", 0, 1000, "una frase detta", is_final=True
+        )
+        client.post(auth("/session/stop"))
+
+        r = client.post(
+            auth(f"/sessions/{session_id}/export/markdown"),
+            json={"destinazione": str(tmp_path / "export")},
+        )
+        assert r.status_code == 200
+        percorso = Path(r.json()["percorso"])
+        assert percorso.exists()
+        assert "una frase detta" in percorso.read_text(encoding="utf-8")
+
+    def test_una_sessione_inesistente_da_404(self, client: TestClient, tmp_path: Path) -> None:
+        r = client.post(
+            auth("/sessions/9999/export/markdown"),
+            json={"destinazione": str(tmp_path)},
+        )
+        assert r.status_code == 404
+
+
 class TestLettura:
     def test_elenco_sessioni(self, client: TestClient) -> None:
         client.post(auth("/session/start"), json={"titolo": "Prima"})
