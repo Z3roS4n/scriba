@@ -443,6 +443,59 @@ def create_app(
     async def get_settings() -> dict[str, Any]:
         return settings.tutto()
 
+    @app.get("/providers", dependencies=[Depends(check_token)])
+    async def providers() -> list[dict[str, Any]]:
+        """Quali motori di analisi sono utilizzabili in questo momento.
+
+        Non basta elencarli: un motore locale spento e un `claude` non
+        installato sono voci che si possono selezionare ma non funzionano, e lo
+        si scoprirebbe solo a fine call. Qui si verifica adesso.
+        """
+        from .llm.providers import costruisci
+
+        attuale = settings.llm()
+        elenco = [
+            {
+                "id": "local",
+                "etichetta": "Modello locale",
+                "descrizione": "Non esce nulla dal computer. Più lento: "
+                "una call di un'ora richiede una decina di minuti.",
+                "model": attuale.get("model") if attuale.get("provider") == "local" else "gemma-4-12b-it",
+            },
+            {
+                "id": "claude-cli",
+                "etichetta": "Abbonamento Claude",
+                "descrizione": "Usa l'abbonamento già attivo, nessun costo a consumo. "
+                "Circa tre minuti per una call di un'ora. La trascrizione viene inviata ad Anthropic.",
+                "model": "sonnet",
+            },
+            {
+                "id": "anthropic",
+                "etichetta": "API Anthropic",
+                "descrizione": "Richiede una chiave. Si paga a consumo.",
+                "model": "claude-sonnet-5",
+            },
+            {
+                "id": "openai",
+                "etichetta": "API OpenAI",
+                "descrizione": "Richiede una chiave. Si paga a consumo.",
+                "model": "gpt-5-mini",
+            },
+        ]
+
+        for voce in elenco:
+            configurazione = dict(attuale)
+            configurazione["provider"] = voce["id"]
+            configurazione.setdefault("model", voce["model"])
+            try:
+                voce["disponibile"] = await asyncio.to_thread(
+                    costruisci(configurazione).available
+                )
+            except Exception:
+                voce["disponibile"] = False
+            voce["attivo"] = voce["id"] == attuale.get("provider")
+        return elenco
+
     @app.post("/settings", dependencies=[Depends(check_token)])
     async def post_settings(modifiche: dict[str, Any]) -> dict[str, Any]:
         return settings.aggiorna(modifiche)

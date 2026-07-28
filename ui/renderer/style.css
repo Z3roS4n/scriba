@@ -371,6 +371,84 @@ select:focus {
   }
 }
 
+/* ----------------------------------------------------------- impostazioni */
+
+.dialogo.largo {
+  width: min(680px, 100%);
+}
+
+.scelte {
+  display: grid;
+  gap: 10px;
+}
+
+.scelta {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  border-radius: var(--raggio);
+}
+
+.scelta.attiva {
+  border-color: var(--io);
+  background: rgba(106, 169, 255, 0.09);
+}
+
+.scelta:disabled {
+  /* Resta leggibile: dice comunque cosa fa e perche' non si puo' usare. */
+  opacity: 0.6;
+}
+
+.scelta-testa {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.scelta-nome {
+  font-weight: 600;
+}
+
+.scelta-descrizione {
+  color: var(--testo-tenue);
+  font-size: 13px;
+  white-space: normal;
+}
+
+.scelta-rimedio {
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--testo-fioco);
+  white-space: normal;
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.targhetta {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--io);
+  color: #06213f;
+  font-weight: 700;
+}
+
+.targhetta.spenta {
+  background: var(--bordo);
+  color: var(--testo-tenue);
+}
+
+/* I dati che escono dal computer si dicono sempre, anche sull'opzione gia'
+   scelta: e' la conseguenza che si dimentica piu' facilmente. */
+.targhetta.esce {
+  background: var(--rosso-tenue);
+  color: #ffb4b3;
+  border: 1px solid #5b2b2e;
+}
+
 /* ---------------------------------------------------------------- dialogo */
 
 /* ---------------------------------------------------------------- analisi */

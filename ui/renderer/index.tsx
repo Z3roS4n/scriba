@@ -10,6 +10,7 @@ import { memo, StrictMode, useCallback, useEffect, useMemo, useRef, useState } f
 import { createRoot } from 'react-dom/client'
 
 import { PannelloAnalisi } from './Analisi'
+import { Impostazioni } from './Impostazioni'
 
 declare global {
   interface Window {
@@ -150,6 +151,7 @@ function App() {
   const [dialogo, setDialogo] = useState(false)
   const [avviso, setAvviso] = useState<string | null>(null)
   const [esportando, setEsportando] = useState(false)
+  const [impostazioni, setImpostazioni] = useState(false)
   const [callRilevata, setCallRilevata] = useState<{
     pid: number
     nome: string
@@ -386,6 +388,10 @@ function App() {
           {esportando ? 'Esporto…' : 'Esporta'}
         </button>
 
+        <button onClick={() => setImpostazioni(true)} title="Come analizzare le call">
+          Impostazioni
+        </button>
+
         {registrando ? (
           <button className="pericolo" onClick={ferma}>
             Ferma
@@ -510,6 +516,8 @@ function App() {
           </button>
         </div>
       )}
+
+      {impostazioni && <Impostazioni onChiudi={() => setImpostazioni(false)} />}
 
       {dialogo && (
         <DialogoAvvio
