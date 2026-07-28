@@ -1,8 +1,7 @@
 """Prototipo end-to-end: registra una call e la trascrive mentre parli.
 
-Mette in fila tutti i pezzi validati finora — cattura a due tracce, trascrizione
-locale in streaming, persistenza — senza interfaccia grafica. Se questo
-funziona, la UI è solo una finestra sopra a qualcosa che già gira.
+Stessa strada che percorre l'applicazione, ma senza finestra: serve a provare la
+registrazione dal terminale quando si sta lavorando sul core.
 
 A schermo il testo provvisorio compare in grigio mentre si parla e viene
 sostituito da quello definitivo quando la frase si chiude.
@@ -22,12 +21,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "core"))
 
-from scriba_core.audio.capture import DualCapture  # noqa: E402
 from scriba_core.db.store import Store  # noqa: E402
-from scriba_core.session import SessionClock  # noqa: E402
+from scriba_core.recorder import Recorder  # noqa: E402
 from scriba_core.stt.base import TranscriptEvent  # noqa: E402
 from scriba_core.stt.parakeet import ParakeetEngine  # noqa: E402
-from scriba_core.stt.streaming import StreamingTranscriber  # noqa: E402
 
 GRIGIO, RESET, GRASSETTO = "\033[90m", "\033[0m", "\033[1m"
 ETICHETTA = {"mic": "IO   ", "loopback": "ALTRI"}
@@ -39,20 +36,22 @@ class Console:
     def __init__(self) -> None:
         self._riga_provvisoria = False
 
-    def _pulisci(self) -> None:
+    def evento(self, ev: TranscriptEvent) -> None:
+        etichetta = ETICHETTA.get(ev.source, ev.source)
+        minuti, secondi = divmod(ev.t_start_ms // 1000, 60)
         if self._riga_provvisoria:
             print("\r\033[K", end="")
             self._riga_provvisoria = False
 
-    def evento(self, ev: TranscriptEvent) -> None:
-        etichetta = ETICHETTA.get(ev.source, ev.source)
-        minuti, secondi = divmod(ev.t_start_ms // 1000, 60)
-        self._pulisci()
         if ev.is_final:
             print(f"[{minuti:02d}:{secondi:02d}] {GRASSETTO}{etichetta}{RESET}  {ev.text}")
         else:
             testo = ev.text if len(ev.text) < 110 else "..." + ev.text[-107:]
-            print(f"{GRIGIO}[{minuti:02d}:{secondi:02d}] {etichetta}  {testo}{RESET}", end="", flush=True)
+            print(
+                f"{GRIGIO}[{minuti:02d}:{secondi:02d}] {etichetta}  {testo}{RESET}",
+                end="",
+                flush=True,
+            )
             self._riga_provvisoria = True
 
 
@@ -77,60 +76,33 @@ def main() -> int:
         print("Stai per registrare anche l'audio degli altri partecipanti.")
         print("Avvisarli e' una tua responsabilita', non la sostituisce questa conferma.")
         print("=" * 72)
-        if input("Hai avvisato i partecipanti? [s/N] ").strip().lower() not in ("s", "si", "sì", "y"):
+        if input("Hai avvisato i partecipanti? [s/N] ").strip().lower() not in (
+            "s", "si", "sì", "y",
+        ):
             print("Registrazione annullata.")
             return 1
         consenso_ms = int(time.time() * 1000)
 
     print("\nCarico il modello di trascrizione...")
     engine = ParakeetEngine(quantization="int8")
-
     store = Store(args.db)
-    clock = SessionClock()
-    session_id = store.create_session(
-        clock.started_at_ms,
-        titolo=args.titolo,
-        stt_model=engine.name,
-        consenso_confermato_at=consenso_ms,
-    )
     console = Console()
 
-    # Un evento provvisorio aggiorna sempre lo stesso record: quando diventa
-    # definitivo si rifinisce quello, invece di crearne un altro. È ciò che
-    # tiene validi i riferimenti che le task avranno su questi segmenti.
-    aperti: dict[str, int] = {}
+    # Si passa dal Recorder invece di rimettere insieme i pezzi a mano: è lui
+    # che sa in che ordine si spegne tutto, che salva l'audio su disco e che
+    # scarta le frasi in cui il microfono ha ripreso l'altoparlante. Rifarlo qui
+    # significherebbe avere due versioni della stessa cosa, e una delle due
+    # sarebbe sbagliata.
+    recorder = Recorder(engine, store, on_event=console.evento)
+    info = recorder.start(titolo=args.titolo, consenso_confermato_at=consenso_ms)
+    session_id = info.session_id
 
-    def on_event(ev: TranscriptEvent) -> None:
-        console.evento(ev)
-        seg_id = aperti.get(ev.source)
-        if seg_id is None:
-            seg_id = store.add_segment(
-                session_id, ev.source, ev.t_start_ms, ev.t_end_ms, ev.text, is_final=ev.is_final
-            )
-            aperti[ev.source] = seg_id
-        else:
-            store.refine_segment(seg_id, ev.text, t_end_ms=ev.t_end_ms, is_final=ev.is_final)
-        if ev.is_final:
-            aperti.pop(ev.source, None)
-
-    trascrittori = {
-        source: StreamingTranscriber(engine, source, on_event)
-        for source in ("mic", "loopback")
-    }
-    for t in trascrittori.values():
-        t.start()
-
-    def on_audio(source: str, samples, t_ms: int) -> None:
-        trascrittori[source].feed(samples, t_ms)
-
-    capture = DualCapture(clock, on_audio)
-    devices = capture.start()
-
-    print(f"\nmic      : {devices['mic'].name}")
-    print(f"loopback : {devices['loopback'].name}")
+    print(f"\nmic      : {info.devices['mic'].name}")
+    print(f"loopback : {info.devices['loopback'].name}")
     print(f"sessione : #{session_id} in {args.db}")
     print(f"\nREGISTRO — Ctrl+C per fermare (max {args.minutes:.0f} min)\n")
 
+    durata_s = 0.0
     try:
         deadline = time.perf_counter() + args.minutes * 60
         while time.perf_counter() < deadline:
@@ -138,22 +110,29 @@ def main() -> int:
     except KeyboardInterrupt:
         print("\n\nChiudo...")
     finally:
-        capture.stop()
-        # I trascrittori si fermano dopo la cattura: così l'ultima frase, quella
-        # che stavi ancora dicendo, viene chiusa invece di andare persa.
-        for t in trascrittori.values():
-            t.stop()
-        store.end_session(session_id, clock.ended_at_ms)
-        store.set_session_state(session_id, "ready")
+        durata_s = recorder.now_ms() / 1000
+        recorder.stop()
 
     segmenti = store.segments(session_id)
     parlato = sum(s.t_end_ms - s.t_start_ms for s in segmenti) / 1000
     print(f"\n{'=' * 72}")
-    print(f"Sessione #{session_id} — {clock.now_ms() / 1000:.0f}s registrati")
+    print(f"Sessione #{session_id} — {durata_s:.0f}s registrati")
     print(f"Segmenti: {len(segmenti)}  ({parlato:.0f}s di parlato)")
     for source in ("mic", "loopback"):
         n = sum(1 for s in segmenti if s.source == source)
         print(f"  {ETICHETTA[source].strip():<6}: {n}")
+    if recorder._echi_scartati:
+        print(f"  scartate {recorder._echi_scartati} frasi rientrate dall'altoparlante")
+
+    sessione = store.conn.execute(
+        "SELECT audio_mic_path, audio_loop_path FROM sessions WHERE id = ?", (session_id,)
+    ).fetchone()
+    for etichetta, campo in (("mic", "audio_mic_path"), ("loopback", "audio_loop_path")):
+        percorso = sessione[campo]
+        if percorso and Path(percorso).exists():
+            mb = Path(percorso).stat().st_size / 1e6
+            print(f"  audio {etichetta}: {percorso} ({mb:.1f} MB)")
+
     print(f"\nTrascrizione completa in {args.db}")
     return 0
 

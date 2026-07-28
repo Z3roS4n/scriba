@@ -221,6 +221,23 @@ class Store:
                 (testo, t_end_ms, int(is_final), confidence, segment_id),
             )
 
+    def elimina_segmento(self, segment_id: int) -> None:
+        """Toglie un segmento riconosciuto come eco dell'altoparlante.
+
+        Si cancella invece di correggere l'attribuzione perché quelle parole
+        esistono già sull'altra traccia, dette da chi le ha davvero dette:
+        tenerle due volte raddoppierebbe la frase nel riassunto.
+        """
+        with self.tx() as conn:
+            conn.execute("DELETE FROM transcript_segments WHERE id = ?", (segment_id,))
+
+    def set_audio_paths(self, session_id: int, mic: str | None, loopback: str | None) -> None:
+        with self.tx() as conn:
+            conn.execute(
+                "UPDATE sessions SET audio_mic_path = ?, audio_loop_path = ? WHERE id = ?",
+                (mic, loopback, session_id),
+            )
+
     def segments(self, session_id: int, *, only_final: bool = False) -> list[Segment]:
         sql = """
             SELECT id, session_id, source, t_start_ms, t_end_ms, testo, is_final,

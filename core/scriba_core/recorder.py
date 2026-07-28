@@ -11,6 +11,7 @@ appoggiano entrambi invece di rifare il lavoro.
 
 from __future__ import annotations
 
+import logging
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -20,10 +21,14 @@ import numpy as np
 
 from .ai import ocr
 from .audio.capture import DeviceInfo, DualCapture
+from .audio.writer import TrackWriter
 from .db.store import Store
 from .session import SessionClock, State
 from .stt.base import TranscriptEvent
+from .stt.eco import FiltroEco
 from .stt.streaming import StreamingConfig, StreamingTranscriber
+
+log = logging.getLogger(__name__)
 
 SOURCES = ("mic", "loopback")
 
@@ -51,9 +56,11 @@ class Recorder:
         on_event: Callable[[TranscriptEvent], None] | None = None,
         config: StreamingConfig | None = None,
         capture_factory: Callable[..., DualCapture] | None = None,
+        audio_dir: Path | str | None = None,
     ) -> None:
         self.engine = engine
         self.store = store
+        self.audio_dir = Path(audio_dir) if audio_dir else Path(store.path).parent / "audio"
         self._on_event = on_event
         self._config = config
         # Sostituibile nei test: aprire i device audio veri li renderebbe
@@ -69,6 +76,10 @@ class Recorder:
         # chiude, quel record viene rifinito invece di crearne uno nuovo: è ciò
         # che tiene validi i riferimenti che le task avranno su questi segmenti.
         self._open_segments: dict[str, int] = {}
+        # Il microfono riprende sempre un po' di quello che esce dalle casse.
+        self._eco = FiltroEco()
+        self._echi_scartati = 0
+        self._writers: dict[str, TrackWriter] = {}
 
     # ------------------------------------------------------------------ stato
 
@@ -110,6 +121,16 @@ class Recorder:
                 consenso_confermato_at=consenso_confermato_at,
             )
             self._open_segments.clear()
+            self._eco = FiltroEco()
+            self._echi_scartati = 0
+
+            # L'audio si salva sempre. Senza, una trascrizione venuta male non
+            # si può rifare e non si può risalire a chi ha parlato: il parlato è
+            # passato e non torna.
+            cartella = self.audio_dir / f"sessione-{self.session_id:05d}"
+            self._writers = {source: TrackWriter(cartella / f"{source}.wav") for source in SOURCES}
+            for w in self._writers.values():
+                w.start()
 
             cfg = self._config or StreamingConfig(language=lingua)
             self._transcribers = {
@@ -140,12 +161,30 @@ class Recorder:
         transcriber = self._transcribers.get(source)
         if transcriber is not None:
             transcriber.feed(samples, t_ms)
+        writer = self._writers.get(source)
+        if writer is not None:
+            writer.write(samples)
 
     # ------------------------------------------------------------- eventi STT
 
     def _handle_event(self, ev: TranscriptEvent) -> None:
         session_id = self.session_id
         if session_id is None:
+            return
+
+        # Quello che esce dalle casse viene annotato, così se torna indietro dal
+        # microfono lo si riconosce.
+        if ev.source == "loopback":
+            if ev.is_final:
+                self._eco.registra_uscita(ev.t_start_ms, ev.text)
+        elif ev.is_final and self._eco.e_eco(ev.t_start_ms, ev.text):
+            # Il microfono ha ripreso l'altoparlante: non sono parole di chi
+            # registra. Attribuirgliele significa invertire chi ha detto cosa
+            # nel riassunto, che è peggio di perdere una riga.
+            aperto = self._open_segments.pop(ev.source, None)
+            if aperto is not None:
+                self.store.elimina_segmento(aperto)
+            self._echi_scartati += 1
             return
 
         seg_id = self._open_segments.get(ev.source)
@@ -215,6 +254,19 @@ class Recorder:
             # ancora in corso, che e' proprio quella a cui l'utente teneva
             # quando ha premuto stop.
             self._teardown_transcribers()
+
+            percorsi = {s: w.stop() for s, w in self._writers.items()}
+            self._writers.clear()
+            self.store.set_audio_paths(
+                session_id,
+                str(percorsi["mic"]) if percorsi.get("mic") else None,
+                str(percorsi["loopback"]) if percorsi.get("loopback") else None,
+            )
+            if self._echi_scartati:
+                log.info(
+                    "Scartate %d frasi in cui il microfono aveva ripreso l'altoparlante.",
+                    self._echi_scartati,
+                )
 
             self.store.end_session(session_id, self.clock.ended_at_ms)
             self.store.set_session_state(session_id, "ready")
