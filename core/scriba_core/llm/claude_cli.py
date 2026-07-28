@@ -27,6 +27,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+from pathlib import Path
 from typing import Any
 
 from .base import Completion, LLMError
@@ -78,15 +79,17 @@ class ClaudeCliProvider:
                 + json.dumps(schema, ensure_ascii=False)
             )
 
+        # Il prompt viaggia sullo standard input, non come argomento. Windows
+        # limita la riga di comando a circa 32.000 caratteri, e la trascrizione
+        # di un'ora di riunione la supera: l'errore che ne veniva fuori era
+        # "The filename or extension is too long", che non lascia intuire la
+        # causa vera.
         comando = [
             "claude",
             "-p",
-            prompt,
             "--output-format",
             "json",
             "--strict-mcp-config",
-            "--system-prompt",
-            istruzioni,
             "--disallowed-tools",
             STRUMENTI_VIETATI,
         ]
@@ -104,8 +107,15 @@ class ClaudeCliProvider:
             # `claude` caricherebbe il CLAUDE.md e le impostazioni di quel
             # progetto, cambiando il comportamento in modi difficili da spiegare.
             with tempfile.TemporaryDirectory(prefix="scriba-claude-") as neutra:
+                # Anche le istruzioni passano da un file: contengono lo schema
+                # JSON e crescono, e come argomento concorrerebbero allo stesso
+                # limite di lunghezza della riga di comando.
+                percorso_istruzioni = Path(neutra) / "istruzioni.txt"
+                percorso_istruzioni.write_text(istruzioni, encoding="utf-8")
+
                 esito = subprocess.run(
-                    comando,
+                    comando + ["--system-prompt-file", str(percorso_istruzioni)],
+                    input=prompt,
                     capture_output=True,
                     text=True,
                     encoding="utf-8",

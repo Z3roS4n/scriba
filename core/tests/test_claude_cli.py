@@ -44,6 +44,12 @@ def chiamata(monkeypatch):
         catturato["comando"] = comando
         catturato["env"] = kwargs.get("env", {})
         catturato["cwd"] = kwargs.get("cwd")
+        catturato["input"] = kwargs.get("input")
+        # Le istruzioni arrivano da un file: si legge finché la cartella
+        # temporanea esiste, cioè adesso.
+        if "--system-prompt-file" in comando:
+            percorso = comando[comando.index("--system-prompt-file") + 1]
+            catturato["istruzioni"] = Path(percorso).read_text(encoding="utf-8")
         return subprocess.CompletedProcess(comando, 0, catturato.get("stdout", busta("ciao")), "")
 
     monkeypatch.setattr(subprocess, "run", finto_run)
@@ -100,6 +106,42 @@ class TestIsolamento:
         assert "scriba-claude-" in cwd
 
 
+class TestLunghezza:
+    """Windows limita la riga di comando a ~32.000 caratteri.
+
+    Passando la trascrizione come argomento, un'ora di riunione lo superava e
+    l'errore era "The filename or extension is too long" — che non lascia
+    intuire la causa. Emerso alla prima analisi vera.
+    """
+
+    def test_la_trascrizione_non_finisce_nella_riga_di_comando(self, chiamata) -> None:
+        trascrizione = "una battuta di riunione. " * 4000  # ~100.000 caratteri
+        ClaudeCliProvider().complete(system="s", user=trascrizione)
+
+        assert chiamata["input"] == trascrizione
+        assert not any(len(str(a)) > 8000 for a in chiamata["comando"])
+
+    def test_nemmeno_le_istruzioni_con_lo_schema(self, chiamata, tmp_path) -> None:
+        # Le istruzioni contengono lo schema JSON e crescono: come argomento
+        # concorrerebbero allo stesso limite.
+        chiamata["stdout"] = busta('{"a": 1}')
+        schema = {"type": "object", "properties": {f"campo_{i}": {} for i in range(400)}}
+        ClaudeCliProvider().complete(system="s" * 5000, user="u", schema=schema)
+
+        assert not any(len(str(a)) > 8000 for a in chiamata["comando"])
+        assert "--system-prompt-file" in chiamata["comando"]
+
+    def test_le_istruzioni_non_vengono_perse(self, chiamata) -> None:
+        # Scartarle quando sono lunghe sarebbe peggio del problema: il modello
+        # lavorerebbe senza sapere cosa gli si chiede.
+        chiamata["stdout"] = busta('{"a": 1}')
+        ClaudeCliProvider().complete(
+            system="ISTRUZIONE-RICONOSCIBILE", user="u", schema={"type": "object"}
+        )
+        assert "ISTRUZIONE-RICONOSCIBILE" in chiamata["istruzioni"]
+        assert "type" in chiamata["istruzioni"]
+
+
 class TestRisposta:
     def test_il_testo_viene_restituito(self, chiamata) -> None:
         c = ClaudeCliProvider().complete(system="s", user="u")
@@ -107,15 +149,14 @@ class TestRisposta:
         assert c.tokens_in == 1200 and c.tokens_out == 300
         assert c.provider == "claude-cli"
 
-    def test_lo_schema_finisce_nel_prompt(self, chiamata) -> None:
+    def test_lo_schema_finisce_nelle_istruzioni(self, chiamata) -> None:
         # Il campo strutturato della risposta non e' garantito: lo schema va
         # ripetuto nelle istruzioni.
         chiamata["stdout"] = busta('{"a": 1}')
         ClaudeCliProvider().complete(
             system="s", user="u", schema={"type": "object", "properties": {"a": {}}}
         )
-        i = chiamata["comando"].index("--system-prompt")
-        assert "properties" in chiamata["comando"][i + 1]
+        assert "properties" in chiamata["istruzioni"]
 
     def test_un_errore_segnalato_diventa_un_errore(self, chiamata) -> None:
         chiamata["stdout"] = json.dumps({"is_error": True, "result": "quota esaurita"})
