@@ -26,6 +26,15 @@ const api = {
 
   screenshot: (): Promise<void> => ipcRenderer.invoke('screenshot:capture'),
 
+  overlay: {
+    nascondi: (): Promise<void> => ipcRenderer.invoke('overlay:nascondi'),
+    apriPrincipale: (): Promise<void> => ipcRenderer.invoke('overlay:apri-principale'),
+  },
+
+  /** Rilegge la combinazione dalle impostazioni. Restituisce quella attiva, o null. */
+  registraScorciatoiaOverlay: (): Promise<string | null> =>
+    ipcRenderer.invoke('overlay:registra-scorciatoia'),
+
   /** Apre la cartella di un file prodotto dall'app, con il file selezionato. */
   mostraFile: (percorso: string): Promise<void> =>
     ipcRenderer.invoke('file:mostra', percorso),

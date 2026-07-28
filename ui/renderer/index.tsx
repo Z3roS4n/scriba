@@ -12,20 +12,6 @@ import { createRoot } from 'react-dom/client'
 import { PannelloAnalisi } from './Analisi'
 import { Impostazioni } from './Impostazioni'
 
-declare global {
-  interface Window {
-    scriba: {
-      endpoint(): Promise<{ port: number } | null>
-      paths(): Promise<{ dataDir: string; screenshotDir: string }>
-      get<T>(path: string): Promise<{ ok: boolean; status: number; body: T }>
-      post<T>(path: string, body?: unknown): Promise<{ ok: boolean; status: number; body: T }>
-      screenshot(): Promise<void>
-      mostraFile(percorso: string): Promise<void>
-      on(canale: string, callback: (payload: any) => void): () => void
-    }
-  }
-}
-
 interface Segmento {
   id: number
   source: 'mic' | 'loopback'

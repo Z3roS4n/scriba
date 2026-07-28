@@ -11,6 +11,7 @@ import { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, ipcMain, M
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
+import { Overlay } from './overlay'
 import { Sidecar } from './sidecar'
 
 const PROJECT_ROOT = resolve(app.getAppPath(), '..')
@@ -33,9 +34,12 @@ let hotkeyAttiva: string | null = null
 
 const sidecar = new Sidecar(PROJECT_ROOT, join(DATA_DIR, 'scriba.sqlite'))
 
+const overlay = new Overlay(__dirname.replace(/[\\/]main$/, ''), join(DATA_DIR, 'overlay.json'))
+
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let quitting = false
+let scorciatoiaOverlay: string | null = null
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -97,6 +101,10 @@ function createTray(): void {
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: 'Apri Scriba', click: showWindow },
+      {
+        label: `Trascrizione sovrapposta (${(scorciatoiaOverlay ?? 'Alt+R').replace('CommandOrControl', 'Ctrl')})`,
+        click: () => overlay.alterna(),
+      },
       { type: 'separator' },
       {
         label: hotkeyAttiva
@@ -184,7 +192,11 @@ function connectEvents(): void {
 
   socket.addEventListener('message', (event) => {
     try {
-      mainWindow?.webContents.send('core:event', JSON.parse(String(event.data)))
+      const evento = JSON.parse(String(event.data))
+      mainWindow?.webContents.send('core:event', evento)
+      // Anche all'overlay: durante una call e' spesso l'unica finestra aperta,
+      // e senza gli eventi mostrerebbe una trascrizione ferma.
+      overlay.invia('core:event', evento)
     } catch (error) {
       console.error('[core] evento illeggibile', error)
     }
@@ -199,7 +211,44 @@ function connectEvents(): void {
   socket.addEventListener('error', () => socket.close())
 }
 
+/**
+ * Registra la scorciatoia che mostra e nasconde l'overlay.
+ *
+ * La combinazione si legge dalle impostazioni: se e' gia' presa da un'altra
+ * applicazione, `register` restituisce false e va detto, altrimenti l'utente
+ * preme un tasto che non fa niente senza capire perche'.
+ */
+async function registraScorciatoiaOverlay(): Promise<string | null> {
+  if (scorciatoiaOverlay) {
+    globalShortcut.unregister(scorciatoiaOverlay)
+    scorciatoiaOverlay = null
+  }
+
+  let combinazione = 'Alt+R'
+  try {
+    const risposta = await coreFetch('/settings')
+    if (risposta.ok) {
+      const impostazioni = await risposta.json()
+      combinazione = impostazioni?.interfaccia?.scorciatoia_overlay || combinazione
+    }
+  } catch {
+    // Impostazioni non leggibili: si usa la predefinita.
+  }
+
+  if (globalShortcut.register(combinazione, () => overlay.alterna())) {
+    scorciatoiaOverlay = combinazione
+  } else {
+    console.warn(`Scorciatoia ${combinazione} gia' in uso: overlay non richiamabile da tastiera.`)
+  }
+  mainWindow?.webContents.send('overlay:scorciatoia', scorciatoiaOverlay)
+  // Il menu della tray mostra la combinazione: se cambia, va rifatto.
+  if (tray) createTray()
+  return scorciatoiaOverlay
+}
+
 function registerIpc(): void {
+  ipcMain.handle('overlay:registra-scorciatoia', registraScorciatoiaOverlay)
+
   // Volutamente senza token: al renderer basta sapere se il core e' su.
   ipcMain.handle('core:endpoint', () => (sidecar.address ? { port: sidecar.address.port } : null))
 
@@ -214,6 +263,12 @@ function registerIpc(): void {
   })
 
   ipcMain.handle('screenshot:capture', captureScreenshot)
+
+  ipcMain.handle('overlay:nascondi', () => overlay.nascondi())
+
+  ipcMain.handle('overlay:apri-principale', () => {
+    showWindow()
+  })
 
   ipcMain.handle('file:mostra', (_event, percorso: string) => {
     // Solo dentro la cartella dati dell'app: il renderer non deve poter far
@@ -253,6 +308,10 @@ app.whenReady().then(async () => {
     const endpoint = await sidecar.start()
     connectEvents()
     mainWindow.webContents.send('core:pronto', { port: endpoint.port })
+
+    // La scorciatoia dell'overlay si legge dalle impostazioni, che stanno nel
+    // core: si registra solo dopo che e' partito.
+    await registraScorciatoiaOverlay()
   } catch (error) {
     dialog.showErrorBox(
       'Scriba non riesce ad avviare il core',
@@ -271,6 +330,7 @@ app.on('before-quit', () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
+  overlay.chiudi()
   sidecar.stop()
 })
 

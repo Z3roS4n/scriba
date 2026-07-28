@@ -32,15 +32,50 @@ export function Impostazioni({ onChiudi }: { onChiudi: () => void }) {
   const [salvando, setSalvando] = useState<string | null>(null)
   const [errore, setErrore] = useState<string | null>(null)
 
+  const [scOverlay, setScOverlay] = useState('')
+  const [esitoScorciatoia, setEsitoScorciatoia] = useState<string | null>(null)
+
   const carica = useCallback(async () => {
     const r = await window.scriba.get<Provider[]>('/providers')
     if (r.ok) setProviders(r.body)
     else setErrore(`Impossibile leggere le impostazioni (${r.status}).`)
+
+    const s = await window.scriba.get<{ interfaccia?: { scorciatoia_overlay?: string } }>(
+      '/settings',
+    )
+    if (s.ok) setScOverlay(s.body?.interfaccia?.scorciatoia_overlay ?? 'Alt+R')
   }, [])
 
   useEffect(() => {
     carica()
   }, [carica])
+
+  /**
+   * Salva la combinazione e prova subito a registrarla.
+   *
+   * Si riferisce l'esito perché una combinazione già presa da un'altra
+   * applicazione viene rifiutata dal sistema in silenzio: senza dirlo, si
+   * resterebbe a premere un tasto che non fa niente.
+   */
+  const salvaScorciatoia = async () => {
+    const combinazione = scOverlay.trim()
+    if (!combinazione) return
+    setEsitoScorciatoia(null)
+
+    const r = await window.scriba.post('/settings', {
+      interfaccia: { scorciatoia_overlay: combinazione },
+    })
+    if (!r.ok) {
+      setEsitoScorciatoia(`Non salvata (${r.status}).`)
+      return
+    }
+    const attiva = await window.scriba.registraScorciatoiaOverlay()
+    setEsitoScorciatoia(
+      attiva
+        ? `Attiva: ${attiva}`
+        : `${combinazione} non è disponibile: la sta già usando un'altra applicazione.`,
+    )
+  }
 
   const scegli = async (p: Provider) => {
     setSalvando(p.id)
@@ -86,6 +121,33 @@ export function Impostazioni({ onChiudi }: { onChiudi: () => void }) {
               {!p.disponibile && <div className="scelta-rimedio">{RIMEDIO[p.id]}</div>}
             </button>
           ))}
+        </div>
+
+        <h2 style={{ marginTop: 28 }}>Scorciatoie</h2>
+        <p>
+          Funzionano anche quando Scriba non è in primo piano, che è il punto: durante una
+          call il fuoco ce l'ha la riunione.
+        </p>
+
+        <div className="campo">
+          <label htmlFor="sc-overlay">Mostra e nascondi la trascrizione sovrapposta</label>
+          <input
+            id="sc-overlay"
+            type="text"
+            value={scOverlay}
+            placeholder="Alt+R"
+            onChange={(e) => setScOverlay(e.target.value)}
+            onBlur={salvaScorciatoia}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur()
+            }}
+          />
+          <div className="nota">
+            Scrivila come <code>Alt+R</code>, <code>Ctrl+Shift+T</code>,{' '}
+            <code>Super+M</code>. Se la combinazione è già usata da un'altra applicazione
+            viene segnalato qui sotto.
+          </div>
+          {esitoScorciatoia && <div className="nota esito">{esitoScorciatoia}</div>}
         </div>
 
         <div className="azioni">

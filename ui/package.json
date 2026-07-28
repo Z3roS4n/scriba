@@ -7,8 +7,8 @@
   "private": true,
   "scripts": {
     "build:main": "esbuild main/index.ts main/preload.ts --bundle --platform=node --target=node20 --external:electron --outdir=dist/main",
-    "build:renderer": "esbuild renderer/index.tsx --bundle --minify --target=chrome120 --define:process.env.NODE_ENV=\\\"production\\\" --outfile=dist/renderer/bundle.js",
-    "copy:assets": "node -e \"const{cpSync,mkdirSync}=require('fs');mkdirSync('dist/renderer',{recursive:true});for(const f of ['index.html','style.css'])cpSync('renderer/'+f,'dist/renderer/'+f)\"",
+    "build:renderer": "esbuild renderer/index.tsx renderer/overlay.tsx --bundle --minify --target=chrome120 --define:process.env.NODE_ENV=\\\"production\\\" --outdir=dist/renderer --entry-names=[name] && node -e \"require('fs').renameSync('dist/renderer/index.js','dist/renderer/bundle.js')\"",
+    "copy:assets": "node -e \"const{cpSync,mkdirSync}=require('fs');mkdirSync('dist/renderer',{recursive:true});for(const f of ['index.html','style.css','overlay.html','overlay.css'])cpSync('renderer/'+f,'dist/renderer/'+f)\"",
     "typecheck": "tsc --noEmit",
     "build": "npm run build:main && npm run copy:assets && npm run build:renderer",
     "start": "npm run build && electron .",

@@ -23,6 +23,16 @@ PREDEFINITE: dict[str, Any] = {
     },
     "stt": {"provider": "local", "lingua": "it"},
     "analisi_automatica": True,
+    "interfaccia": {
+        # Scorciatoie globali: funzionano anche quando Scriba non ha il fuoco,
+        # che è il punto — durante una call il fuoco ce l'ha la riunione.
+        "scorciatoia_overlay": "Alt+R",
+        "scorciatoia_screenshot": "CommandOrControl+Shift+S",
+        # Quante righe tiene l'overlay. Poche di proposito: sta sopra la
+        # finestra della call e più cresce più copre quello che serve vedere.
+        "righe_overlay": 6,
+        "opacita_overlay": 0.92,
+    },
     "rilevamento": {
         # Sorveglia il microfono per accorgersi quando si entra in una call.
         # Attivo di default: è la funzione per cui l'applicazione esiste, e
