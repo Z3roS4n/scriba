@@ -1,0 +1,156 @@
+"""Test del provider che usa l'abbonamento Claude via riga di comando.
+
+Le tre accortezze verificate qui — niente `--bare`, chiave API tolta
+dall'ambiente, `--strict-mcp-config` — non danno errore se sbagliate: cambiano
+in silenzio chi paga o cosa il modello può fare. Per questo hanno un test.
+"""
+
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scriba_core.llm.base import LLMError  # noqa: E402
+from scriba_core.llm.claude_cli import ClaudeCliProvider, _estrai_json  # noqa: E402
+
+
+def busta(risultato: str, **extra) -> str:
+    return json.dumps(
+        {
+            "type": "result",
+            "subtype": "success",
+            "is_error": False,
+            "result": risultato,
+            "usage": {"input_tokens": 1200, "output_tokens": 300},
+            "total_cost_usd": 0.17,
+            "modelUsage": {"claude-sonnet-5": {}},
+            **extra,
+        }
+    )
+
+
+@pytest.fixture()
+def chiamata(monkeypatch):
+    """Cattura il comando e l'ambiente con cui `claude` verrebbe eseguito."""
+    catturato = {}
+
+    def finto_run(comando, **kwargs):
+        catturato["comando"] = comando
+        catturato["env"] = kwargs.get("env", {})
+        catturato["cwd"] = kwargs.get("cwd")
+        return subprocess.CompletedProcess(comando, 0, catturato.get("stdout", busta("ciao")), "")
+
+    monkeypatch.setattr(subprocess, "run", finto_run)
+    monkeypatch.setattr("shutil.which", lambda _: "C:/fake/claude.exe")
+    return catturato
+
+
+class TestChiPaga:
+    """Errori che non si vedono: la risposta arriva lo stesso, ma la paghi."""
+
+    def test_la_chiave_api_viene_tolta_dall_ambiente(self, chiamata, monkeypatch) -> None:
+        # Se `claude` trova la chiave nell'ambiente la usa, e la chiamata finisce
+        # fatturata sull'API invece che sull'abbonamento.
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-qualcosa")
+        ClaudeCliProvider().complete(system="s", user="u")
+        assert "ANTHROPIC_API_KEY" not in chiamata["env"]
+
+    def test_anche_il_token_di_autenticazione(self, chiamata, monkeypatch) -> None:
+        monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "token")
+        ClaudeCliProvider().complete(system="s", user="u")
+        assert "ANTHROPIC_AUTH_TOKEN" not in chiamata["env"]
+
+    def test_mai_bare(self, chiamata) -> None:
+        # `--bare` disabilita OAuth: stesso effetto, la chiamata viene fatturata.
+        ClaudeCliProvider().complete(system="s", user="u")
+        assert "--bare" not in chiamata["comando"]
+
+    def test_il_costo_riportato_e_zero(self, chiamata) -> None:
+        # Il CLI riporta sempre una stima di quanto sarebbe costato via API.
+        # Riportarla farebbe credere di aver speso quella cifra.
+        assert ClaudeCliProvider().complete(system="s", user="u").cost_usd == 0.0
+
+
+class TestIsolamento:
+    def test_gli_mcp_dell_utente_non_vengono_ereditati(self, chiamata) -> None:
+        # Senza, il processo figlio eredita i server MCP configurati e puo'
+        # mettersi a chiamare servizi esterni per conto suo.
+        ClaudeCliProvider().complete(system="s", user="u")
+        assert "--strict-mcp-config" in chiamata["comando"]
+
+    def test_gli_strumenti_sono_vietati(self, chiamata) -> None:
+        # Riassumere una trascrizione non richiede disco ne' rete.
+        ClaudeCliProvider().complete(system="s", user="u")
+        i = chiamata["comando"].index("--disallowed-tools")
+        vietati = chiamata["comando"][i + 1]
+        for strumento in ("Bash", "Write", "Read", "WebFetch"):
+            assert strumento in vietati
+
+    def test_gira_fuori_da_una_cartella_di_progetto(self, chiamata) -> None:
+        # Da una cartella di progetto verrebbe caricato il suo CLAUDE.md,
+        # cambiando il comportamento in modi difficili da spiegare.
+        ClaudeCliProvider().complete(system="s", user="u")
+        cwd = str(chiamata["cwd"] or "")
+        assert "scriba-claude-" in cwd
+
+
+class TestRisposta:
+    def test_il_testo_viene_restituito(self, chiamata) -> None:
+        c = ClaudeCliProvider().complete(system="s", user="u")
+        assert c.text == "ciao"
+        assert c.tokens_in == 1200 and c.tokens_out == 300
+        assert c.provider == "claude-cli"
+
+    def test_lo_schema_finisce_nel_prompt(self, chiamata) -> None:
+        # Il campo strutturato della risposta non e' garantito: lo schema va
+        # ripetuto nelle istruzioni.
+        chiamata["stdout"] = busta('{"a": 1}')
+        ClaudeCliProvider().complete(
+            system="s", user="u", schema={"type": "object", "properties": {"a": {}}}
+        )
+        i = chiamata["comando"].index("--system-prompt")
+        assert "properties" in chiamata["comando"][i + 1]
+
+    def test_un_errore_segnalato_diventa_un_errore(self, chiamata) -> None:
+        chiamata["stdout"] = json.dumps({"is_error": True, "result": "quota esaurita"})
+        with pytest.raises(LLMError, match="quota esaurita"):
+            ClaudeCliProvider().complete(system="s", user="u")
+
+    def test_una_risposta_vuota_non_passa_inosservata(self, chiamata) -> None:
+        chiamata["stdout"] = busta("   ")
+        with pytest.raises(LLMError, match="senza contenuto"):
+            ClaudeCliProvider().complete(system="s", user="u")
+
+    def test_senza_claude_installato_lo_dice(self, monkeypatch) -> None:
+        monkeypatch.setattr("shutil.which", lambda _: None)
+        p = ClaudeCliProvider()
+        assert p.available() is False
+        with pytest.raises(LLMError, match="PATH"):
+            p.complete(system="s", user="u")
+
+
+class TestEstrazioneJson:
+    """Qui manca la grammatica che in locale rende il JSON impossibile da
+    sbagliare: la risposta va ripulita."""
+
+    def test_json_pulito(self) -> None:
+        assert _estrai_json('{"a": 1}') == {"a": 1}
+
+    def test_dentro_un_blocco_di_codice(self) -> None:
+        assert _estrai_json('```json\n{"a": 1}\n```') == {"a": 1}
+
+    def test_blocco_senza_linguaggio(self) -> None:
+        assert _estrai_json('```\n{"a": 1}\n```') == {"a": 1}
+
+    def test_preceduto_da_una_frase(self) -> None:
+        assert _estrai_json('Ecco il risultato:\n{"a": 1}') == {"a": 1}
+
+    def test_senza_json_solleva(self) -> None:
+        with pytest.raises(LLMError):
+            _estrai_json("non c'e' nulla qui")

@@ -289,6 +289,10 @@ def costruisci(config: dict[str, Any]) -> LLMProvider:
             base_url=config.get("base_url", "http://127.0.0.1:8080"),
             model=config.get("model", "locale"),
         )
+    if tipo == "claude-cli":
+        from .claude_cli import ClaudeCliProvider
+
+        return ClaudeCliProvider(model=config.get("model", "sonnet"))
     if tipo == "anthropic":
         return AnthropicProvider(config.get("api_key"), config.get("model", "claude-sonnet-5"))
     if tipo == "openai":
