@@ -90,6 +90,16 @@ class RilevatoreCall:
     proporre è compito suo, decidere è dell'utente.
     """
 
+    # Quanto deve reggere una sonda perché la si consideri sana. Sotto questa
+    # soglia le ripartenze si contano come consecutive.
+    RIPRESA_RIUSCITA_S = 60.0
+    # Quante ripartenze ravvicinate prima di rinunciare. Alto di proposito: la
+    # libreria COM sottostante ha un difetto noto che chiude l'output ogni
+    # tanto, e ripartire costa una frazione di secondo. Rinunciare al primo
+    # inciampo significherebbe spegnere la funzione durante una giornata
+    # normale.
+    CADUTE_CONSECUTIVE_MAX = 20
+
     def __init__(
         self,
         on_call: Callable[[Call], None],
@@ -158,8 +168,8 @@ class RilevatoreCall:
         COM, e quindi non si puo' morire per causa sua.
         """
         while not self._stop.is_set():
+            avvio = time.monotonic()
             processo = self._avvia_sonda()
-            self._sonda = processo
             if processo is None:
                 self._stop.wait(30)
                 continue
@@ -182,43 +192,57 @@ class RilevatoreCall:
                         log.warning("Rilevamento non riuscito: %s", exc)
             finally:
                 motivo = self._perche_e_finita(processo)
-                with contextlib.suppress(Exception):
-                    processo.kill()
 
             if self._stop.is_set():
                 return
 
-            # La sonda e' caduta. Si riprova, ma senza accanirsi: se la causa e'
-            # permanente, riavviarla all'infinito non aiuta e riempie i log.
+            # La sonda si è fermata. Succede: la libreria COM sottostante ha un
+            # difetto noto — solleva "COM method call without VTable" mentre
+            # libera un oggetto — e quando capita l'output si chiude anche se il
+            # processo è ancora vivo. Non è una causa che si possa togliere da
+            # qui, quindi si riparte e basta.
+            #
+            # Il conto si azzera se la sonda ha retto abbastanza: quello che si
+            # vuole evitare è il caso in cui non riesce proprio a partire, non
+            # una ripartenza ogni tanto durante una giornata di lavoro.
+            durata = time.monotonic() - avvio
+            if durata >= self.RIPRESA_RIUSCITA_S:
+                self._cadute = 0
             self._cadute += 1
-            log.warning("La sonda audio si e' fermata (%s).", motivo)
-            if self._cadute >= 3:
+
+            log.info("Sonda audio ripartita dopo %.0fs (%s).", durata, motivo)
+            if self._cadute >= self.CADUTE_CONSECUTIVE_MAX:
                 log.warning(
-                    "Caduta %d volte: rilevamento sospeso. Ultimo motivo: %s",
+                    "La sonda audio non riesce a restare in piedi (%d tentativi ravvicinati): "
+                    "rilevamento sospeso. Ultimo motivo: %s",
                     self._cadute,
                     motivo,
                 )
                 return
-            self._stop.wait(5)
+            self._stop.wait(2)
 
     @staticmethod
     def _perche_e_finita(processo) -> str:
         """Raccoglie il motivo per cui la sonda ha smesso di riferire.
 
-        Prima il suo stderr veniva scartato, e quando cadeva restava solo "e'
-        caduta" — cioè l'unica informazione che non serve a niente.
+        Prima lo stderr della sonda veniva scartato, e quando cadeva restava
+        solo "è caduta" — cioè l'unica informazione che non serve a niente.
         """
         codice = processo.poll()
-        dettagli = []
-        if codice is None:
-            dettagli.append("ha chiuso lo standard output pur essendo viva")
-        else:
-            dettagli.append(f"uscita con codice {codice}")
+        dettagli = [
+            "output chiuso pur essendo viva" if codice is None else f"uscita con codice {codice}"
+        ]
+
+        # Si chiude prima di leggere: `read()` aspetta la fine del flusso, e su
+        # un processo ancora vivo aspetterebbe per sempre.
+        with contextlib.suppress(Exception):
+            processo.kill()
         with contextlib.suppress(Exception):
             if processo.stderr is not None:
                 resto = processo.stderr.read()
                 if resto and resto.strip():
-                    dettagli.append(resto.strip().replace("\n", " | ")[-400:])
+                    ultima = [r for r in resto.strip().splitlines() if r.strip()][-1]
+                    dettagli.append(ultima.strip()[:200])
         return "; ".join(dettagli)
 
     def _avvia_sonda(self):

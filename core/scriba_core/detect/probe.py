@@ -46,14 +46,25 @@ def _sessioni_microfono() -> list[tuple[int, float]]:
     enumeratore = manager.GetSessionEnumerator()
 
     fuori = []
+    # Le interfacce si tengono in vita fino alla fine dell'enumerazione e si
+    # lasciano andare tutte insieme. Liberandole una alla volta dentro il ciclo,
+    # `comtypes` a volte solleva "COM method call without VTable" mentre
+    # distrugge un riferimento: è un difetto suo, ma dargli meno occasioni di
+    # incapparci riduce le ripartenze.
+    vive = []
     for i in range(enumeratore.GetCount()):
         try:
             sessione = enumeratore.GetSession(i)
-            pid = sessione.QueryInterface(IAudioSessionControl2).GetProcessId()
+            vive.append(sessione)
+            controllo = sessione.QueryInterface(IAudioSessionControl2)
+            vive.append(controllo)
+            pid = controllo.GetProcessId()
             if not pid:
                 continue
             try:
-                picco = float(sessione.QueryInterface(IAudioMeterInformation).GetPeakValue())
+                misuratore = sessione.QueryInterface(IAudioMeterInformation)
+                vive.append(misuratore)
+                picco = float(misuratore.GetPeakValue())
             except Exception:
                 # Senza misuratore non si può escludere nulla: si lascia
                 # decidere al resto della regola.

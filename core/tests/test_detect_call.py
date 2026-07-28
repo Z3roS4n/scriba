@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -251,6 +252,44 @@ class TestSessioniVecchie:
             assert attendi(lambda: viste)
         finally:
             r.stop()
+
+
+class TestRipartenze:
+    """La sonda ogni tanto si ferma da sola.
+
+    La libreria COM sottostante ha un difetto noto: solleva "COM method call
+    without VTable" mentre libera un oggetto, e quando capita l'output si chiude
+    anche se il processo e' vivo. Non e' una causa che si possa togliere, quindi
+    il rilevatore deve conviverci.
+    """
+
+    def test_una_sonda_che_si_ferma_viene_riavviata(self, finto_ambiente) -> None:
+        avvii = []
+        originale = RilevatoreCall._avvia_sonda
+
+        def conta(self):
+            avvii.append(1)
+            sonda = originale(self)
+            # Si ferma da sola dopo poche letture, come capita nella realta'.
+            threading.Timer(0.15, sonda.kill).start()
+            return sonda
+
+        RilevatoreCall._avvia_sonda = conta
+        try:
+            r = RilevatoreCall(lambda c: None, intervallo_s=0.01, conferma_s=10)
+            r.start()
+            try:
+                assert attendi(lambda: len(avvii) >= 2, timeout=8)
+            finally:
+                r.stop()
+        finally:
+            RilevatoreCall._avvia_sonda = originale
+
+    def test_si_rinuncia_solo_se_non_riesce_a_partire(self, finto_ambiente) -> None:
+        # Una ripartenza ogni tanto durante una giornata non deve spegnere la
+        # funzione: si rinuncia solo davanti a fallimenti ravvicinati.
+        assert RilevatoreCall.CADUTE_CONSECUTIVE_MAX >= 10
+        assert RilevatoreCall.RIPRESA_RIUSCITA_S >= 30
 
 
 class TestChiusura:
