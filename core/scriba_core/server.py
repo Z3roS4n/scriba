@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import secrets
 import threading
 from contextlib import asynccontextmanager, suppress
@@ -30,6 +31,8 @@ from .db.store import Store
 from .recorder import Recorder
 from .settings import Settings
 from .stt.base import TranscriptEvent
+
+log = logging.getLogger(__name__)
 
 
 class StartRequest(BaseModel):
@@ -101,12 +104,14 @@ class Broadcaster:
                 self.disconnect(ws)
 
 
-def _lifespan(broadcaster: Broadcaster, state: dict[str, Any], preload):
+def _lifespan(broadcaster: Broadcaster, state: dict[str, Any], preload, avvia_rilevatore=None):
     """Aggancia il broadcaster al loop e chiude ciò che resta aperto."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         broadcaster.bind_loop(asyncio.get_running_loop())
+        if avvia_rilevatore is not None:
+            avvia_rilevatore()
         # Il modello si carica subito e in disparte: sono quasi quattro secondi,
         # e farli pagare a chi preme "Registra" fa sembrare l'app bloccata.
         # Girano in un thread perché il caricamento è codice sincrono che
@@ -115,6 +120,10 @@ def _lifespan(broadcaster: Broadcaster, state: dict[str, Any], preload):
         try:
             yield
         finally:
+            rilevatore = state.get("rilevatore")
+            if rilevatore is not None:
+                rilevatore.stop()
+
             recorder = state.get("recorder")
             if recorder is not None and recorder.is_recording:
                 # Meglio una sessione chiusa male che una registrazione orfana
@@ -204,7 +213,43 @@ def create_app(
         if not secrets.compare_digest(token_param, token):
             raise HTTPException(status_code=401, detail="token non valido")
 
-    app.router.lifespan_context = _lifespan(broadcaster, state, preload)
+    def _annuncia_call(call) -> None:
+        """Una call è cominciata: si propone, non si avvia.
+
+        Registrare coinvolge altre persone. Che il rilevamento sia sicuro non
+        rende la decisione meno di chi usa l'applicazione.
+        """
+        recorder = state.get("recorder")
+        if recorder is not None and recorder.is_recording:
+            return  # si sta già registrando: non c'è niente da proporre
+        broadcaster.publish(
+            {
+                "type": "call_rilevata",
+                "pid": call.pid,
+                "processo": call.processo,
+                "piattaforma": call.piattaforma,
+                "nome": call.nome,
+            }
+        )
+
+    def _avvia_rilevatore() -> None:
+        conf = settings.tutto().get("rilevamento", {})
+        if not conf.get("attivo", True):
+            return
+        try:
+            from .detect.call import RilevatoreCall
+
+            rilevatore = RilevatoreCall(
+                _annuncia_call, conferma_s=float(conf.get("conferma_s", 5.0))
+            )
+            rilevatore.start()
+            state["rilevatore"] = rilevatore
+        except Exception as exc:
+            # Il rilevamento è una comodità: se non parte, l'applicazione
+            # funziona lo stesso avviando a mano.
+            log.warning("Rilevamento delle call non avviato: %s", exc)
+
+    app.router.lifespan_context = _lifespan(broadcaster, state, preload, _avvia_rilevatore)
 
     # ------------------------------------------------------------------- stato
 
@@ -441,6 +486,19 @@ def create_app(
         except ValueError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         return {"percorso": str(percorso)}
+
+    @app.post("/rilevamento/ignora/{pid}", dependencies=[Depends(check_token)])
+    async def rilevamento_ignora(pid: int) -> dict[str, Any]:
+        """L'utente ha detto di no a questa call.
+
+        Non si smette di sorvegliare: si dimentica solo questa proposta, così
+        alla riunione successiva la domanda torna. Chi rifiuta una volta non sta
+        disattivando la funzione.
+        """
+        rilevatore = state.get("rilevatore")
+        if rilevatore is not None:
+            rilevatore.dimentica(pid)
+        return {"ok": True}
 
     @app.get("/search", dependencies=[Depends(check_token)])
     async def search(q: str, limit: int = 50) -> list[dict[str, Any]]:

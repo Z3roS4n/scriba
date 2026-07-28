@@ -345,6 +345,32 @@ select:focus {
   color: var(--testo-tenue);
 }
 
+/* Proposta di registrare una call riconosciuta. In basso a destra e non al
+   centro: sta arrivando mentre l'utente entra in riunione, e una finestra
+   modale in quel momento e' un'interruzione, non un aiuto. */
+.proposta {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 520px;
+  padding: 14px 16px;
+  background: var(--superficie-alta);
+  border: 1px solid var(--io);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  animation: entra 220ms ease-out;
+}
+
+@keyframes entra {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
 /* ---------------------------------------------------------------- dialogo */
 
 /* ---------------------------------------------------------------- analisi */

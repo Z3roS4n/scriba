@@ -87,11 +87,13 @@ const Riga = memo(function Riga({ s }: { s: Segmento }) {
 function DialogoAvvio({
   onAnnulla,
   onConferma,
+  titoloIniziale = '',
 }: {
   onAnnulla: () => void
   onConferma: (titolo: string, consenso: boolean) => void
+  titoloIniziale?: string
 }) {
-  const [titolo, setTitolo] = useState('')
+  const [titolo, setTitolo] = useState(titoloIniziale)
   const [consenso, setConsenso] = useState(false)
 
   return (
@@ -148,6 +150,11 @@ function App() {
   const [dialogo, setDialogo] = useState(false)
   const [avviso, setAvviso] = useState<string | null>(null)
   const [esportando, setEsportando] = useState(false)
+  const [callRilevata, setCallRilevata] = useState<{
+    pid: number
+    nome: string
+    piattaforma: string
+  } | null>(null)
   const [hotkey, setHotkey] = useState<string | null>(null)
 
   const fine = useRef<HTMLDivElement>(null)
@@ -227,6 +234,9 @@ function App() {
           caricaSessioni()
         } else if (ev.type === 'screenshot') {
           setScatti((prec) => [...prec, { t_ms: ev.t_ms, path: ev.path }])
+        } else if (ev.type === 'call_rilevata') {
+          // Si propone, non si avvia: registrare coinvolge altre persone.
+          setCallRilevata({ pid: ev.pid, nome: ev.nome, piattaforma: ev.piattaforma })
         } else if (ev.type === 'modello') {
           setModello(ev.stato)
           if (ev.stato === 'errore') setAvviso(`Modello non caricato: ${ev.dettaglio ?? ''}`)
@@ -468,7 +478,46 @@ function App() {
         </section>
       </div>
 
-      {dialogo && <DialogoAvvio onAnnulla={() => setDialogo(false)} onConferma={avvia} />}
+      {callRilevata && !registrando && (
+        <div className="proposta">
+          <div>
+            <strong>Sembra che tu sia in una call</strong> su {callRilevata.nome}.
+            <div style={{ color: 'var(--testo-fioco)', fontSize: 12.5, marginTop: 2 }}>
+              Registrare include l'audio degli altri partecipanti.
+            </div>
+          </div>
+          <button
+            onClick={async () => {
+              // Si passa dal dialogo normale: la conferma sul consenso non si
+              // salta perché la call è stata riconosciuta da sola.
+              setCallRilevata(null)
+              setDialogo(true)
+            }}
+            className="primario"
+          >
+            Registra
+          </button>
+          <button
+            onClick={async () => {
+              const pid = callRilevata.pid
+              setCallRilevata(null)
+              // Non si smette di sorvegliare: si dimentica questa proposta, così
+              // alla prossima riunione la domanda torna.
+              await window.scriba.post(`/rilevamento/ignora/${pid}`)
+            }}
+          >
+            No, grazie
+          </button>
+        </div>
+      )}
+
+      {dialogo && (
+        <DialogoAvvio
+          titoloIniziale={callRilevata?.piattaforma ?? ''}
+          onAnnulla={() => setDialogo(false)}
+          onConferma={avvia}
+        />
+      )}
     </div>
   )
 }

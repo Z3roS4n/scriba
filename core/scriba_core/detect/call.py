@@ -31,11 +31,16 @@ dice *quale* applicazione può essere in riunione, la riproduzione attiva dice
 
 from __future__ import annotations
 
+import contextlib
+import json
 import logging
+import subprocess
+import sys
 import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 
 log = logging.getLogger(__name__)
 
@@ -59,7 +64,11 @@ PIATTAFORME = {
 # Applicazioni che usano il microfono ma non sono riunioni.
 IGNORATE = {"scriba.exe", "python.exe", "audiodg.exe"}
 
-ATTIVA = 1  # AudioSessionStateActive
+# Queste API vanno interrogate solo dalla sonda, in `probe.py`, che gira in un
+# processo suo. Interrogarle da qui — dal processo che registra — lo fa
+# terminare bruscamente: non sollevano un'eccezione, muore e basta, dentro
+# `comtypes` mentre distrugge un riferimento e quindi lontano dalla riga che ha
+# causato il guasto. Per questo qui non c'e' nessuna funzione che le tocchi.
 
 
 @dataclass(frozen=True)
@@ -72,108 +81,6 @@ class Call:
     @property
     def nome(self) -> str:
         return self.piattaforma if self.piattaforma != "browser" else "una riunione nel browser"
-
-
-def _sessioni(dispositivo) -> list[tuple[int, int]]:
-    """Coppie (pid, stato) delle sessioni audio su un dispositivo."""
-    from comtypes import CLSCTX_ALL, POINTER, cast
-    from pycaw.pycaw import IAudioSessionControl2, IAudioSessionManager2
-
-    raw = dispositivo.Activate(IAudioSessionManager2._iid_, CLSCTX_ALL, None)
-    manager = cast(raw, POINTER(IAudioSessionManager2))
-    enumeratore = manager.GetSessionEnumerator()
-
-    fuori = []
-    for i in range(enumeratore.GetCount()):
-        sessione = enumeratore.GetSession(i)
-        try:
-            pid = sessione.QueryInterface(IAudioSessionControl2).GetProcessId()
-        except Exception:
-            continue
-        if pid:
-            fuori.append((pid, sessione.GetState()))
-    return fuori
-
-
-def _risali_albero(pid: int) -> tuple[int, str]:
-    """Trova l'applicazione vera a cui appartiene un processo.
-
-    Teams è una finestra web: il microfono lo tiene `msedgewebview2.exe`, che da
-    solo non dice niente. Il nome che interessa sta più in alto nell'albero.
-    """
-    import psutil
-
-    try:
-        processo = psutil.Process(pid)
-    except Exception:
-        return pid, ""
-
-    nome = processo.name().lower()
-    if nome not in ("msedgewebview2.exe", "cpthost.exe"):
-        return pid, nome
-
-    for antenato in processo.parents():
-        try:
-            nome_antenato = antenato.name().lower()
-        except Exception:
-            continue
-        if nome_antenato in PIATTAFORME:
-            return antenato.pid, nome_antenato
-    return pid, nome
-
-
-def in_ascolto() -> list[tuple[int, str]]:
-    """Applicazioni che hanno una sessione aperta sul microfono.
-
-    Si guarda la presenza, non lo stato: sul microfono lo stato resta
-    "inattivo" anche mentre si registra davvero, quindi filtrarci sopra non
-    troverebbe mai niente. La presenza da sola non significa "sta registrando
-    adesso" — la sessione sopravvive alla chiusura — ed è il motivo per cui da
-    sola non basta a far scattare nulla.
-    """
-    try:
-        from pycaw.pycaw import AudioUtilities
-
-        sessioni = _sessioni(AudioUtilities.GetMicrophone())
-    except Exception as exc:
-        log.debug("Enumerazione del microfono non riuscita: %s", exc)
-        return []
-
-    fuori = []
-    for pid, _stato in sessioni:
-        vero_pid, nome = _risali_albero(pid)
-        if nome and nome not in IGNORATE:
-            fuori.append((vero_pid, nome))
-    return fuori
-
-
-def sta_riproducendo(pid: int) -> bool:
-    """Vero se l'applicazione sta facendo uscire audio in questo momento.
-
-    È il segnale che dice *quando*: distingue una riunione in corso da
-    un'applicazione che ha usato il microfono un'ora fa e ha lasciato lì la
-    sessione. Sul lato riproduzione lo stato è affidabile.
-    """
-    try:
-        import psutil
-        from pycaw.pycaw import AudioUtilities
-
-        attivi = {
-            s.Process.pid
-            for s in AudioUtilities.GetAllSessions()
-            if s.State == ATTIVA and s.Process
-        }
-        if pid in attivi:
-            return True
-        # L'audio può uscire da un processo figlio diverso da quello che tiene
-        # il microfono — di nuovo il caso delle applicazioni a finestra web.
-        try:
-            figli = {c.pid for c in psutil.Process(pid).children(recursive=True)}
-        except Exception:
-            return False
-        return bool(attivi & figli)
-    except Exception:
-        return False
 
 
 class RilevatoreCall:
@@ -201,6 +108,7 @@ class RilevatoreCall:
         self._thread: threading.Thread | None = None
         self._visto_da: dict[int, float] = {}
         self._gia_segnalati: set[int] = set()
+        self._cadute = 0
 
     def start(self) -> None:
         if self._thread is not None:
@@ -221,16 +129,73 @@ class RilevatoreCall:
         self._visto_da.pop(pid, None)
 
     def _ciclo(self) -> None:
-        while not self._stop.is_set():
-            try:
-                self._giro()
-            except Exception as exc:  # pragma: no cover
-                log.warning("Rilevamento non riuscito: %s", exc)
-            self._stop.wait(self.intervallo_s)
+        """Legge quello che la sonda riferisce e applica le regole.
 
-    def _giro(self) -> None:
+        Le letture arrivano da un processo separato: qui dentro non si tocca
+        COM, e quindi non si puo' morire per causa sua.
+        """
+        while not self._stop.is_set():
+            processo = self._avvia_sonda()
+            if processo is None:
+                self._stop.wait(30)
+                continue
+
+            try:
+                for riga in processo.stdout:
+                    if self._stop.is_set():
+                        break
+                    try:
+                        lettura = json.loads(riga)
+                    except json.JSONDecodeError:
+                        continue
+                    if "errore" in lettura:
+                        log.debug("La sonda segnala: %s", lettura["errore"])
+                        continue
+                    try:
+                        self._giro(lettura)
+                    except Exception as exc:  # pragma: no cover
+                        log.warning("Rilevamento non riuscito: %s", exc)
+            finally:
+                with contextlib.suppress(Exception):
+                    processo.kill()
+
+            if self._stop.is_set():
+                return
+
+            # La sonda e' caduta. Si riprova, ma senza accanirsi: se la causa e'
+            # permanente, riavviarla all'infinito non aiuta e riempie i log.
+            self._cadute += 1
+            if self._cadute >= 3:
+                log.warning(
+                    "La sonda audio e' caduta %d volte: rilevamento sospeso.", self._cadute
+                )
+                return
+            self._stop.wait(5)
+
+    def _avvia_sonda(self):
+        try:
+            return subprocess.Popen(
+                [sys.executable, "-m", "scriba_core.detect.probe", str(self.intervallo_s)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                cwd=str(Path(__file__).resolve().parents[2]),
+                text=True,
+                bufsize=1,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+        except Exception as exc:
+            log.warning("Sonda audio non avviata: %s", exc)
+            return None
+
+    def _giro(self, lettura: dict) -> None:
         adesso = time.monotonic()
-        candidati = {pid: nome for pid, nome in in_ascolto() if sta_riproducendo(pid)}
+        riproducono = set(lettura.get("riproducono", []))
+        candidati = {
+            voce["pid"]: voce["nome"]
+            for voce in lettura.get("microfono", [])
+            if voce.get("nome") not in IGNORATE
+            and (voce["pid"] in riproducono or self._figlio_riproduce(voce["pid"], riproducono))
+        }
 
         # Chi ha smesso torna disponibile per la volta successiva: finita una
         # riunione, la prossima con la stessa applicazione va segnalata.
@@ -255,3 +220,18 @@ class RilevatoreCall:
                     dal_ms=int(self._visto_da[pid] * 1000),
                 )
             )
+
+    @staticmethod
+    def _figlio_riproduce(pid: int, riproducono: set[int]) -> bool:
+        """L'audio può uscire da un processo figlio di quello che ha il microfono.
+
+        È il caso delle applicazioni a finestra web: il microfono lo tiene un
+        processo, l'audio lo fa uscire un altro.
+        """
+        try:
+            import psutil
+
+            figli = {c.pid for c in psutil.Process(pid).children(recursive=True)}
+        except Exception:
+            return False
+        return bool(figli & riproducono)

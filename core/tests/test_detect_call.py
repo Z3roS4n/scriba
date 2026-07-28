@@ -7,6 +7,7 @@ con l'enumerazione audio sostituita. Il giro vero contro Windows si prova con
 
 from __future__ import annotations
 
+import json
 import sys
 import time
 from pathlib import Path
@@ -19,12 +20,40 @@ from scriba_core.detect import call as rilevamento  # noqa: E402
 from scriba_core.detect.call import PIATTAFORME, Call, RilevatoreCall  # noqa: E402
 
 
+class FintaSonda:
+    """Prende il posto del processo che osserva l'audio.
+
+    Emette le letture che il test decide, nello stesso formato in cui le
+    produce la sonda vera: una riga JSON per giro.
+    """
+
+    def __init__(self, stato: dict) -> None:
+        self.stato = stato
+        self.stdout = self
+        self.ucciso = False
+
+    def __iter__(self):
+        while not self.ucciso:
+            yield json.dumps(
+                {
+                    "microfono": [{"pid": p, "nome": n} for p, n in self.stato["microfono"]],
+                    "riproducono": list(self.stato["riproduce"]),
+                }
+            )
+            time.sleep(0.01)
+
+    def kill(self) -> None:
+        self.ucciso = True
+
+
 @pytest.fixture()
 def finto_ambiente(monkeypatch):
     """Controlla cosa 'sta usando il microfono' e cosa 'sta riproducendo'."""
     stato = {"microfono": [], "riproduce": set()}
-    monkeypatch.setattr(rilevamento, "in_ascolto", lambda: stato["microfono"])
-    monkeypatch.setattr(rilevamento, "sta_riproducendo", lambda pid: pid in stato["riproduce"])
+    monkeypatch.setattr(
+        RilevatoreCall, "_avvia_sonda", lambda self: FintaSonda(stato)
+    )
+    monkeypatch.setattr(RilevatoreCall, "_figlio_riproduce", staticmethod(lambda pid, r: False))
     return stato
 
 
@@ -145,6 +174,43 @@ class TestRegole:
         finally:
             r.stop()
         assert viste[0].piattaforma == "riunioni-del-futuro"
+
+
+class TestSistemaVero:
+    """Contro le API di Windows, non contro il finto ambiente."""
+
+    def test_la_sonda_vera_non_fa_terminare_il_processo(self) -> None:
+        # Le API COM interrogate a ripetizione facevano terminare bruscamente il
+        # processo, portandosi dietro la registrazione in corso. Ora stanno in
+        # un processo a parte: questo test gira il rilevatore vero, senza
+        # sostituzioni, e verifica che chi lo ospita sopravviva.
+        r = RilevatoreCall(lambda call: None, intervallo_s=0.2, conferma_s=0.2)
+        r.start()
+        try:
+            time.sleep(2.5)
+            assert r._thread is not None and r._thread.is_alive()
+            assert r._cadute == 0, "la sonda e' caduta"
+        finally:
+            r.stop()
+
+    def test_la_sonda_produce_letture_valide(self) -> None:
+        import subprocess
+        from pathlib import Path
+
+        core = Path(rilevamento.__file__).resolve().parents[2]
+        p = subprocess.Popen(
+            [sys.executable, "-m", "scriba_core.detect.probe", "0.05"],
+            cwd=str(core),
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+        try:
+            riga = p.stdout.readline()
+            lettura = json.loads(riga)
+            assert "microfono" in lettura and "riproducono" in lettura
+            assert isinstance(lettura["microfono"], list)
+        finally:
+            p.kill()
 
 
 class TestNomi:

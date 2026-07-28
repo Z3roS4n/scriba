@@ -23,6 +23,16 @@ PREDEFINITE: dict[str, Any] = {
     },
     "stt": {"provider": "local", "lingua": "it"},
     "analisi_automatica": True,
+    "rilevamento": {
+        # Sorveglia il microfono per accorgersi quando si entra in una call.
+        # Attivo di default: è la funzione per cui l'applicazione esiste, e
+        # limitarsi a proporre non è invasivo.
+        "attivo": True,
+        # Proporre e basta. Avviare da soli una registrazione che coinvolge
+        # altre persone non è una decisione che spetta a un programma.
+        "avvio_automatico": False,
+        "conferma_s": 5.0,
+    },
 }
 
 
