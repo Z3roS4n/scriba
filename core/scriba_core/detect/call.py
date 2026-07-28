@@ -108,7 +108,14 @@ class RilevatoreCall:
         self._thread: threading.Thread | None = None
         self._visto_da: dict[int, float] = {}
         self._gia_segnalati: set[int] = set()
+        # Chi ha dato almeno un segnale sul microfono da quando lo si osserva.
+        self._con_segnale: set[int] = set()
         self._cadute = 0
+        # L'ultima lettura, per chi voglia mostrare cosa si sta vedendo senza
+        # avviare una seconda sonda: due processi che interrogano le stesse API
+        # COM insieme si disturbano, e uno dei due muore.
+        self.ultima_lettura: dict | None = None
+        self._sonda = None
 
     def start(self) -> None:
         if self._thread is not None:
@@ -119,8 +126,24 @@ class RilevatoreCall:
 
     def stop(self) -> None:
         self._stop.set()
+        # Si chiude la sonda per prima. Il ciclo è fermo in lettura sul suo
+        # standard output, che è un'attesa bloccante: senza chiuderla, non si
+        # accorge dello stop finché non arriva la lettura successiva, e chiudere
+        # l'applicazione costa secondi di attesa a vuoto.
+        # Si riprova qualche volta: fra la richiesta di avvio della sonda e il
+        # momento in cui il suo processo è noto passa un istante, e uno stop che
+        # capiti proprio lì troverebbe ancora niente da chiudere.
+        for _ in range(10):
+            processo = self._sonda
+            if processo is not None:
+                with contextlib.suppress(Exception):
+                    processo.kill()
+            if self._thread is None or not self._thread.is_alive():
+                break
+            self._thread.join(timeout=0.2)
+
         if self._thread is not None:
-            self._thread.join(timeout=5)
+            self._thread.join(timeout=2)
             self._thread = None
 
     def dimentica(self, pid: int) -> None:
@@ -136,6 +159,7 @@ class RilevatoreCall:
         """
         while not self._stop.is_set():
             processo = self._avvia_sonda()
+            self._sonda = processo
             if processo is None:
                 self._stop.wait(30)
                 continue
@@ -151,11 +175,13 @@ class RilevatoreCall:
                     if "errore" in lettura:
                         log.debug("La sonda segnala: %s", lettura["errore"])
                         continue
+                    self.ultima_lettura = lettura
                     try:
                         self._giro(lettura)
                     except Exception as exc:  # pragma: no cover
                         log.warning("Rilevamento non riuscito: %s", exc)
             finally:
+                motivo = self._perche_e_finita(processo)
                 with contextlib.suppress(Exception):
                     processo.kill()
 
@@ -165,40 +191,89 @@ class RilevatoreCall:
             # La sonda e' caduta. Si riprova, ma senza accanirsi: se la causa e'
             # permanente, riavviarla all'infinito non aiuta e riempie i log.
             self._cadute += 1
+            log.warning("La sonda audio si e' fermata (%s).", motivo)
             if self._cadute >= 3:
                 log.warning(
-                    "La sonda audio e' caduta %d volte: rilevamento sospeso.", self._cadute
+                    "Caduta %d volte: rilevamento sospeso. Ultimo motivo: %s",
+                    self._cadute,
+                    motivo,
                 )
                 return
             self._stop.wait(5)
 
+    @staticmethod
+    def _perche_e_finita(processo) -> str:
+        """Raccoglie il motivo per cui la sonda ha smesso di riferire.
+
+        Prima il suo stderr veniva scartato, e quando cadeva restava solo "e'
+        caduta" — cioè l'unica informazione che non serve a niente.
+        """
+        codice = processo.poll()
+        dettagli = []
+        if codice is None:
+            dettagli.append("ha chiuso lo standard output pur essendo viva")
+        else:
+            dettagli.append(f"uscita con codice {codice}")
+        with contextlib.suppress(Exception):
+            if processo.stderr is not None:
+                resto = processo.stderr.read()
+                if resto and resto.strip():
+                    dettagli.append(resto.strip().replace("\n", " | ")[-400:])
+        return "; ".join(dettagli)
+
     def _avvia_sonda(self):
         try:
-            return subprocess.Popen(
+            self._sonda = subprocess.Popen(
                 [sys.executable, "-m", "scriba_core.detect.probe", str(self.intervallo_s)],
                 stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
+                # Non si butta: quando la sonda cade, quello che ha scritto qui
+                # è l'unica cosa che spiega perché.
+                stderr=subprocess.PIPE,
                 cwd=str(Path(__file__).resolve().parents[2]),
                 text=True,
                 bufsize=1,
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
+            # Assegnato subito, prima di restituirlo: chi ferma il rilevatore
+            # deve trovare qualcosa da chiudere anche se lo fa in questo istante.
+            return self._sonda
         except Exception as exc:
             log.warning("Sonda audio non avviata: %s", exc)
+            self._sonda = None
             return None
 
     def _giro(self, lettura: dict) -> None:
         adesso = time.monotonic()
         riproducono = set(lettura.get("riproducono", []))
-        candidati = {
-            voce["pid"]: voce["nome"]
-            for voce in lettura.get("microfono", [])
-            if voce.get("nome") not in IGNORATE
-            and (voce["pid"] in riproducono or self._figlio_riproduce(voce["pid"], riproducono))
-        }
+
+        candidati: dict[int, str] = {}
+        for voce in lettura.get("microfono", []):
+            pid, nome = voce["pid"], voce.get("nome")
+            if nome in IGNORATE:
+                continue
+
+            # Il microfono sta davvero registrando? Le sessioni di cattura non
+            # si chiudono quando l'applicazione smette: senza questo controllo,
+            # un programma che ha usato il microfono un'ora fa e adesso fa
+            # uscire audio viene scambiato per una riunione. È successo davvero,
+            # con un browser che riproduceva un video.
+            picco = voce.get("picco", -1.0)
+            if picco > 0.0:
+                self._con_segnale.add(pid)
+            elif picco == 0.0 and pid not in self._con_segnale:
+                # Un istante di silenzio assoluto capita anche registrando: si
+                # esclude solo chi non ha mai dato segnale da quando lo si
+                # osserva.
+                continue
+
+            if pid in riproducono or self._figlio_riproduce(pid, riproducono):
+                candidati[pid] = nome
 
         # Chi ha smesso torna disponibile per la volta successiva: finita una
         # riunione, la prossima con la stessa applicazione va segnalata.
+        presenti = {voce["pid"] for voce in lettura.get("microfono", [])}
+        self._con_segnale &= presenti  # chi è sparito riparte da capo
+
         for pid in list(self._visto_da):
             if pid not in candidati:
                 del self._visto_da[pid]

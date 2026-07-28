@@ -30,13 +30,20 @@ class FintaSonda:
     def __init__(self, stato: dict) -> None:
         self.stato = stato
         self.stdout = self
+        self.stderr = None
         self.ucciso = False
+
+    def poll(self) -> int | None:
+        return 0 if self.ucciso else None
 
     def __iter__(self):
         while not self.ucciso:
             yield json.dumps(
                 {
-                    "microfono": [{"pid": p, "nome": n} for p, n in self.stato["microfono"]],
+                    "microfono": [
+                        {"pid": p, "nome": n, "picco": self.stato.get("picchi", {}).get(p, 0.01)}
+                        for p, n in self.stato["microfono"]
+                    ],
                     "riproducono": list(self.stato["riproduce"]),
                 }
             )
@@ -174,6 +181,91 @@ class TestRegole:
         finally:
             r.stop()
         assert viste[0].piattaforma == "riunioni-del-futuro"
+
+
+class TestSessioniVecchie:
+    """Il caso emerso provando su una macchina vera.
+
+    Le sessioni di cattura non si chiudono quando l'applicazione smette di
+    registrare: restano lì a tempo indeterminato. Senza distinguere, un
+    programma che ha usato il microfono un'ora fa e adesso fa uscire audio
+    viene scambiato per una riunione.
+    """
+
+    def test_una_sessione_senza_segnale_non_e_una_call(self, finto_ambiente) -> None:
+        # Il caso reale: Steam aveva una sessione microfono ferma a zero.
+        viste: list[Call] = []
+        finto_ambiente["microfono"] = [(10384, "steam.exe")]
+        finto_ambiente["riproduce"] = {10384}
+        finto_ambiente["picchi"] = {10384: 0.0}
+
+        r = RilevatoreCall(viste.append, intervallo_s=0.01, conferma_s=0.05)
+        r.start()
+        try:
+            time.sleep(0.3)
+        finally:
+            r.stop()
+        assert viste == []
+
+    def test_con_segnale_sul_microfono_e_una_call(self, finto_ambiente) -> None:
+        viste: list[Call] = []
+        finto_ambiente["microfono"] = [(22356, "msedge.exe")]
+        finto_ambiente["riproduce"] = {22356}
+        finto_ambiente["picchi"] = {22356: 0.018}
+
+        r = RilevatoreCall(viste.append, intervallo_s=0.01, conferma_s=0.02)
+        r.start()
+        try:
+            assert attendi(lambda: viste)
+        finally:
+            r.stop()
+
+    def test_un_istante_di_silenzio_non_annulla_la_call(self, finto_ambiente) -> None:
+        # Chi registra puo' avere un momento di silenzio assoluto: una volta
+        # visto il segnale, non si torna indietro finche' la sessione resta.
+        viste: list[Call] = []
+        finto_ambiente["microfono"] = [(50, "zoom.exe")]
+        finto_ambiente["riproduce"] = {50}
+        finto_ambiente["picchi"] = {50: 0.02}
+
+        r = RilevatoreCall(viste.append, intervallo_s=0.01, conferma_s=0.5)
+        r.start()
+        try:
+            time.sleep(0.15)
+            finto_ambiente["picchi"] = {50: 0.0}  # silenzio improvviso
+            assert attendi(lambda: viste, timeout=3)
+        finally:
+            r.stop()
+
+    def test_senza_misuratore_non_si_esclude_nulla(self, finto_ambiente) -> None:
+        # Se il livello non e' leggibile, decide il resto della regola: meglio
+        # una proposta in piu' che una funzione che non scatta mai.
+        viste: list[Call] = []
+        finto_ambiente["microfono"] = [(60, "zoom.exe")]
+        finto_ambiente["riproduce"] = {60}
+        finto_ambiente["picchi"] = {60: -1.0}
+
+        r = RilevatoreCall(viste.append, intervallo_s=0.01, conferma_s=0.02)
+        r.start()
+        try:
+            assert attendi(lambda: viste)
+        finally:
+            r.stop()
+
+
+class TestChiusura:
+    def test_fermarsi_e_immediato(self, finto_ambiente) -> None:
+        # Il ciclo e' fermo in lettura sulla sonda, che e' un'attesa bloccante:
+        # senza chiuderla per prima, non si accorge dello stop e chiudere
+        # l'applicazione costa secondi di attesa a vuoto.
+        finto_ambiente["microfono"] = [(100, "zoom.exe")]
+        r = RilevatoreCall(lambda c: None, intervallo_s=0.01, conferma_s=10)
+        r.start()
+        time.sleep(0.1)
+
+        inizio = time.time()
+        r.stop()
+        assert time.time() - inizio < 1.0
 
 
 class TestSistemaVero:

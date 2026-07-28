@@ -22,10 +22,20 @@ import sys
 import time
 
 
-def _sessioni_microfono() -> list[dict]:
+def _sessioni_microfono() -> list[tuple[int, float]]:
+    """Coppie (pid, picco) per ogni sessione sul microfono.
+
+    Il picco è quello che distingue un'applicazione che sta registrando adesso
+    da una che l'ha fatto un'ora fa: le sessioni di cattura non si chiudono
+    quando l'applicazione smette, restano lì a tempo indeterminato. Misurato:
+    un programma con una sessione vecchia riporta esattamente 0.0, uno che sta
+    catturando riporta valori piccoli ma diversi da zero anche in una stanza
+    silenziosa.
+    """
     from comtypes import CLSCTX_ALL, POINTER, cast
     from pycaw.pycaw import (
         AudioUtilities,
+        IAudioMeterInformation,
         IAudioSessionControl2,
         IAudioSessionManager2,
     )
@@ -38,11 +48,19 @@ def _sessioni_microfono() -> list[dict]:
     fuori = []
     for i in range(enumeratore.GetCount()):
         try:
-            pid = enumeratore.GetSession(i).QueryInterface(IAudioSessionControl2).GetProcessId()
+            sessione = enumeratore.GetSession(i)
+            pid = sessione.QueryInterface(IAudioSessionControl2).GetProcessId()
+            if not pid:
+                continue
+            try:
+                picco = float(sessione.QueryInterface(IAudioMeterInformation).GetPeakValue())
+            except Exception:
+                # Senza misuratore non si può escludere nulla: si lascia
+                # decidere al resto della regola.
+                picco = -1.0
+            fuori.append((pid, picco))
         except Exception:
             continue
-        if pid:
-            fuori.append(pid)
     return fuori
 
 
@@ -102,7 +120,11 @@ def main() -> int:
 
     while True:
         try:
-            microfono = [{"pid": p, "nome": n} for p, n in map(_risali, _sessioni_microfono()) if n]
+            microfono = []
+            for pid_grezzo, picco in _sessioni_microfono():
+                pid, nome = _risali(pid_grezzo)
+                if nome:
+                    microfono.append({"pid": pid, "nome": nome, "picco": picco})
             riproducono = _pid_che_riproducono()
             print(
                 json.dumps({"microfono": microfono, "riproducono": riproducono}),

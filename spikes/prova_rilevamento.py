@@ -2,8 +2,8 @@
 
 I test automatici coprono le regole con letture finte. Se funzionino contro
 Zoom, Teams e Meet veri si può sapere solo entrando in una riunione: questo
-script mostra cosa vede la sonda e cosa decide il rilevatore, così se non scatta
-si capisce quale dei due segnali manca.
+script mostra cosa vede il rilevatore e cosa decide, così se non scatta si
+capisce quale dei segnali manca.
 
 Uso:
     python spikes/prova_rilevamento.py
@@ -13,15 +13,11 @@ Lascialo aperto, entra in una call, guarda cosa stampa. Ctrl+C per uscire.
 
 from __future__ import annotations
 
-import json
-import subprocess
 import sys
-import threading
 import time
 from pathlib import Path
 
-CORE = Path(__file__).resolve().parents[1] / "core"
-sys.path.insert(0, str(CORE))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "core"))
 
 from scriba_core.detect.call import Call, RilevatoreCall  # noqa: E402
 
@@ -29,6 +25,12 @@ from scriba_core.detect.call import Call, RilevatoreCall  # noqa: E402
 def main() -> int:
     print("=" * 74)
     print("Sorveglianza in corso. Entra in una call e guarda cosa succede.")
+    print()
+    print("  picco = quanto segnale arriva dal microfono di quel programma.")
+    print("          0.000 significa sessione vecchia, non sta registrando.")
+    print("  esce  = quel programma sta facendo uscire audio.")
+    print()
+    print("Serve che entrambi siano veri, per qualche secondo di fila.")
     print("Ctrl+C per uscire.")
     print("=" * 74)
     print()
@@ -39,42 +41,30 @@ def main() -> int:
         rilevate.append(call)
         print(f"\n  >>> RILEVATA: {call.nome}  ({call.processo}, pid {call.pid})\n")
 
+    # Una sola sonda, quella del rilevatore: se ne partisse una seconda per la
+    # sola visualizzazione, i due processi si disturberebbero interrogando
+    # insieme le stesse API COM, e uno dei due morirebbe.
     rilevatore = RilevatoreCall(segnala, intervallo_s=1.0, conferma_s=5.0)
     rilevatore.start()
 
-    # Una seconda sonda solo per mostrare a schermo cosa si vede, senza toccare
-    # quella del rilevatore.
-    sonda = subprocess.Popen(
-        [sys.executable, "-m", "scriba_core.detect.probe", "1.0"],
-        cwd=str(CORE), stdout=subprocess.PIPE, text=True, bufsize=1,
-    )
-
-    def mostra() -> None:
-        for riga in sonda.stdout:
-            try:
-                lettura = json.loads(riga)
-            except json.JSONDecodeError:
-                continue
-            if "errore" in lettura:
-                print(f"\r  sonda in errore: {lettura['errore'][:70]}", end="", flush=True)
-                continue
-            riproducono = set(lettura.get("riproducono", []))
-            voci = [
-                f"{v['nome']}[{v['pid']}]:{'riproduce' if v['pid'] in riproducono else 'muto'}"
-                for v in lettura.get("microfono", [])
-            ]
-            stato = ", ".join(voci) if voci else "nessuna applicazione sul microfono"
-            print(f"\r  {time.strftime('%H:%M:%S')}  {stato[:92]:<92}", end="", flush=True)
-
-    threading.Thread(target=mostra, daemon=True).start()
-
     try:
         while True:
+            lettura = rilevatore.ultima_lettura
+            if lettura is None:
+                stato = "in attesa della prima lettura..."
+            else:
+                riproducono = set(lettura.get("riproducono", []))
+                voci = [
+                    f"{v['nome']} picco={v.get('picco', -1):.3f}"
+                    f" {'esce' if v['pid'] in riproducono else '----'}"
+                    for v in lettura.get("microfono", [])
+                ]
+                stato = " | ".join(voci) if voci else "nessun programma sul microfono"
+            print(f"\r  {time.strftime('%H:%M:%S')}  {stato[:96]:<96}", end="", flush=True)
             time.sleep(1)
     except KeyboardInterrupt:
         print("\n")
     finally:
-        sonda.kill()
         rilevatore.stop()
 
     print(f"Call rilevate: {len(rilevate)}")
@@ -82,8 +72,10 @@ def main() -> int:
         print(f"  - {c.nome} ({c.processo})")
     if not rilevate:
         print()
-        print("Se sei entrato davvero in una call e non è stata rilevata, dimmi cosa")
-        print("mostrava la riga di stato: serve a capire quale dei due segnali manca.")
+        print("Se sei entrato davvero in una call e non e' stata rilevata, dimmi cosa")
+        print("mostrava la riga: serve a capire quale dei due segnali mancava.")
+    if rilevatore._cadute:
+        print(f"\nLa sonda e' caduta {rilevatore._cadute} volte.")
     return 0
 
 
