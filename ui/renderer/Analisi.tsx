@@ -205,8 +205,19 @@ export function PannelloAnalisi({
   }, [])
 
   useEffect(() => {
-    if (sessionId != null) carica(sessionId)
-    else setAnalisi(null)
+    if (sessionId == null) {
+      setAnalisi(null)
+      return
+    }
+    carica(sessionId)
+
+    // Si chiede subito se un'analisi sta girando. Senza, riaprendo la finestra
+    // mentre il lavoro è in corso l'interfaccia mostra "Analizza la call" come
+    // se non fosse mai partito, e non si mette nemmeno in attesa del risultato:
+    // resta ferma finché non si riapre di nuovo, a cose fatte.
+    window.scriba.get<{ in_corso: boolean }>('/analisi/stato').then((r) => {
+      if (r.ok && r.body?.in_corso) setInCorso(true)
+    })
   }, [sessionId, carica])
 
   // La fine dell'analisi arriva da un evento.
