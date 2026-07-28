@@ -8,6 +8,8 @@ gli eventi arrivino davvero al websocket.
 from __future__ import annotations
 
 import sys
+import threading
+import time
 from pathlib import Path
 
 import numpy as np
@@ -182,6 +184,51 @@ class TestEventi:
             ws.receive_json()
             client.post(auth("/session/stop"))
             assert ws.receive_json()["type"] == "session_stopped"
+
+
+class TestAnalisiNonBlocca:
+    """L'analisi dura minuti: la richiesta non può restare aperta ad aspettarla.
+
+    Tenendo aperta la risposta HTTP, il client la chiudeva molto prima della
+    fine e l'interfaccia — che aspettava proprio quella per sapere che il lavoro
+    era finito — restava ferma per sempre. Successo davvero: due ore a mostrare
+    "analisi in corso" per un lavoro concluso da un pezzo.
+    """
+
+    def test_la_rotta_risponde_subito(self, client: TestClient, monkeypatch) -> None:
+        import scriba_core.ai.analyze as modulo_analisi
+
+        partita = threading.Event()
+        libera = threading.Event()
+
+        def analisi_lenta(self, session_id):  # noqa: ANN001, ARG001
+            partita.set()
+            libera.wait(timeout=10)
+            return modulo_analisi.Analisi()
+
+        monkeypatch.setattr(modulo_analisi.Analizzatore, "analizza", analisi_lenta)
+
+        client.post(auth("/session/start"), json={})
+        session_id = client.get(auth("/session/state")).json()["session_id"]
+        client.app.state.store.add_segment(session_id, "mic", 0, 1000, "qualcosa", is_final=True)
+        client.post(auth("/session/stop"))
+
+        inizio = time.perf_counter()
+        r = client.post(auth(f"/sessions/{session_id}/analyze"))
+        durata = time.perf_counter() - inizio
+
+        assert r.status_code == 200
+        assert r.json()["stato"] == "avviata"
+        assert durata < 2.0, "la rotta ha aspettato la fine dell'analisi"
+
+        assert partita.wait(timeout=5), "il lavoro non e' partito"
+        assert client.get(auth("/analisi/stato")).json()["in_corso"] is True
+        libera.set()
+
+    def test_lo_stato_si_puo_sempre_richiedere(self, client: TestClient) -> None:
+        # E' la rete di sicurezza dell'interfaccia: fidarsi solo degli eventi
+        # significa restare fermi per sempre quando se ne perde uno.
+        assert client.get(auth("/analisi/stato")).json()["in_corso"] is False
 
 
 class TestExport:

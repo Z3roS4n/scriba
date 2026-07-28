@@ -360,28 +360,60 @@ def create_app(
                 "avvia llama-server; se usi un'API, controlla la chiave nelle impostazioni.",
             )
 
+        async def lavora() -> None:
+            try:
+                # In un thread: l'analisi dura minuti e sul loop bloccherebbe
+                # tutto, compresa la trascrizione di un'eventuale call successiva.
+                analisi = await asyncio.to_thread(
+                    Analizzatore(provider, store).analizza, session_id
+                )
+            except LLMError as exc:
+                broadcaster.publish(
+                    {"type": "analisi", "stato": "errore", "session_id": session_id,
+                     "dettaglio": str(exc)}
+                )
+                return
+            except Exception as exc:  # pragma: no cover
+                log.exception("Analisi della sessione %s non riuscita", session_id)
+                broadcaster.publish(
+                    {"type": "analisi", "stato": "errore", "session_id": session_id,
+                     "dettaglio": str(exc)}
+                )
+                return
+            finally:
+                state["analisi_in_corso"] = False
+
+            broadcaster.publish(
+                {
+                    "type": "analisi",
+                    "stato": "fatto",
+                    "session_id": session_id,
+                    "tasks": len(analisi.tasks),
+                    "costo_usd": round(analisi.costo_usd, 4),
+                    "tokens_in": analisi.tokens_in,
+                    "tokens_out": analisi.tokens_out,
+                    "modello": analisi.modello,
+                }
+            )
+
+        # Si risponde subito e si lavora dopo. Tenere aperta una richiesta HTTP
+        # per mezz'ora non funziona: il client la chiude molto prima, e chi
+        # aspettava quella risposta per sapere che il lavoro era finito resta ad
+        # aspettare per sempre, anche se il lavoro nel frattempo è riuscito.
         state["analisi_in_corso"] = True
         broadcaster.publish({"type": "analisi", "stato": "in_corso", "session_id": session_id})
-        try:
-            # In un thread: l'analisi dura minuti e sul loop bloccherebbe tutto,
-            # compresa la trascrizione di un'eventuale call successiva.
-            analisi = await asyncio.to_thread(Analizzatore(provider, store).analizza, session_id)
-        except LLMError as exc:
-            broadcaster.publish({"type": "analisi", "stato": "errore", "dettaglio": str(exc)})
-            raise HTTPException(status_code=502, detail=str(exc)) from exc
-        finally:
-            state["analisi_in_corso"] = False
+        asyncio.create_task(lavora())
+        return {"session_id": session_id, "stato": "avviata"}
 
-        esito = {
-            "session_id": session_id,
-            "tasks": len(analisi.tasks),
-            "costo_usd": round(analisi.costo_usd, 4),
-            "tokens_in": analisi.tokens_in,
-            "tokens_out": analisi.tokens_out,
-            "modello": analisi.modello,
-        }
-        broadcaster.publish({"type": "analisi", "stato": "fatto", **esito})
-        return esito
+    @app.get("/analisi/stato", dependencies=[Depends(check_token)])
+    async def analisi_stato() -> dict[str, Any]:
+        """Permette all'interfaccia di ritrovare la verità.
+
+        Un'interfaccia che si fida solo degli eventi resta ferma per sempre
+        quando ne perde uno — ed è successo: due ore a mostrare "in corso" per
+        un'analisi finita da un pezzo.
+        """
+        return {"in_corso": bool(state["analisi_in_corso"])}
 
     @app.get("/sessions/{session_id}/analysis", dependencies=[Depends(check_token)])
     async def analysis(session_id: int) -> dict[str, Any]:

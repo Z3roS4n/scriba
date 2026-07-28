@@ -209,14 +209,54 @@ export function PannelloAnalisi({
     else setAnalisi(null)
   }, [sessionId, carica])
 
+  // La fine dell'analisi arriva da un evento.
+  useEffect(() => {
+    return window.scriba.on('core:event', (ev: { type?: string; stato?: string; session_id?: number; dettaglio?: string }) => {
+      if (ev.type !== 'analisi') return
+      if (ev.stato === 'in_corso') {
+        setInCorso(true)
+      } else {
+        setInCorso(false)
+        if (ev.stato === 'errore') setErrore(ev.dettaglio ?? 'Analisi non riuscita.')
+        else if (ev.session_id != null) carica(ev.session_id)
+      }
+    })
+  }, [carica])
+
+  // Rete di sicurezza. Fidarsi solo degli eventi significa restare fermi per
+  // sempre quando se ne perde uno, ed è successo davvero: due ore a mostrare
+  // "analisi in corso" per un lavoro concluso da un pezzo. Finché la spia è
+  // accesa si chiede al core come stanno le cose.
+  useEffect(() => {
+    if (!inCorso) return
+    const timer = setInterval(async () => {
+      const r = await window.scriba.get<{ in_corso: boolean }>('/analisi/stato')
+      if (r.ok && !r.body.in_corso) {
+        setInCorso(false)
+        if (sessionId != null) carica(sessionId)
+      }
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [inCorso, sessionId, carica])
+
   const analizza = async () => {
     if (sessionId == null) return
-    setInCorso(true)
     setErrore(null)
-    const r = await window.scriba.post<{ detail?: string }>(`/sessions/${sessionId}/analyze`)
-    setInCorso(false)
-    if (r.ok) carica(sessionId)
-    else setErrore(r.body?.detail ?? `Analisi non riuscita (${r.status}).`)
+    setInCorso(true)
+    try {
+      // La risposta dice solo che il lavoro è partito: dura minuti, e la fine
+      // arriva da un evento. Aspettarla qui non funzionava — la richiesta
+      // scadeva molto prima.
+      const r = await window.scriba.post<{ detail?: string }>(`/sessions/${sessionId}/analyze`)
+      if (!r.ok) {
+        setInCorso(false)
+        setErrore(r.body?.detail ?? `Analisi non riuscita (${r.status}).`)
+      }
+    } catch (e) {
+      // Senza questo, un errore lasciava la spia accesa per sempre.
+      setInCorso(false)
+      setErrore(e instanceof Error ? e.message : String(e))
+    }
   }
 
   const aggiorna = async (id: number, modifiche: Record<string, unknown>) => {
