@@ -435,3 +435,64 @@ class TestRichiestaSullaStessaCallInCorso:
         r = client.post(auth(f"/sessions/{prima + 999}/analyze"))
         assert r.status_code == 409
         libera.set()
+
+
+class TestSessioniAppese:
+    """Una sessione lasciata 'recording' da un core morto male non resta tale.
+
+    Senza questo, l'elenco mostra per sempre una call in corso che non esiste,
+    e la trascrizione che l'utente aspetta non arriverà mai.
+    """
+
+    def test_allavvio_la_sessione_appesa_viene_richiusa(self, tmp_path: Path) -> None:
+        from scriba_core.db.store import Store
+
+        db = tmp_path / "appese.sqlite"
+        store = Store(db)
+        session_id = store.create_session(1_000_000, titolo="interrotta")
+        store.add_segment(session_id, "mic", 0, 12_000, "qualcosa", is_final=True)
+        riga = store.conn.execute(
+            "SELECT stato, ended_at FROM sessions WHERE id = ?", (session_id,)
+        ).fetchone()
+        assert riga["stato"] == "recording" and riga["ended_at"] is None
+
+        # È quello che fa create_app all'avvio.
+        assert store.chiudi_sessioni_appese() == [session_id]
+
+        riga = store.conn.execute(
+            "SELECT stato, ended_at, durata_ms FROM sessions WHERE id = ?", (session_id,)
+        ).fetchone()
+        assert riga["stato"] == "ready"
+        assert riga["ended_at"] is not None
+        # La durata viene dall'ultimo segmento, non dall'ora del riavvio: fra il
+        # guasto e il riavvio possono passare giorni.
+        assert riga["durata_ms"] == 12_000
+
+    def test_senza_segmenti_la_durata_e_zero_invece_che_inventata(self, tmp_path: Path) -> None:
+        from scriba_core.db.store import Store
+
+        store = Store(tmp_path / "vuota.sqlite")
+        session_id = store.create_session(1_000_000, titolo="persa")
+        store.chiudi_sessioni_appese()
+
+        riga = store.conn.execute(
+            "SELECT durata_ms, stato FROM sessions WHERE id = ?", (session_id,)
+        ).fetchone()
+        assert riga["durata_ms"] == 0
+        assert riga["stato"] == "ready"
+
+    def test_una_sessione_gia_chiusa_non_viene_toccata(self, tmp_path: Path) -> None:
+        from scriba_core.db.store import Store
+
+        store = Store(tmp_path / "chiusa.sqlite")
+        session_id = store.create_session(1_000_000, titolo="regolare")
+        store.add_segment(session_id, "mic", 0, 5_000, "detto", is_final=True)
+        store.end_session(session_id, 1_009_999)
+        store.set_session_state(session_id, "analyzed")
+
+        assert store.chiudi_sessioni_appese() == []
+        riga = store.conn.execute(
+            "SELECT stato, ended_at FROM sessions WHERE id = ?", (session_id,)
+        ).fetchone()
+        assert riga["stato"] == "analyzed"
+        assert riga["ended_at"] == 1_009_999

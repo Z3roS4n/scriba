@@ -346,6 +346,16 @@ def create_app(
     store = Store(db_path)
     settings = Settings(Path(db_path).with_name("settings.json"))
 
+    # Il core è appena partito, quindi nessuno sta registrando: è l'unico
+    # momento in cui si può dirlo con certezza, ed è qui che si rimettono in
+    # ordine le sessioni lasciate a metà da un avvio precedente morto male.
+    appese = store.chiudi_sessioni_appese()
+    if appese:
+        log.warning(
+            "Sessioni rimaste aperte da un avvio precedente, richiuse: %s",
+            ", ".join(str(i) for i in appese),
+        )
+
     state: dict[str, Any] = {
         "engine": None,
         "recorder": None,

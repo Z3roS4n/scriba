@@ -205,6 +205,50 @@ class Store:
         with self.tx() as conn:
             conn.execute("UPDATE sessions SET stato = ? WHERE id = ?", (stato, session_id))
 
+    def chiudi_sessioni_appese(self) -> list[int]:
+        """Rimette in ordine le sessioni rimaste 'recording' da un avvio morto male.
+
+        Se il core viene ucciso mentre registra, nessuno chiama `end_session` e
+        quella riga resta 'recording' per sempre: l'elenco continua a mostrare
+        una call in corso che non esiste, e la trascrizione sotto non arriverà
+        mai. Va sistemato all'avvio, perché è l'unico momento in cui si sa con
+        certezza che nessuno sta registrando — il core è appena partito.
+
+        La fine si prende dall'ultimo segmento trascritto, non dall'ora
+        corrente: fra il crash e il riavvio possono passare giorni, e scriverli
+        dentro la durata di una riunione la renderebbe assurda. Senza nemmeno un
+        segmento resta l'istante di inizio, cioè durata zero: si è perso tutto,
+        e dirlo è meglio che inventare una durata.
+        """
+        with self.tx() as conn:
+            appese = [
+                r["id"]
+                for r in conn.execute(
+                    "SELECT id FROM sessions WHERE stato = 'recording' OR ended_at IS NULL"
+                )
+            ]
+            if not appese:
+                return []
+            conn.execute(
+                """
+                UPDATE sessions
+                   SET ended_at = COALESCE(
+                           (SELECT MAX(t_end_ms) + started_at
+                              FROM transcript_segments
+                             WHERE session_id = sessions.id),
+                           started_at
+                       ),
+                       durata_ms = COALESCE(
+                           (SELECT MAX(t_end_ms) FROM transcript_segments
+                             WHERE session_id = sessions.id),
+                           0
+                       ),
+                       stato = CASE WHEN stato = 'recording' THEN 'ready' ELSE stato END
+                 WHERE stato = 'recording' OR ended_at IS NULL
+                """
+            )
+        return appese
+
     def get_session(self, session_id: int) -> sqlite3.Row | None:
         """La riga intera di `sessions`.
 
