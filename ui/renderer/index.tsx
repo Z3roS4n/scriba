@@ -1,132 +1,32 @@
 /**
- * Interfaccia di Scriba.
+ * Interfaccia di Scriba — composizione della finestra principale.
  *
- * Mostra la trascrizione mentre la call e' in corso e lascia rileggere quelle
- * passate. Non contiene logica: ogni comando passa dal processo principale, che
- * a sua volta parla col core.
+ * Tiene lo stato e ascolta gli eventi del core; la resa vera e' delegata ai
+ * componenti di ogni colonna. Non contiene logica di dominio: ogni comando
+ * passa da `window.scriba`, che a sua volta parla col processo principale e
+ * col core.
  */
 
-import { memo, StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
+import { Topbar, type StatoModello } from './Topbar'
+import { ElencoCall } from './ElencoCall'
+import { Trascrizione, type TrascrizioneHandle } from './Trascrizione'
 import { PannelloAnalisi } from './Analisi'
-import { Impostazioni } from './Impostazioni'
+import { PannelloProve } from './Prove'
+import { Rassegna } from './Rassegna'
+import { AvvisoCall, Barra, ModaleConsenso } from './Dialoghi'
+import { scorciatoiaLeggibile, type EventoCore, type Scatto, type Segmento, type Sessione, type Task } from './tipi'
 
-interface Segmento {
-  id: number
-  source: 'mic' | 'loopback'
-  t_start_ms: number
-  t_end_ms: number
+interface Avviso {
   testo: string
-  is_final: boolean
-}
-
-interface Sessione {
-  id: number
-  titolo: string | null
-  started_at: number
-  durata_ms: number | null
-  stato: string
-}
-
-interface Scatto {
-  t_ms: number
-  path: string
-}
-
-const ETICHETTA: Record<string, string> = { mic: 'Io', loopback: 'Altri' }
-
-function tempo(ms: number): string {
-  const totale = Math.max(0, Math.floor(ms / 1000))
-  const m = Math.floor(totale / 60)
-  const s = totale % 60
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
-
-function dataBreve(epochMs: number): string {
-  return new Date(epochMs).toLocaleString('it-IT', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-/**
- * Una riga di trascrizione.
- *
- * Memoizzata perche' durante una call arriva un evento al secondo per traccia e
- * le righe gia' definitive non cambiano piu': senza, una call di un'ora
- * ricostruirebbe centinaia di righe a ogni parola nuova.
- */
-const Riga = memo(function Riga({ s }: { s: Segmento }) {
-  return (
-    // data-t serve a ritrovare la riga quando si clicca il minuto di una task.
-    <div className={`riga ${s.source} ${s.is_final ? '' : 'provvisoria'}`} data-t={s.t_start_ms}>
-      <span className="tempo">{tempo(s.t_start_ms)}</span>
-      <span className="chi">{ETICHETTA[s.source] ?? s.source}</span>
-      <span className="testo">{s.testo}</span>
-    </div>
-  )
-})
-
-/** Chiede conferma prima di registrare anche gli altri partecipanti. */
-function DialogoAvvio({
-  onAnnulla,
-  onConferma,
-  titoloIniziale = '',
-}: {
-  onAnnulla: () => void
-  onConferma: (titolo: string, consenso: boolean) => void
-  titoloIniziale?: string
-}) {
-  const [titolo, setTitolo] = useState(titoloIniziale)
-  const [consenso, setConsenso] = useState(false)
-
-  return (
-    <div className="velo" onClick={onAnnulla}>
-      <div className="dialogo" onClick={(e) => e.stopPropagation()}>
-        <h2>Nuova registrazione</h2>
-        <p>Verranno registrati il tuo microfono e l'audio che esce dal computer.</p>
-
-        <div className="campo">
-          <label htmlFor="titolo">Titolo (facoltativo)</label>
-          <input
-            id="titolo"
-            type="text"
-            value={titolo}
-            autoFocus
-            placeholder="Riunione con il cliente"
-            onChange={(e) => setTitolo(e.target.value)}
-          />
-        </div>
-
-        <label className="checkbox">
-          <input type="checkbox" checked={consenso} onChange={(e) => setConsenso(e.target.checked)} />
-          <span>
-            Ho avvisato i partecipanti che la call viene registrata.
-            <br />
-            <span style={{ color: 'var(--testo-fioco)', fontSize: 12.5 }}>
-              Registrare gli altri significa trattare i loro dati personali. Questa conferma viene
-              annotata nella sessione, ma non sostituisce l'averglielo detto.
-            </span>
-          </span>
-        </label>
-
-        <div className="azioni">
-          <button onClick={onAnnulla}>Annulla</button>
-          <button className="primario" disabled={!consenso} onClick={() => onConferma(titolo, consenso)}>
-            Avvia registrazione
-          </button>
-        </div>
-      </div>
-    </div>
-  )
+  azione?: { etichetta: string; onClick: () => void }
 }
 
 function App() {
   const [corePronto, setCorePronto] = useState(false)
-  const [modello, setModello] = useState<'in_attesa' | 'caricamento' | 'pronto' | 'errore'>('in_attesa')
+  const [modello, setModello] = useState<StatoModello>('in_attesa')
   const [registrando, setRegistrando] = useState(false)
   const [sessioneCorrente, setSessioneCorrente] = useState<number | null>(null)
   const [sessioneVista, setSessioneVista] = useState<number | null>(null)
@@ -134,44 +34,46 @@ function App() {
   const [segmenti, setSegmenti] = useState<Segmento[]>([])
   const [scatti, setScatti] = useState<Scatto[]>([])
   const [trascorsi, setTrascorsi] = useState(0)
-  const [dialogo, setDialogo] = useState(false)
-  const [avviso, setAvviso] = useState<string | null>(null)
+
+  const [dialogoConsenso, setDialogoConsenso] = useState(false)
+  const [titoloProposto, setTitoloProposto] = useState('')
+  const [avviso, setAvviso] = useState<Avviso | null>(null)
   const [esportando, setEsportando] = useState(false)
-  const [impostazioni, setImpostazioni] = useState(false)
   const [callRilevata, setCallRilevata] = useState<{
     pid: number
     nome: string
     piattaforma: string
   } | null>(null)
-  const [hotkey, setHotkey] = useState<string | null>(null)
 
-  const fine = useRef<HTMLDivElement>(null)
-  const contenitore = useRef<HTMLElement>(null)
+  // Pannello prove e citazioni: chi le apre e' il pannello analisi (che vive in
+  // Analisi.tsx), ma lo stato sta qui perche' tocca anche l'elenco call (si
+  // stringe a binario) e la trascrizione (`.is-cited`).
+  const [taskProve, setTaskProve] = useState<Task | null>(null)
+  const [citazioni, setCitazioni] = useState<number[]>([])
+
+  // Rassegna a tutta finestra: quando e' attiva sostituisce tutto cio' che sta
+  // sotto `.win`, topbar compresa (ha la sua, `.review__bar`). Il resto della
+  // finestra non si smonta — solo si nasconde — cosi' il pannello analisi
+  // ritrova da solo la task su cui si era fermato, senza che questo file debba
+  // saperne nulla.
+  const [rassegnaIndice, setRassegnaIndice] = useState<number | null>(null)
+
+  const [scorciatoiaOverlay, setScorciatoiaOverlay] = useState<string | null>(null)
+  const [larghezza, setLarghezza] = useState(window.innerWidth)
+
+  const trascrizioneRef = useRef<TrascrizioneHandle>(null)
   const inizioLocale = useRef(Date.now())
 
-  /**
-   * Porta la trascrizione al minuto indicato, e lo evidenzia.
-   *
-   * E' il gesto che rende verificabile una task: si legge il campo, si clicca
-   * il minuto, si vede da cosa il modello l'ha ricavato.
-   */
-  const vaiA = useCallback((t_ms: number) => {
-    const el = contenitore.current
-    if (!el) return
-    // Si smette di seguire il parlato: l'utente e' andato a leggere altrove.
-    seguiInFondo.current = false
-    const righe = Array.from(el.querySelectorAll<HTMLElement>('[data-t]'))
-    const bersaglio =
-      righe.find((r) => Number(r.dataset.t) >= t_ms) ?? righe[righe.length - 1]
-    if (!bersaglio) return
-    bersaglio.scrollIntoView({ block: 'center', behavior: 'smooth' })
-    bersaglio.classList.add('evidenziata')
-    setTimeout(() => bersaglio.classList.remove('evidenziata'), 2200)
+  const mostraAvviso = useCallback((testo: string, azione?: Avviso['azione']) => {
+    setAvviso({ testo, azione })
   }, [])
-  // La trascrizione segue automaticamente il parlato, ma solo finche' l'utente
-  // non scorre indietro a rileggere: strappargli via la vista mentre legge e'
-  // il modo piu' rapido di rendere inutile la funzione.
-  const seguiInFondo = useRef(true)
+
+  /** Porta la trascrizione al minuto indicato. E' l'unico gesto che rende
+   * verificabile una task, un punto saliente o una citazione: si legge il
+   * campo, si clicca il minuto, si vede da cosa viene davvero. */
+  const vaiA = useCallback((t_ms: number) => {
+    trascrizioneRef.current?.vaiA(t_ms)
+  }, [])
 
   const caricaSessioni = useCallback(async () => {
     const r = await window.scriba.get<Sessione[]>('/sessions')
@@ -183,6 +85,73 @@ function App() {
     if (r.ok) setSegmenti(r.body)
   }, [])
 
+  const caricaScatti = useCallback(async (id: number) => {
+    // Rotta nuova (contratto-api.md): se il core non la serve ancora si resta
+    // senza scatti invece di rompere la schermata.
+    const r = await window.scriba.get<Scatto[]>(`/sessions/${id}/screenshots`)
+    if (r.ok) setScatti(r.body)
+  }, [])
+
+  const apriSessione = useCallback(
+    (id: number) => {
+      setSessioneVista(id)
+      // Si svuota subito, non solo dopo la risposta: altrimenti per un istante
+      // si vedrebbe la trascrizione della call precedente sotto il titolo di
+      // quella nuova.
+      setSegmenti([])
+      setScatti([])
+      setTaskProve(null)
+      setCitazioni([])
+      caricaSegmenti(id)
+      caricaScatti(id)
+    },
+    [caricaSegmenti, caricaScatti],
+  )
+
+  const avvia = useCallback(
+    async (titolo: string, consenso: boolean) => {
+      setDialogoConsenso(false)
+      setAvviso(null)
+      const r = await window.scriba.post('/session/start', {
+        titolo: titolo.trim() || null,
+        consenso_confermato: consenso,
+      })
+      if (!r.ok) mostraAvviso(`Avvio non riuscito (${r.status}).`)
+    },
+    [mostraAvviso],
+  )
+
+  const apriDialogoRegistra = useCallback(() => {
+    setTitoloProposto('')
+    setDialogoConsenso(true)
+  }, [])
+
+  const ferma = useCallback(async () => {
+    const r = await window.scriba.post('/session/stop')
+    if (!r.ok) mostraAvviso(`Arresto non riuscito (${r.status}).`)
+  }, [mostraAvviso])
+
+  const esporta = useCallback(async () => {
+    if (sessioneVista === null) return
+    setEsportando(true)
+    setAvviso(null)
+    try {
+      // Si apre la cartella invece di limitarsi a dire che e' andata bene: il
+      // file serve, e cercarlo a mano e' un passaggio in piu' senza motivo.
+      const r = await window.scriba.post<{ percorso: string }>(
+        `/sessions/${sessioneVista}/export/markdown`,
+      )
+      if (r.ok) {
+        await window.scriba.mostraFile(r.body.percorso)
+        mostraAvviso(`Esportato in ${r.body.percorso}`)
+      } else {
+        mostraAvviso(`Export non riuscito (${r.status}).`)
+      }
+    } finally {
+      setEsportando(false)
+    }
+  }, [sessioneVista, mostraAvviso])
+
   useEffect(() => {
     const off = [
       window.scriba.on('core:pronto', () => {
@@ -190,20 +159,23 @@ function App() {
         caricaSessioni()
       }),
 
-      window.scriba.on('core:event', (ev: any) => {
+      window.scriba.on('core:event', (ev: EventoCore) => {
         if (ev.type === 'transcript') {
+          const e = ev as Extract<EventoCore, { type: 'transcript' }>
           setSegmenti((prec) => {
             // Un parziale e il suo definitivo sono lo stesso pezzo di parlato:
             // si sostituisce la riga invece di accodarne un'altra, altrimenti
             // la stessa frase comparirebbe piu' volte mentre viene rifinita.
-            const i = prec.findIndex((s) => !s.is_final && s.source === ev.source)
+            // Riusare lo stesso id e' anche cio' che permette a Trascrizione
+            // di NON smontare e rimontare la riga alla chiusura della frase.
+            const i = prec.findIndex((s) => !s.is_final && s.source === e.source)
             const riga: Segmento = {
               id: i >= 0 ? prec[i].id : -Date.now(),
-              source: ev.source,
-              t_start_ms: ev.t_start_ms,
-              t_end_ms: ev.t_end_ms,
-              testo: ev.text,
-              is_final: ev.is_final,
+              source: e.source,
+              t_start_ms: e.t_start_ms,
+              t_end_ms: e.t_end_ms,
+              testo: e.text,
+              is_final: e.is_final,
             }
             if (i < 0) return [...prec, riga]
             const copia = [...prec]
@@ -211,34 +183,60 @@ function App() {
             return copia
           })
         } else if (ev.type === 'session_started') {
+          const e = ev as Extract<EventoCore, { type: 'session_started' }>
           setRegistrando(true)
-          setSessioneCorrente(ev.session_id)
-          setSessioneVista(ev.session_id)
+          setSessioneCorrente(e.session_id)
+          setSessioneVista(e.session_id)
           setSegmenti([])
           setScatti([])
+          setTrascorsi(0)
+          inizioLocale.current = Date.now()
+          setTaskProve(null)
+          setCitazioni([])
+          // Entrata ottimistica nell'elenco: si mostra subito "in corso", la
+          // conferma dal server (con titolo e piattaforma veri) arriva a
+          // momenti da caricaSessioni().
+          setSessioni((prec) => {
+            if (prec.some((s) => s.id === e.session_id)) return prec
+            const stub: Sessione = {
+              id: e.session_id,
+              titolo: e.titolo,
+              piattaforma: null,
+              started_at: Date.now(),
+              ended_at: null,
+              durata_ms: null,
+              stato: 'recording',
+              lingua: null,
+              n_task: 0,
+              n_da_confermare: 0,
+            }
+            return [stub, ...prec]
+          })
+          caricaSessioni()
         } else if (ev.type === 'session_stopped') {
           setRegistrando(false)
           setSessioneCorrente(null)
           caricaSessioni()
         } else if (ev.type === 'screenshot') {
-          setScatti((prec) => [...prec, { t_ms: ev.t_ms, path: ev.path }])
+          const e = ev as Extract<EventoCore, { type: 'screenshot' }>
+          setScatti((prec) => [
+            ...prec,
+            { id: e.id, t_ms: e.t_ms, path: e.path, width: null, height: null, nota_utente: null },
+          ])
         } else if (ev.type === 'call_rilevata') {
+          const e = ev as Extract<EventoCore, { type: 'call_rilevata' }>
           // Si propone, non si avvia: registrare coinvolge altre persone.
-          setCallRilevata({ pid: ev.pid, nome: ev.nome, piattaforma: ev.piattaforma })
+          setCallRilevata({ pid: e.pid, nome: e.nome, piattaforma: e.piattaforma })
         } else if (ev.type === 'modello') {
-          setModello(ev.stato)
-          if (ev.stato === 'errore') setAvviso(`Modello non caricato: ${ev.dettaglio ?? ''}`)
+          const e = ev as Extract<EventoCore, { type: 'modello' }>
+          setModello(e.stato)
+          if (e.stato === 'errore') mostraAvviso(`Modello non caricato: ${e.dettaglio ?? ''}`)
         }
       }),
 
       window.scriba.on('screenshot:ignorato', () =>
-        setAvviso('Screenshot non salvato: nessuna registrazione in corso.'),
+        mostraAvviso('Screenshot non salvato: nessuna registrazione in corso.'),
       ),
-
-      window.scriba.on('hotkey:stato', (combo: string | null) => {
-        setHotkey(combo)
-        if (!combo) setAvviso('Nessuna scorciatoia disponibile per gli screenshot: usa il pulsante.')
-      }),
     ]
 
     // Il core puo' essersi avviato prima che la pagina finisse di caricare: in
@@ -247,19 +245,38 @@ function App() {
       if (!e) return
       setCorePronto(true)
       caricaSessioni()
-      const r = await window.scriba.get<{ modello: typeof modello }>('/health')
+      const r = await window.scriba.get<{ modello: StatoModello }>('/health')
       if (r.ok && r.body?.modello) setModello(r.body.modello)
     })
 
     return () => off.forEach((f) => f())
-  }, [caricaSessioni])
+  }, [caricaSessioni, mostraAvviso])
+
+  // La prima volta che l'elenco arriva senza niente aperto si mostra la call
+  // piu' recente — o quella in corso, se la pagina si e' caricata (o
+  // ricaricata) mentre una registrazione era gia' partita altrove. In quel
+  // caso serve anche recuperarne la trascrizione: gli eventi live persi non
+  // tornano indietro.
+  useEffect(() => {
+    if (sessioneVista != null) return
+    if (sessioni.length === 0) return
+    const attuale = sessioni.find((s) => s.stato === 'recording')
+    const bersaglio = attuale ?? sessioni[0]
+    setSessioneVista(bersaglio.id)
+    if (attuale) {
+      setRegistrando(true)
+      setSessioneCorrente(attuale.id)
+    }
+    caricaSegmenti(bersaglio.id)
+    caricaScatti(bersaglio.id)
+  }, [sessioni, sessioneVista, caricaSegmenti, caricaScatti])
 
   // Cronometro contato in locale, riallineato al core ogni 20 secondi.
   //
-  // Chiederlo al core a ogni tick significava un giro IPC + HTTP al secondo per
-  // aggiornare due cifre. Il riallineamento periodico serve comunque, perche' e'
-  // il core a sapere delle pause: un contatore puramente locale andrebbe avanti
-  // anche a registrazione sospesa.
+  // Chiederlo al core a ogni tick significava un giro IPC + HTTP al secondo
+  // per aggiornare due cifre. Il riallineamento periodico serve comunque,
+  // perche' e' il core a sapere delle pause: un contatore puramente locale
+  // andrebbe avanti anche a registrazione sospesa.
   useEffect(() => {
     if (!registrando) return
 
@@ -279,238 +296,154 @@ function App() {
       clearInterval(tick)
       clearInterval(risincronizza)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [registrando])
 
+  // Le scorciatoie si registrano una volta all'avvio: serve comunque sapere
+  // com'e' andata, sia per il suggerimento a finestra vuota ("Alt+R per la
+  // striscia") sia per segnalare — livello 1, non bloccante — quando quella
+  // dell'overlay e' gia' presa da un'altra applicazione.
   useEffect(() => {
-    // Scorrimento istantaneo, non animato: durante una call arriva un evento al
-    // secondo per traccia e le animazioni si accavallerebbero, dando la
-    // sensazione che l'interfaccia arranchi.
-    if (seguiInFondo.current) fine.current?.scrollIntoView({ block: 'end' })
-  }, [segmenti, scatti])
-
-  const avvia = async (titolo: string, consenso: boolean) => {
-    setDialogo(false)
-    setAvviso(null)
-    const r = await window.scriba.post('/session/start', {
-      titolo: titolo.trim() || null,
-      consenso_confermato: consenso,
-    })
-    if (!r.ok) setAvviso(`Avvio non riuscito (${r.status}).`)
-  }
-
-  const ferma = async () => {
-    const r = await window.scriba.post('/session/stop')
-    if (!r.ok) setAvviso(`Arresto non riuscito (${r.status}).`)
-  }
-
-  const esporta = async () => {
-    if (sessioneVista === null) return
-    setEsportando(true)
-    setAvviso(null)
-    try {
-      const r = await window.scriba.post<{ percorso: string }>(
-        `/sessions/${sessioneVista}/export/markdown`,
-      )
-      if (r.ok) {
-        // Si apre la cartella invece di limitarsi a dire che è andata bene: il
-        // file serve, e cercarlo a mano è un passaggio in più senza motivo.
-        await window.scriba.mostraFile(r.body.percorso)
-        setAvviso(`Esportato in ${r.body.percorso}`)
-      } else {
-        setAvviso(`Export non riuscito (${r.status}).`)
+    window.scriba.registraScorciatoie().then(({ overlay }) => {
+      setScorciatoiaOverlay(overlay)
+      if (!overlay) {
+        mostraAvviso("La scorciatoia per la striscia non è disponibile: la sta già usando un'altra applicazione.", {
+          etichetta: 'Cambia scorciatoia',
+          onClick: () => window.scriba.apriImpostazioni(),
+        })
       }
-    } finally {
-      setEsportando(false)
-    }
-  }
+    })
+  }, [mostraAvviso])
 
-  const apriSessione = async (id: number) => {
-    setSessioneVista(id)
-    await caricaSegmenti(id)
-    setScatti([])
-  }
+  useEffect(() => {
+    const onResize = () => setLarghezza(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
-  // Si costruisce solo la sequenza, non gli elementi: renderizzare tocca alle
-  // righe memoizzate, che cosi' saltano il lavoro quando non sono cambiate.
-  const righe = useMemo(() => {
-    const elementi: Array<{ chiave: string; t: number; seg?: Segmento; scatto?: Scatto }> = [
-      ...segmenti.map((s) => ({ chiave: `s${s.id}`, t: s.t_start_ms, seg: s })),
-      ...scatti.map((i) => ({ chiave: `i${i.t_ms}`, t: i.t_ms, scatto: i })),
-    ]
-    return elementi.sort((a, b) => a.t - b.t)
-  }, [segmenti, scatti])
+  const sessioneVistaObj = useMemo(
+    () => sessioni.find((s) => s.id === sessioneVista) ?? null,
+    [sessioni, sessioneVista],
+  )
+  // Muta il pannello analisi e ferma la trascrizione sul "in corso" solo per
+  // la call che si sta REGISTRANDO ora: sfogliare una call passata mentre
+  // un'altra registra altrove (di fatto impossibile qui, ma non si sa mai)
+  // non deve congelare il suo pannello.
+  const vistaInDiretta = registrando && sessioneVista === sessioneCorrente
+
+  // Punti di rottura (comportamento.md, 9): sotto 1100px il pannello analisi
+  // sparisce, sotto 900px anche l'elenco call. La trascrizione non sparisce
+  // mai. Non esiste nel handoff un modo dichiarato per "riraggiungere" il
+  // pannello analisi da sotto i 1100px (nessuna classe per quel pulsante e la
+  // vista sotto i 900px e' segnata come mancante in comportamento.md): qui si
+  // nasconde soltanto, senza inventare un controllo che il design non ha
+  // ancora definito.
+  const nascondiAnalisi = larghezza < 1100
+  const nascondiCalls = larghezza < 900
 
   return (
-    <div className="app">
-      <header className="barra">
-        <span className="marchio">Scriba</span>
-
-        {avviso && <div className="avviso">{avviso}</div>}
-
-        <div className="stato">
-          <span
-            className={`pallino ${
-              registrando ? 'registra' : modello === 'pronto' ? 'acceso' : ''
-            }`}
-          />
-          {registrando
-            ? 'Registrazione'
-            : !corePronto
-              ? 'Avvio del core...'
-              : modello === 'caricamento' || modello === 'in_attesa'
-                ? 'Carico il modello...'
-                : modello === 'errore'
-                  ? 'Modello non disponibile'
-                  : 'Pronto'}
-        </div>
-
-        {registrando && <span className="cronometro">{tempo(trascorsi)}</span>}
-
-        <button onClick={() => window.scriba.screenshot()} disabled={!registrando}>
-          Screenshot
-        </button>
-
-        <button onClick={esporta} disabled={sessioneVista === null || esportando}>
-          {esportando ? 'Esporto…' : 'Esporta'}
-        </button>
-
-        <button onClick={() => setImpostazioni(true)} title="Come analizzare le call">
-          Impostazioni
-        </button>
-
-        {registrando ? (
-          <button className="pericolo" onClick={ferma}>
-            Ferma
-          </button>
-        ) : (
-          <button
-            className="primario"
-            onClick={() => setDialogo(true)}
-            disabled={modello !== 'pronto'}
-          >
-            Registra
-          </button>
-        )}
-      </header>
-
-      <div className="corpo">
-        <aside className="laterale">
-          <h2>Call registrate</h2>
-          {sessioni.length === 0 && <p style={{ color: 'var(--testo-fioco)' }}>Nessuna, per ora.</p>}
-          {sessioni.map((s) => (
-            <div
-              key={s.id}
-              className={`voce-sessione ${sessioneVista === s.id ? 'attiva' : ''}`}
-              onClick={() => apriSessione(s.id)}
-            >
-              <div className="titolo">{s.titolo || `Call #${s.id}`}</div>
-              <div className="meta">
-                {dataBreve(s.started_at)}
-                {s.durata_ms ? ` · ${tempo(s.durata_ms)}` : ''}
-                {s.id === sessioneCorrente ? ' · in corso' : ''}
-              </div>
-            </div>
-          ))}
-        </aside>
-
-        <main
-          className="trascrizione"
-          ref={contenitore}
-          onScroll={(e) => {
-            const el = e.currentTarget
-            seguiInFondo.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
-          }}
-        >
-          {righe.length === 0 ? (
-            <div className="vuoto">
-              {registrando ? (
-                <>In ascolto. Il testo comparira' qui mentre parlate.</>
-              ) : (
-                <>
-                  Premi <b>Registra</b> per iniziare.
-                  {hotkey && (
-                    <>
-                      <br />
-                      Durante la call,{' '}
-                      {hotkey
-                        .replace('CommandOrControl', 'Ctrl')
-                        .split('+')
-                        .map((tasto, i) => (
-                          <span key={tasto}>
-                            {i > 0 && ' + '}
-                            <kbd>{tasto}</kbd>
-                          </span>
-                        ))}{' '}
-                      cattura uno screenshot e lo aggancia al punto in cui siete.
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-          ) : (
-            righe.map((r) =>
-              r.seg ? (
-                <Riga key={r.chiave} s={r.seg} />
-              ) : (
-                <div key={r.chiave} className="scatto">
-                  Screenshot a {tempo(r.t)}
-                </div>
-              ),
-            )
-          )}
-          <div ref={fine} />
-        </main>
-
-        <section className="analisi">
-          <PannelloAnalisi
-            sessionId={sessioneVista}
-            registrando={registrando && sessioneVista === sessioneCorrente}
-            onVaiA={vaiA}
-          />
-        </section>
+    <div className="win">
+      {/* display:contents, non un ternario: se si smontasse qui la topbar non
+          perderebbe stato che conti, ma tenerla nello stesso schema di visibilita'
+          del corpo (sotto) rende esplicito che la rassegna sostituisce tutto. */}
+      <div style={{ display: rassegnaIndice === null ? 'contents' : 'none' }}>
+        <Topbar
+          corePronto={corePronto}
+          modello={modello}
+          registrando={registrando}
+          trascorsi={trascorsi}
+          sessioneVista={sessioneVista}
+          esportando={esportando}
+          onScreenshot={() => window.scriba.screenshot()}
+          onEsporta={esporta}
+          onRegistra={apriDialogoRegistra}
+          onFerma={ferma}
+        />
+        {avviso && <Barra testo={avviso.testo} azione={avviso.azione} onChiudi={() => setAvviso(null)} />}
       </div>
 
-      {callRilevata && !registrando && (
-        <div className="proposta">
-          <div>
-            <strong>Sembra che tu sia in una call</strong> su {callRilevata.nome}.
-            <div style={{ color: 'var(--testo-fioco)', fontSize: 12.5, marginTop: 2 }}>
-              Registrare include l'audio degli altri partecipanti.
-            </div>
-          </div>
-          <button
-            onClick={async () => {
-              // Si passa dal dialogo normale: la conferma sul consenso non si
-              // salta perché la call è stata riconosciuta da sola.
-              setCallRilevata(null)
-              setDialogo(true)
-            }}
-            className="primario"
-          >
-            Registra
-          </button>
-          <button
-            onClick={async () => {
-              const pid = callRilevata.pid
-              setCallRilevata(null)
-              // Non si smette di sorvegliare: si dimentica questa proposta, così
-              // alla prossima riunione la domanda torna.
-              await window.scriba.post(`/rilevamento/ignora/${pid}`)
-            }}
-          >
-            No, grazie
-          </button>
-        </div>
+      {/* Anche qui display:none e non uno smontaggio: e' quello che permette al
+          pannello analisi di ritrovare da solo la task su cui si era fermato
+          quando si torna dalla rassegna (comportamento.md, "Rassegna task"). */}
+      <div className="win__body" style={{ display: rassegnaIndice === null ? 'flex' : 'none' }}>
+        {!nascondiCalls && (
+          <ElencoCall
+            sessioni={sessioni}
+            sessioneVista={sessioneVista}
+            sessioneCorrente={sessioneCorrente}
+            compatta={taskProve !== null}
+            onApri={apriSessione}
+            onRiapri={() => setTaskProve(null)}
+          />
+        )}
+
+        <Trascrizione
+          ref={trascrizioneRef}
+          sessione={sessioneVistaObj}
+          segmenti={segmenti}
+          scatti={scatti}
+          inDiretta={vistaInDiretta}
+          citate={citazioni}
+          scorciatoiaStriscia={scorciatoiaOverlay ? scorciatoiaLeggibile(scorciatoiaOverlay) : null}
+          onRegistra={apriDialogoRegistra}
+          onApriScatto={(percorso) => window.scriba.mostraFile(percorso)}
+        />
+
+        {taskProve && (
+          <PannelloProve task={taskProve} onVaiA={vaiA} onChiudi={() => setTaskProve(null)} />
+        )}
+
+        {!nascondiAnalisi && (
+          <PannelloAnalisi
+            sessione={sessioneVistaObj}
+            // Stesso valore in entrambe le prop, di proposito: "registrando" e'
+            // cio' che disabilita Analizza (non si analizza una call non ancora
+            // finita), "compatto" e' la stessa condizione vista dal CSS
+            // (.analysis--muted). Il flag e' della call GUARDATA, non globale:
+            // sfogliare una call passata mentre un'altra registra altrove non
+            // deve bloccarne l'analisi.
+            registrando={vistaInDiretta}
+            compatto={vistaInDiretta}
+            onVaiA={vaiA}
+            onCitazioni={setCitazioni}
+            onProve={setTaskProve}
+            onRassegna={setRassegnaIndice}
+          />
+        )}
+      </div>
+
+      {rassegnaIndice !== null && sessioneVistaObj && (
+        <Rassegna
+          sessione={sessioneVistaObj}
+          segmenti={segmenti}
+          indiceIniziale={rassegnaIndice}
+          onEsci={() => setRassegnaIndice(null)}
+        />
       )}
 
-      {impostazioni && <Impostazioni onChiudi={() => setImpostazioni(false)} />}
-
-      {dialogo && (
-        <DialogoAvvio
-          titoloIniziale={callRilevata?.piattaforma ?? ''}
-          onAnnulla={() => setDialogo(false)}
-          onConferma={avvia}
+      {callRilevata && !registrando && (
+        <AvvisoCall
+          nome={callRilevata.piattaforma}
+          onRegistra={() => {
+            // Si passa dal dialogo normale: la conferma sul consenso non si
+            // salta perche' la call e' stata riconosciuta da sola.
+            setTitoloProposto(callRilevata.piattaforma)
+            setCallRilevata(null)
+            setDialogoConsenso(true)
+          }}
+          onNo={async () => {
+            const pid = callRilevata.pid
+            setCallRilevata(null)
+            // Non si smette di sorvegliare: si dimentica questa proposta,
+            // cosi' alla prossima riunione la domanda torna.
+            await window.scriba.post(`/rilevamento/ignora/${pid}`)
+          }}
+          onChiudi={() => setCallRilevata(null)}
         />
+      )}
+
+      {dialogoConsenso && (
+        <ModaleConsenso titoloIniziale={titoloProposto} onAnnulla={() => setDialogoConsenso(false)} onConferma={avvia} />
       )}
     </div>
   )

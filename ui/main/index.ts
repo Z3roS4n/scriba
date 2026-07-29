@@ -1,16 +1,17 @@
 /**
  * Processo principale di Scriba.
  *
- * Tiene insieme la finestra, l'icona nell'area di notifica, la scorciatoia per
- * gli screenshot e il processo core. La logica vera — audio, trascrizione,
- * database — sta tutta nel core: qui si apre una finestra e si inoltrano
- * comandi.
+ * Tiene insieme le finestre (principale, impostazioni, overlay), l'icona
+ * nell'area di notifica, le scorciatoie globali e il processo core. La logica
+ * vera — audio, trascrizione, database — sta tutta nel core: qui si aprono le
+ * finestre e si inoltrano comandi.
  */
 
 import { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, ipcMain, Menu, nativeImage, screen, shell, Tray } from 'electron'
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 
+import { Impostazioni } from './impostazioni'
 import { Overlay } from './overlay'
 import { Sidecar } from './sidecar'
 
@@ -20,9 +21,10 @@ const SCREENSHOT_DIR = join(DATA_DIR, 'screenshots')
 /**
  * Candidate per lo screenshot, in ordine di preferenza.
  *
- * Ctrl+Shift+S e' la piu' naturale ma e' spesso gia' presa (Office, strumenti di
- * cattura, launcher): si prova la prima libera invece di rinunciare, perche' una
- * scorciatoia che non fa niente e' peggio di una scomoda.
+ * Ripiego per quando le impostazioni non ne indicano una valida: Ctrl+Shift+S
+ * e' la piu' naturale ma e' spesso gia' presa (Office, strumenti di cattura,
+ * launcher), quindi si prova la prima libera invece di lasciare l'utente senza
+ * scorciatoia.
  */
 const SCREENSHOT_HOTKEYS = [
   'CommandOrControl+Shift+S',
@@ -30,16 +32,26 @@ const SCREENSHOT_HOTKEYS = [
   'CommandOrControl+Shift+F9',
   'Alt+Shift+S',
 ]
-let hotkeyAttiva: string | null = null
 
 const sidecar = new Sidecar(PROJECT_ROOT, join(DATA_DIR, 'scriba.sqlite'))
 
-const overlay = new Overlay(__dirname.replace(/[\\/]main$/, ''), join(DATA_DIR, 'overlay.json'))
+const cartellaRisorse = __dirname.replace(/[\\/]main$/, '')
+const overlay = new Overlay(cartellaRisorse, join(DATA_DIR, 'overlay.json'))
+const impostazioni = new Impostazioni(cartellaRisorse)
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let quitting = false
 let scorciatoiaOverlay: string | null = null
+let scorciatoiaScreenshot: string | null = null
+/**
+ * Cartella di export scelta dall'utente con `scegliCartella`.
+ *
+ * E' l'unica eccezione al confine dei dati dell'app: sta fuori per
+ * definizione, ma solo quella — non un percorso qualsiasi che il renderer
+ * decida di mandare.
+ */
+let cartellaExportScelta: string | null = null
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -48,7 +60,10 @@ function createWindow(): BrowserWindow {
     minWidth: 820,
     minHeight: 560,
     show: false,
-    backgroundColor: '#0f1115',
+    // Senza cornice: la barra del titolo la disegna il renderer, perche'
+    // quella di Windows ignora il tema scuro.
+    frame: false,
+    backgroundColor: '#141416',
     title: 'Scriba',
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
@@ -107,8 +122,8 @@ function createTray(): void {
       },
       { type: 'separator' },
       {
-        label: hotkeyAttiva
-          ? `Screenshot (${hotkeyAttiva.replace('CommandOrControl', 'Ctrl')})`
+        label: scorciatoiaScreenshot
+          ? `Screenshot (${scorciatoiaScreenshot.replace('CommandOrControl', 'Ctrl')})`
           : 'Screenshot',
         click: captureScreenshot,
       },
@@ -134,6 +149,30 @@ async function coreFetch(path: string, init?: RequestInit): Promise<Response> {
     ...init,
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
   })
+}
+
+/** Le impostazioni correnti del core, o null se non sono leggibili. */
+async function leggiImpostazioni(): Promise<Record<string, any> | null> {
+  try {
+    const risposta = await coreFetch('/settings')
+    return risposta.ok ? await risposta.json() : null
+  } catch {
+    return null
+  }
+}
+
+/** Manda un evento a tutte le finestre aperte: principale, impostazioni, overlay. */
+function trasmettiATutte(canale: string, payload: unknown): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send(canale, payload)
+  }
+}
+
+/** Il renderer resta dentro i dati dell'app, tranne l'unica cartella di export scelta. */
+function dentroCartella(percorso: string, base: string): boolean {
+  const risolto = resolve(percorso)
+  const baseRisolta = resolve(base)
+  return risolto === baseRisolta || risolto.startsWith(baseRisolta + sep)
 }
 
 /**
@@ -165,12 +204,14 @@ async function captureScreenshot(): Promise<void> {
 
     if (response.ok) {
       const { t_ms } = await response.json()
-      mainWindow?.webContents.send('screenshot:saved', { path, t_ms })
+      // Anche all'overlay: e' li' che si vede il lampo "Salvato nella
+      // trascrizione" mentre si e' ancora in call.
+      trasmettiATutte('screenshot:saved', { path, t_ms })
     } else if (response.status === 409) {
       // Nessuna registrazione in corso: lo screenshot non ha un istante a cui
       // agganciarsi, quindi non serve a niente. Meglio dirlo che salvarlo e
       // basta.
-      mainWindow?.webContents.send('screenshot:ignorato')
+      trasmettiATutte('screenshot:ignorato', undefined)
     }
   } catch (error) {
     console.error('[screenshot]', error)
@@ -178,11 +219,12 @@ async function captureScreenshot(): Promise<void> {
 }
 
 /**
- * Resta in ascolto degli eventi del core e li gira alla finestra.
+ * Resta in ascolto degli eventi del core e li gira a tutte le finestre.
  *
  * La connessione la tiene questo processo, non il renderer: il token non deve
  * mai arrivare alla pagina, altrimenti chiunque riesca a iniettare uno script
- * puo' parlare col core in autonomia.
+ * puo' parlare col core in autonomia. Anche le impostazioni ascoltano questo
+ * canale: e' da li' che arriva l'avanzamento dei download dei modelli.
  */
 function connectEvents(): void {
   const endpoint = sidecar.address
@@ -193,10 +235,7 @@ function connectEvents(): void {
   socket.addEventListener('message', (event) => {
     try {
       const evento = JSON.parse(String(event.data))
-      mainWindow?.webContents.send('core:event', evento)
-      // Anche all'overlay: durante una call e' spesso l'unica finestra aperta,
-      // e senza gli eventi mostrerebbe una trascrizione ferma.
-      overlay.invia('core:event', evento)
+      trasmettiATutte('core:event', evento)
     } catch (error) {
       console.error('[core] evento illeggibile', error)
     }
@@ -212,43 +251,76 @@ function connectEvents(): void {
 }
 
 /**
- * Registra la scorciatoia che mostra e nasconde l'overlay.
+ * Rilegge scorciatoia dell'overlay e dello screenshot dalle impostazioni e le
+ * registra, disiscrivendo prima quelle attive.
  *
- * La combinazione si legge dalle impostazioni: se e' gia' presa da un'altra
- * applicazione, `register` restituisce false e va detto, altrimenti l'utente
- * preme un tasto che non fa niente senza capire perche'.
+ * Restituisce le combinazioni effettivamente attive (null se il sistema le ha
+ * rifiutate): e' quello che il campo delle impostazioni deve mostrare, non
+ * quello che si e' provato a registrare.
  */
-async function registraScorciatoiaOverlay(): Promise<string | null> {
+async function registraScorciatoie(): Promise<{ overlay: string | null; screenshot: string | null }> {
   if (scorciatoiaOverlay) {
     globalShortcut.unregister(scorciatoiaOverlay)
     scorciatoiaOverlay = null
   }
-
-  let combinazione = 'Alt+R'
-  try {
-    const risposta = await coreFetch('/settings')
-    if (risposta.ok) {
-      const impostazioni = await risposta.json()
-      combinazione = impostazioni?.interfaccia?.scorciatoia_overlay || combinazione
-    }
-  } catch {
-    // Impostazioni non leggibili: si usa la predefinita.
+  if (scorciatoiaScreenshot) {
+    globalShortcut.unregister(scorciatoiaScreenshot)
+    scorciatoiaScreenshot = null
   }
 
-  if (globalShortcut.register(combinazione, () => overlay.alterna())) {
-    scorciatoiaOverlay = combinazione
+  const impostazioniLette = await leggiImpostazioni()
+  const comboOverlay: string = impostazioniLette?.interfaccia?.scorciatoia_overlay || 'Alt+R'
+  const comboScreenshot: string = impostazioniLette?.interfaccia?.scorciatoia_screenshot || ''
+
+  if (globalShortcut.register(comboOverlay, () => overlay.alterna())) {
+    scorciatoiaOverlay = comboOverlay
   } else {
-    console.warn(`Scorciatoia ${combinazione} gia' in uso: overlay non richiamabile da tastiera.`)
+    console.warn(`Scorciatoia ${comboOverlay} gia' in uso: overlay non richiamabile da tastiera.`)
   }
-  mainWindow?.webContents.send('overlay:scorciatoia', scorciatoiaOverlay)
-  // Il menu della tray mostra la combinazione: se cambia, va rifatto.
+
+  if (comboScreenshot && globalShortcut.register(comboScreenshot, captureScreenshot)) {
+    scorciatoiaScreenshot = comboScreenshot
+  } else {
+    // Le impostazioni non indicano una combinazione valida: si prova la lista
+    // di ripiego invece di lasciare lo screenshot senza scorciatoia.
+    for (const combo of SCREENSHOT_HOTKEYS) {
+      if (globalShortcut.register(combo, captureScreenshot)) {
+        scorciatoiaScreenshot = combo
+        break
+      }
+    }
+    if (!scorciatoiaScreenshot) {
+      console.warn('Nessuna scorciatoia disponibile per lo screenshot: sono tutte gia\' in uso.')
+    }
+  }
+
+  const stato = { overlay: scorciatoiaOverlay, screenshot: scorciatoiaScreenshot }
+  // Il testo che le mostra (menu della tray, campo nelle impostazioni) deve
+  // restare vero.
+  trasmettiATutte('scorciatoie:stato', stato)
   if (tray) createTray()
-  return scorciatoiaOverlay
+  return stato
+}
+
+/**
+ * Prova a registrare una combinazione senza salvarla, poi rimette le cose
+ * com'erano.
+ *
+ * Se la combinazione e' gia' una di quelle che teniamo noi (l'utente sta
+ * testando un valore uguale a quello gia' attivo su un altro campo, o non lo
+ * sta cambiando affatto) non si tocca la registrazione reale: disiscriverla
+ * dopo il test la toglierebbe per davvero, lasciando quella scorciatoia senza
+ * effetto finche' non si rilancia l'app.
+ */
+async function provaScorciatoia(combinazione: string): Promise<boolean> {
+  if (combinazione === scorciatoiaOverlay || combinazione === scorciatoiaScreenshot) return true
+
+  const riuscita = globalShortcut.register(combinazione, () => {})
+  if (riuscita) globalShortcut.unregister(combinazione)
+  return riuscita
 }
 
 function registerIpc(): void {
-  ipcMain.handle('overlay:registra-scorciatoia', registraScorciatoiaOverlay)
-
   // Volutamente senza token: al renderer basta sapere se il core e' su.
   ipcMain.handle('core:endpoint', () => (sidecar.address ? { port: sidecar.address.port } : null))
 
@@ -264,54 +336,112 @@ function registerIpc(): void {
 
   ipcMain.handle('screenshot:capture', captureScreenshot)
 
+  ipcMain.handle('file:mostra', (_event, percorso: string) => {
+    // Solo dentro la cartella dati dell'app: il renderer non deve poter far
+    // aprire un percorso qualsiasi del disco.
+    if (!dentroCartella(percorso, DATA_DIR)) {
+      throw new Error('Percorso fuori dalla cartella dati')
+    }
+    shell.showItemInFolder(resolve(percorso))
+  })
+
+  ipcMain.handle('cartella:apri', async (_event, percorso: string) => {
+    // Come file:mostra, ma per cartelle: dentro i dati dell'app, o l'unica
+    // cartella di export che l'utente ha appena scelto.
+    const consentito =
+      dentroCartella(percorso, DATA_DIR) ||
+      (cartellaExportScelta !== null && dentroCartella(percorso, cartellaExportScelta))
+    if (!consentito) {
+      throw new Error('Percorso non consentito')
+    }
+    await shell.openPath(resolve(percorso))
+  })
+
+  ipcMain.handle('cartella:scegli', async (event) => {
+    const finestraChiamante = BrowserWindow.fromWebContents(event.sender) ?? mainWindow ?? undefined
+    const risultato = await dialog.showOpenDialog(finestraChiamante!, { properties: ['openDirectory'] })
+    if (risultato.canceled || risultato.filePaths.length === 0) return null
+    // Si memorizza: e' l'unico percorso fuori dai dati dell'app che
+    // cartella:apri accettera' in seguito.
+    cartellaExportScelta = risultato.filePaths[0]
+    return cartellaExportScelta
+  })
+
+  ipcMain.handle('app:paths', () => ({ dataDir: DATA_DIR, screenshotDir: SCREENSHOT_DIR }))
+
+  // Comandi della barra del titolo: le finestre sono senza cornice, quindi
+  // ridurre, ingrandire e chiudere vanno rifatti a mano. Agiscono sulla
+  // finestra che ha mandato il messaggio, non su una variabile globale: le
+  // finestre sono piu' di una.
+  ipcMain.handle('finestra:riduci', (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.minimize()
+  })
+
+  ipcMain.handle('finestra:ingrandisci', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win) return
+    if (win.isMaximized()) win.unmaximize()
+    else win.maximize()
+  })
+
+  ipcMain.handle('finestra:chiudi', (event) => {
+    // Sulla finestra principale questo richiama lo stesso 'close' che gia'
+    // nasconde invece di uscire: e' lo stesso evento nativo, solo innescato a
+    // mano invece che dal sistema.
+    BrowserWindow.fromWebContents(event.sender)?.close()
+  })
+
+  ipcMain.handle('impostazioni:apri', () => {
+    impostazioni.apri()
+  })
+
   ipcMain.handle('overlay:nascondi', () => overlay.nascondi())
 
   ipcMain.handle('overlay:apri-principale', () => {
     showWindow()
   })
 
-  ipcMain.handle('file:mostra', (_event, percorso: string) => {
-    // Solo dentro la cartella dati dell'app: il renderer non deve poter far
-    // aprire un percorso qualsiasi del disco.
-    const risolto = resolve(percorso)
-    if (!risolto.startsWith(DATA_DIR)) {
-      throw new Error('Percorso fuori dalla cartella dati')
+  ipcMain.handle('overlay:alterna-ridotto', async () => {
+    const nuovo = overlay.alternaRidotto()
+    try {
+      // E' una preferenza, non uno stato di sessione: va ricordata anche dopo
+      // aver chiuso l'applicazione.
+      await coreFetch('/settings', {
+        method: 'POST',
+        body: JSON.stringify({ interfaccia: { overlay_ridotto: nuovo } }),
+      })
+    } catch {
+      // La preferenza non si e' salvata, ma la finestra ha comunque cambiato
+      // variante: non vale la pena bloccare l'utente per questo.
     }
-    shell.showItemInFolder(risolto)
+    return nuovo
   })
 
-  ipcMain.handle('app:paths', () => ({ dataDir: DATA_DIR, screenshotDir: SCREENSHOT_DIR }))
+  ipcMain.handle('scorciatoie:registra', registraScorciatoie)
+
+  ipcMain.handle('scorciatoie:prova', (_event, combinazione: string) => provaScorciatoia(combinazione))
 }
 
 app.whenReady().then(async () => {
   mkdirSync(DATA_DIR, { recursive: true })
   registerIpc()
   mainWindow = createWindow()
-
-  // Prima della tray: il menu mostra la combinazione effettivamente attiva.
-  for (const combo of SCREENSHOT_HOTKEYS) {
-    if (globalShortcut.register(combo, captureScreenshot)) {
-      hotkeyAttiva = combo
-      break
-    }
-  }
   createTray()
-
-  mainWindow.webContents.once('did-finish-load', () => {
-    mainWindow?.webContents.send('hotkey:stato', hotkeyAttiva)
-  })
-  if (!hotkeyAttiva) {
-    console.warn('Nessuna scorciatoia disponibile: sono tutte gia\' in uso.')
-  }
 
   try {
     const endpoint = await sidecar.start()
     connectEvents()
-    mainWindow.webContents.send('core:pronto', { port: endpoint.port })
+    trasmettiATutte('core:pronto', { port: endpoint.port })
 
-    // La scorciatoia dell'overlay si legge dalle impostazioni, che stanno nel
-    // core: si registra solo dopo che e' partito.
-    await registraScorciatoiaOverlay()
+    // La scorciatoie si leggono dalle impostazioni, che stanno nel core: si
+    // registrano solo dopo che e' partito.
+    await registraScorciatoie()
+
+    // Idem per la variante dell'overlay: va applicata prima che la finestra si
+    // apra la prima volta, altrimenti si vedrebbe un lampo alla dimensione
+    // sbagliata.
+    const impostazioniLette = await leggiImpostazioni()
+    overlay.impostaVariante(Boolean(impostazioniLette?.interfaccia?.overlay_ridotto))
   } catch (error) {
     dialog.showErrorBox(
       'Scriba non riesce ad avviare il core',

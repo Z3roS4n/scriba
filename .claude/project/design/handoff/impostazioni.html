@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="it" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Scriba — 4a Impostazioni</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="harness">
+  <h1>Scriba — 4a Impostazioni</h1>
+  <div></div>
+  <p>Finestra a sé, otto sezioni navigabili dalla barra laterale. Le impostazioni con conseguenze hanno il filetto rosso e la conseguenza scritta sotto — anche sull’opzione già in uso.</p>
+  <div class="harness__bar"><a href="index.html">Indice</a><a href="prima-apertura.html">1a Prima apertura</a><a href="analizzata.html">1a Analizzata</a><a href="task-prove.html">1a Task e prove</a><a href="rassegna.html">2b Rassegna</a><a href="overlay.html">3a Overlay</a><a href="impostazioni.html" class="is-current">4a Impostazioni</a><a href="dialoghi.html">5 Dialoghi</a><button class="btn" id="theme">Tema scuro</button></div>
+  <div class="win settings">
+    <header class="topbar"><span class="brand">Impostazioni</span><div class="topbar__spacer"></div><div class="wincontrols"><button>—</button><button>✕</button></div></header>
+    <div class="win__body">
+      <nav class="settings__nav">
+        <button class="navitem is-active" data-sec="motore">Motore di analisi</button>
+        <button class="navitem" data-sec="modelli">Modelli locali</button>
+        <button class="navitem" data-sec="trascrizione">Trascrizione</button>
+        <button class="navitem" data-sec="rilevamento">Rilevamento call</button>
+        <button class="navitem" data-sec="scorciatoie">Scorciatoie</button>
+        <button class="navitem" data-sec="analisi">Analisi</button>
+        <button class="navitem" data-sec="dati">Dati e privacy</button>
+        <button class="navitem" data-sec="export">Export</button>
+      </nav>
+      <div class="settings__main">
+        <div class="sec" data-secpanel="motore" style="display:flex;flex-direction:column;min-height:0;flex:1">
+          <div class="settings__head">Motore di analisi</div>
+          <div class="settings__body">
+        <p>Chi legge la trascrizione e ne ricava riassunto, punti salienti e task. Se ne può usare uno solo alla volta.</p>
+        <div style="display:flex;flex-direction:column;gap:var(--sp-3)">
+          <div class="engine">
+            <div class="engine__top">
+              <span class="radio"></span>
+              <div style="flex:1;display:flex;flex-direction:column;gap:var(--sp-1)"><span class="engine__name">Modello locale</span><span class="engine__desc">Non esce nulla dal computer.</span><span class="engine__speed">circa 10 min per un’ora di call</span></div>
+              <span class="engine__state is-ok">Pronto</span>
+            </div>
+
+          </div>
+          <div class="engine">
+            <div class="engine__top">
+              <span class="radio"></span>
+              <div style="flex:1;display:flex;flex-direction:column;gap:var(--sp-1)"><span class="engine__name">Abbonamento Claude</span><span class="engine__desc">Usa un abbonamento già attivo, nessun costo a consumo.</span><span class="engine__speed">circa 3 min per un’ora di call</span></div>
+              <span class="engine__state is-ok">Pronto</span>
+            </div>
+            <p class="engine__risk">La trascrizione viene inviata ad Anthropic.</p>
+          </div>
+          <div class="engine is-selected">
+            <div class="engine__top">
+              <span class="radio"><i></i></span>
+              <div style="flex:1;display:flex;flex-direction:column;gap:var(--sp-1)"><span class="engine__name">API Anthropic</span><span class="engine__desc">Si paga a consumo, circa 0,04 € per un’ora di call.</span><span class="engine__speed">circa 3 min per un’ora di call</span></div>
+              <span class="engine__state is-ok">In uso</span>
+            </div>
+            <p class="engine__risk">La trascrizione viene inviata ad Anthropic.</p>
+          </div>
+          <div class="engine">
+            <div class="engine__top">
+              <span class="radio"></span>
+              <div style="flex:1;display:flex;flex-direction:column;gap:var(--sp-1)"><span class="engine__name">API OpenAI</span><span class="engine__desc">Si paga a consumo, circa 0,05 € per un’ora di call.</span><span class="engine__speed">circa 3 min per un’ora di call</span></div>
+              <span class="engine__state">Chiave mancante</span>
+            </div>
+            <div class="engine__need">Serve una chiave API<button class="btn btn--sm">Inserisci la chiave</button></div>
+            <p class="engine__risk">La trascrizione viene inviata a OpenAI.</p>
+          </div>
+        </div>
+          </div>
+        </div>
+        <div class="sec" data-secpanel="modelli" hidden style="display:flex;flex-direction:column;min-height:0;flex:1">
+          <div class="settings__head">Modelli locali</div>
+          <div class="settings__body">
+        <div class="disk">
+          <div style="flex:1;display:flex;flex-direction:column;gap:var(--sp-2)">
+            <div style="display:flex;justify-content:space-between;font-size:var(--fs-md)"><span style="color:var(--fg3)">Spazio su disco</span><span style="color:var(--fg2)">12 GB liberi di 476 GB</span></div>
+            <div class="disk__bar"><i style="width:97%"></i></div>
+          </div>
+          <button class="btn">Apri la cartella</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+          <div class="model">
+            <div class="model__top"><span class="model__name">whisper-large-v3</span><span class="model__use">trascrizione</span><span class="model__size">3,1 GB</span><span class="model__state is-ok">installato</span><button class="btn btn--sm">Elimina</button></div>
+            <span class="model__meta">installato il 2 luglio</span>
+
+          </div>
+          <div class="model">
+            <div class="model__top"><span class="model__name">mistral-small-3</span><span class="model__use">analisi</span><span class="model__size">6,4 GB</span><span class="model__state is-ok">in uso</span><button class="btn btn--sm">Ferma</button></div>
+            <span class="model__meta">avviato · 127.0.0.1:8080 · 2,1 GB di RAM</span>
+
+          </div>
+          <div class="model">
+            <div class="model__top"><span class="model__name">qwen2.5-14b-instruct</span><span class="model__use">analisi</span><span class="model__size">9,0 GB</span><span class="model__state is-busy">in download</span><button class="btn btn--sm">Sospendi</button></div>
+            <div class="model__bar"><i style="width:46%"></i></div>
+            <span class="model__meta">4,1 GB di 9,0 GB · 12,4 MB/s · 6 min rimanenti</span>
+
+          </div>
+          <div class="model">
+            <div class="model__top"><span class="model__name">gemma-3-12b</span><span class="model__use">analisi</span><span class="model__size">7,2 GB</span><span class="model__state is-busy">in verifica</span></div>
+            <div class="model__bar"><i style="width:92%"></i></div>
+            <span class="model__meta">controllo dell’integrità · sha256</span>
+
+          </div>
+          <div class="model">
+            <div class="model__top"><span class="model__name">parakeet-tdt-0.6b</span><span class="model__use">trascrizione</span><span class="model__size">1,2 GB</span><span class="model__state ">non installato</span><button class="btn btn--sm btn--primary">Scarica</button></div>
+            <span class="model__meta">più veloce di whisper, meno preciso sui nomi propri</span>
+
+          </div>
+          <div class="model">
+            <div class="model__top"><span class="model__name">llama-3.3-70b-q4</span><span class="model__use">analisi</span><span class="model__size">17,0 GB</span><span class="model__state is-err">spazio insufficiente</span><button class="btn btn--sm">Scarica</button></div>
+            <span class="model__meta">servono 17 GB, ne restano 12</span>
+            <p class="model__err">Il download non parte: mancano 5 GB. Va liberato spazio prima, non a metà scaricamento.</p>
+          </div>
+        </div>
+        <p>Un download si può sospendere e riprendere: riparte da dove si era fermato, anche dopo aver chiuso l’applicazione. A fine scaricamento il file viene verificato, e l’esito si vede qui.</p>
+          </div>
+        </div>
+        <div class="sec" data-secpanel="trascrizione" hidden style="display:flex;flex-direction:column;min-height:0;flex:1">
+          <div class="settings__head">Trascrizione</div>
+          <div class="settings__body">
+        <div class="row"><div class="row__text"><b>Lingua principale</b><span>Le altre lingue vengono riconosciute lo stesso, ma con più errori sui nomi.</span></div><button class="select">Italiano<svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="var(--fg5)" stroke-width="1.5"><path d="M1 3.2 5 7l4-3.8"/></svg></button></div>
+        <div class="row"><div class="row__text"><b>Microfono</b><span>Registra la tua voce.</span></div><button class="select">Realtek Array<svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="var(--fg5)" stroke-width="1.5"><path d="M1 3.2 5 7l4-3.8"/></svg></button></div>
+        <div class="row"><div class="row__text"><b>Audio del computer</b><span>Registra la voce degli altri. Senza questo si sente solo te.</span></div><button class="select">Altoparlanti (loopback)<svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="var(--fg5)" stroke-width="1.5"><path d="M1 3.2 5 7l4-3.8"/></svg></button></div>
+        <div class="row"><div class="row__text"><b>Filtro dell’eco</b><span>Riconosce quando il microfono riprende l’altoparlante. Se alzi troppo, le sovrapposizioni di voce si perdono.</span></div><div class="segment"><button>Basso</button><button class="is-on">Medio</button><button>Alto</button></div></div>
+          </div>
+        </div>
+        <div class="sec" data-secpanel="rilevamento" hidden style="display:flex;flex-direction:column;min-height:0;flex:1">
+          <div class="settings__head">Rilevamento automatico delle call</div>
+          <div class="settings__body">
+        <div class="row"><div class="row__text"><b>Accorgiti da solo quando entro in call</b><span>Guarda quali applicazioni stanno usando il microfono. Non legge il contenuto della riunione.</span></div><button class="switch is-on"><i></i></button></div>
+        <div class="row"><div class="row__text"><b>Aspetta prima di propormelo</b><span>Evita la proposta per le chiamate di dieci secondi.</span></div><div class="stepper"><button>−</button><span>20 s</span><button>+</button></div></div>
+        <div class="row"><div class="row__text"><b>Cosa fare quando la rileva</b><span>Anche avviando da sola, il consenso resta obbligatorio: la registrazione parte solo dopo la spunta.</span></div><div class="segment"><button class="is-on">Proponi</button><button>Avvia da sola</button></div></div>
+          </div>
+        </div>
+        <div class="sec" data-secpanel="scorciatoie" hidden style="display:flex;flex-direction:column;min-height:0;flex:1">
+          <div class="settings__head">Scorciatoie</div>
+          <div class="settings__body">
+        <p>Si premono, non si scrivono: clicca il campo e digita la combinazione. Se è già presa da un’altra applicazione lo diciamo subito, perché Windows la rifiuta in silenzio.</p>
+        <div style="display:flex;flex-direction:column;gap:var(--sp-3)">
+          <div class="shortcut has-conflict">
+            <div class="shortcut__top"><span class="shortcut__name">Mostra e nascondi la striscia</span><button class="keycap">Alt + R</button><button class="btn btn--sm">Ripristina</button></div>
+            <p class="shortcut__conflict">Già usata da un’altra applicazione. Windows la rifiuta in silenzio: finché non la cambi, il tasto non fa niente.</p>
+          </div>
+          <div class="shortcut">
+            <div class="shortcut__top"><span class="shortcut__name">Scatta uno screenshot</span><button class="keycap">Ctrl + Shift + S</button><button class="btn btn--sm">Ripristina</button></div>
+          </div>
+        </div>
+          </div>
+        </div>
+        <div class="sec" data-secpanel="analisi" hidden style="display:flex;flex-direction:column;min-height:0;flex:1">
+          <div class="settings__head">Analisi</div>
+          <div class="settings__body">
+        <div class="row"><div class="row__text"><b>Quando analizzare</b><span>A fine call parte da sola e la trovi pronta. A richiesta decidi tu di volta in volta.</span></div><div class="segment"><button class="is-on">A fine call</button><button>A richiesta</button></div></div>
+        <div class="row row--risk"><div class="row__text"><b>Note incrementali durante la call</b><span>Un riassunto parziale ogni dieci minuti, mentre si parla.</span><span class="row__risk">Con un motore in rete significa mandare fuori la trascrizione più volte durante la riunione, non una sola volta alla fine.</span></div><button class="switch"><i></i></button></div>
+          </div>
+        </div>
+        <div class="sec" data-secpanel="dati" hidden style="display:flex;flex-direction:column;min-height:0;flex:1">
+          <div class="settings__head">Dati e privacy</div>
+          <div class="settings__body">
+        <div style="display:flex;flex-direction:column;gap:var(--sp-3);margin:var(--sp-7) 0 18px">
+          <div class="pathrow"><div class="pathrow__text"><b>Registrazioni audio</b><span>…\Scriba\audio</span></div><span class="pathrow__size">4,8 GB</span><button class="btn btn--sm">Apri</button></div>
+          <div class="pathrow"><div class="pathrow__text"><b>Trascrizioni e task</b><span>…\Scriba\scriba.db</span></div><span class="pathrow__size">86 MB</span><button class="btn btn--sm">Apri</button></div>
+          <div class="pathrow"><div class="pathrow__text"><b>Screenshot</b><span>…\Scriba\screenshots</span></div><span class="pathrow__size">312 MB</span><button class="btn btn--sm">Apri</button></div>
+        </div>
+        <div class="danger">
+          <span class="label">CANCELLAZIONI · NON SI TORNA INDIETRO</span>
+          <div class="row"><div class="row__text"><b>Elimina l’audio, tieni la trascrizione</b><span>Libera quasi tutto lo spazio. Le task e le loro prove restano, ma non si potrà più riascoltare la frase originale.</span></div><button class="btn btn--danger">Elimina l’audio</button></div>
+          <div class="row"><div class="row__text"><b>Elimina tutto di una call</b><span>Audio, trascrizione, screenshot, task. Verrà chiesto quale call e poi una conferma scritta.</span></div><button class="btn btn--danger">Scegli una call</button></div>
+        </div>
+          </div>
+        </div>
+        <div class="sec" data-secpanel="export" hidden style="display:flex;flex-direction:column;min-height:0;flex:1">
+          <div class="settings__head">Export</div>
+          <div class="settings__body">
+        <div class="row"><div class="row__text"><b>Cartella predefinita</b><span style="font-family:var(--mono)">C:\Users\antonio\Documenti\Scriba</span></div><button class="btn">Cambia</button></div>
+        <div class="row"><div class="row__text"><b>Formato</b><span>Il markdown contiene anche i minuti delle prove.</span></div><div class="segment"><button class="is-on">Markdown</button><button>Testo</button><button>JSON</button></div></div>
+        <div class="row is-unavailable"><div class="row__text"><b style="display:flex;align-items:center;gap:var(--sp-3)">Manda le task a Notion <span class="badge-off">NON DISPONIBILE</span></b><span>Le task confermate finirebbero in un database di Notion, con il minuto della prova come collegamento.</span></div><button class="btn" disabled>Collega</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="demo.js"></script>
+</body>
+</html>

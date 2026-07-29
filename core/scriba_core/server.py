@@ -18,8 +18,10 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import secrets
 import threading
+import time
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from typing import Any
@@ -33,6 +35,164 @@ from .settings import Settings
 from .stt.base import TranscriptEvent
 
 log = logging.getLogger(__name__)
+
+# Le quattro fasi mostrate mentre un'analisi gira, nell'ordine in cui accadono
+# davvero. La chiave è quella che ai/analyze.py usa nel suo callback di
+# avanzamento; il titolo è quello che l'interfaccia mostra.
+FASI_ANALISI: tuple[tuple[str, str], ...] = (
+    ("riassunto", "Riassunto"),
+    ("salienti", "Punti salienti"),
+    ("task", "Estrazione task"),
+    ("unione", "Unione dei riferimenti"),
+)
+
+# Cosa dire di ogni motore di analisi: non solo se è disponibile, ma cosa
+# comporta usarlo. È la stessa informazione che serve all'export e ai log, per
+# questo vive qui in un solo posto invece che scritta a mano nell'interfaccia.
+PROVIDERS_INFO: dict[str, dict[str, Any]] = {
+    "local": {
+        "etichetta": "Modello locale",
+        "descrizione": "Non esce nulla dal computer. Più lento: "
+        "una call di un'ora richiede una decina di minuti.",
+        "model": "gemma-4-12b-it",
+        "esce_dal_computer": False,
+        "costo_ora_eur": None,
+        "minuti_per_ora": 10,
+        "rimedio": "Scarica e avvia il modello locale dalle Impostazioni.",
+    },
+    "claude-cli": {
+        "etichetta": "Abbonamento Claude",
+        "descrizione": "Usa l'abbonamento già attivo, nessun costo a consumo. "
+        "Circa tre minuti per una call di un'ora. La trascrizione viene inviata ad Anthropic.",
+        "model": "sonnet",
+        "esce_dal_computer": True,
+        "costo_ora_eur": None,
+        "minuti_per_ora": 3,
+        "rimedio": "Installa Claude Code (l'eseguibile `claude`) e accedi con il tuo abbonamento.",
+    },
+    "anthropic": {
+        "etichetta": "API Anthropic",
+        "descrizione": "Richiede una chiave. Si paga a consumo.",
+        "model": "claude-sonnet-5",
+        "esce_dal_computer": True,
+        "costo_ora_eur": 0.15,
+        "minuti_per_ora": 3,
+        "rimedio": "Aggiungi una chiave API Anthropic nelle Impostazioni.",
+    },
+    "openai": {
+        "etichetta": "API OpenAI",
+        "descrizione": "Richiede una chiave. Si paga a consumo.",
+        "model": "gpt-5-mini",
+        "esce_dal_computer": True,
+        "costo_ora_eur": 0.05,
+        "minuti_per_ora": 3,
+        "rimedio": "Aggiungi una chiave API OpenAI nelle Impostazioni.",
+    },
+}
+
+# Traduce lo stato grezzo del database in quello che l'elenco delle call
+# mostra. 'ready' e 'transcribing' diventano entrambi "registrata": il secondo
+# non viene mai persistito nella pratica attuale, ma trattarlo come il primo
+# invece di sollevare un caso non gestito costa niente ed è più robusto.
+_STATO_SESSIONE: dict[str, str] = {
+    "recording": "recording",
+    "analyzed": "analyzed",
+    "error": "failed",
+}
+
+
+def _traduci_stato_sessione(stato_grezzo: str, *, in_analisi: bool) -> str:
+    """Un valore di StatoSessione ('recording'|'recorded'|'analyzing'|'analyzed'|'failed').
+
+    `in_analisi` viene da fuori perché il database non sa che un'analisi è in
+    corso: quell'informazione vive solo nello stato del processo, non in una
+    colonna. Ha la precedenza su tutto il resto: anche una call segnata come
+    "analyzed" da un giro precedente sta, in questo momento, rianalizzando.
+    """
+    if in_analisi:
+        return "analyzing"
+    return _STATO_SESSIONE.get(stato_grezzo, "recorded")
+
+
+# ------------------------------------------------------ Markdown dell'analisi
+#
+# Il modello scrive Markdown libero, non JSON: la divisione in pezzi va fatta
+# per pattern, tollerando che una riga non torni. Meglio lasciarla fuori dai
+# pezzi che far fallire l'intera risposta — il Markdown grezzo resta comunque
+# disponibile a parte.
+
+_RIGA_SALIENTE = re.compile(
+    r"^\[(?P<t>\d{1,2}:\d{2}(?::\d{2})?)\]\s*\*\*(?P<etichetta>.+?)\*\*\s*[—–-]\s*(?P<corpo>.+)$"
+)
+_MINUTI_IN_RIGA = re.compile(r"\[(?P<t>\d{1,2}:\d{2}(?::\d{2})?)\]")
+
+
+def _tempo_a_ms(testo: str) -> int | None:
+    """'mm:ss' oppure 'h:mm:ss' -> millisecondi. None se non è nel formato atteso."""
+    pezzi = testo.split(":")
+    try:
+        numeri = [int(p) for p in pezzi]
+    except ValueError:
+        return None
+    if len(numeri) == 2:
+        h, m, s = 0, *numeri
+    elif len(numeri) == 3:
+        h, m, s = numeri
+    else:
+        return None
+    return ((h * 60 + m) * 60 + s) * 1000
+
+
+def _salienti_da_markdown(testo: str | None) -> list[dict[str, Any]]:
+    """Ogni riga nel formato '[mm:ss] **Etichetta** — corpo' diventa un PuntoSaliente."""
+    if not testo:
+        return []
+    punti = []
+    for riga in testo.splitlines():
+        m = _RIGA_SALIENTE.match(riga.strip())
+        if not m:
+            continue
+        t_ms = _tempo_a_ms(m.group("t"))
+        if t_ms is None:
+            continue
+        punti.append(
+            {"t_ms": t_ms, "etichetta": m.group("etichetta").strip(), "corpo": m.group("corpo").strip()}
+        )
+    return punti
+
+
+def _riassunto_a_gruppi(testo: str | None) -> list[dict[str, Any]]:
+    """Ogni sezione '## Titolo' diventa un GruppoRiassunto con le sue voci.
+
+    Le voci sono le righe della sezione (puntate o no); i minuti citati fra
+    parentesi quadre in una voce ne diventano il riferimento, quando ci sono.
+    Una sezione senza voci utilizzabili non compare: mostrarla vuota non
+    aiuterebbe chi legge.
+    """
+    if not testo:
+        return []
+    gruppi: list[dict[str, Any]] = []
+    corrente: dict[str, Any] | None = None
+
+    for grezza in testo.splitlines():
+        riga = grezza.strip()
+        if riga.startswith("## "):
+            if corrente and corrente["voci"]:
+                gruppi.append(corrente)
+            corrente = {"titolo": riga[3:].strip(), "voci": []}
+            continue
+        if not riga or corrente is None:
+            continue
+        contenuto = riga[1:].strip() if riga[:1] in ("-", "*") else riga
+        if not contenuto:
+            continue
+        m = _MINUTI_IN_RIGA.search(contenuto)
+        t_ms = _tempo_a_ms(m.group("t")) if m else None
+        corrente["voci"].append({"testo": contenuto, "t_ms": t_ms})
+
+    if corrente and corrente["voci"]:
+        gruppi.append(corrente)
+    return gruppi
 
 
 class StartRequest(BaseModel):
@@ -155,6 +315,12 @@ def create_app(
         "recorder": None,
         "modello": "in_attesa",
         "analisi_in_corso": False,
+        # Quale sessione sta analizzando adesso, le sue quattro fasi e
+        # l'interruttore per fermarla. Tutti None/vuoti quando non c'è
+        # un'analisi in corso.
+        "analisi_session_id": None,
+        "analisi_fasi": [],
+        "analisi_annulla": None,
     }
 
     def load_engine():
@@ -345,14 +511,15 @@ def create_app(
 
     @app.post("/sessions/{session_id}/analyze", dependencies=[Depends(check_token)])
     async def analyze(session_id: int) -> dict[str, Any]:
-        from .ai.analyze import Analizzatore
+        from .ai.analyze import AnalisiInterrotta, Analizzatore
         from .llm.base import LLMError
         from .llm.providers import costruisci
 
         if state["analisi_in_corso"]:
             raise HTTPException(status_code=409, detail="un'analisi è già in corso")
 
-        provider = costruisci(settings.llm())
+        provider_conf = settings.llm()
+        provider = costruisci(provider_conf)
         if not provider.available():
             raise HTTPException(
                 status_code=412,
@@ -360,14 +527,52 @@ def create_app(
                 "avvia llama-server; se usi un'API, controlla la chiave nelle impostazioni.",
             )
 
+        provider_id = provider_conf.get("provider", "local")
+        etichetta_provider = PROVIDERS_INFO.get(provider_id, {}).get("etichetta", provider_id)
+
+        fasi = [
+            {"chiave": chiave, "titolo": titolo, "stato": "attesa", "nota": "in attesa"}
+            for chiave, titolo in FASI_ANALISI
+        ]
+        annulla = threading.Event()
+        state["analisi_fasi"] = fasi
+        state["analisi_session_id"] = session_id
+        state["analisi_annulla"] = annulla
+
+        def _fase_aggiornata(chiave: str, stato: str, nota: str | None) -> None:
+            # Gira nel thread dell'analisi. È anche l'unico punto in cui si
+            # controlla se è stato chiesto di interrompere: è il momento in cui
+            # il lavoro passa da una fase all'altra, l'unico in cui fermarsi non
+            # butta via un risultato a metà.
+            if annulla.is_set():
+                raise AnalisiInterrotta("interrotta dall'utente")
+            for f in fasi:
+                if f["chiave"] == chiave:
+                    f["stato"], f["nota"] = stato, nota
+                    break
+            broadcaster.publish(
+                {"type": "analisi", "stato": "in_corso", "session_id": session_id, "fasi": fasi}
+            )
+
         async def lavora() -> None:
+            inizio = time.time()
             try:
                 # In un thread: l'analisi dura minuti e sul loop bloccherebbe
                 # tutto, compresa la trascrizione di un'eventuale call successiva.
                 analisi = await asyncio.to_thread(
-                    Analizzatore(provider, store).analizza, session_id
+                    Analizzatore(provider, store, on_fase=_fase_aggiornata).analizza, session_id
                 )
+            except AnalisiInterrotta:
+                store.set_session_state(session_id, "error")
+                store.set_analysis_errore(session_id, "Interrotta dall'utente.")
+                broadcaster.publish(
+                    {"type": "analisi", "stato": "errore", "session_id": session_id,
+                     "dettaglio": "Interrotta dall'utente."}
+                )
+                return
             except LLMError as exc:
+                store.set_session_state(session_id, "error")
+                store.set_analysis_errore(session_id, str(exc))
                 broadcaster.publish(
                     {"type": "analisi", "stato": "errore", "session_id": session_id,
                      "dettaglio": str(exc)}
@@ -375,6 +580,8 @@ def create_app(
                 return
             except Exception as exc:  # pragma: no cover
                 log.exception("Analisi della sessione %s non riuscita", session_id)
+                store.set_session_state(session_id, "error")
+                store.set_analysis_errore(session_id, str(exc))
                 broadcaster.publish(
                     {"type": "analisi", "stato": "errore", "session_id": session_id,
                      "dettaglio": str(exc)}
@@ -382,7 +589,19 @@ def create_app(
                 return
             finally:
                 state["analisi_in_corso"] = False
+                state["analisi_session_id"] = None
+                state["analisi_fasi"] = []
+                state["analisi_annulla"] = None
 
+            store.set_analysis_meta(
+                session_id,
+                provider=analisi.provider or provider_id,
+                etichetta_provider=etichetta_provider,
+                modello=analisi.modello or None,
+                costo_usd=round(analisi.costo_usd, 4),
+                durata_ms=int((time.time() - inizio) * 1000),
+                finita_at=int(time.time() * 1000),
+            )
             broadcaster.publish(
                 {
                     "type": "analisi",
@@ -401,7 +620,9 @@ def create_app(
         # aspettava quella risposta per sapere che il lavoro era finito resta ad
         # aspettare per sempre, anche se il lavoro nel frattempo è riuscito.
         state["analisi_in_corso"] = True
-        broadcaster.publish({"type": "analisi", "stato": "in_corso", "session_id": session_id})
+        broadcaster.publish(
+            {"type": "analisi", "stato": "in_corso", "session_id": session_id, "fasi": fasi}
+        )
         asyncio.create_task(lavora())
         return {"session_id": session_id, "stato": "avviata"}
 
@@ -411,9 +632,15 @@ def create_app(
 
         Un'interfaccia che si fida solo degli eventi resta ferma per sempre
         quando ne perde uno — ed è successo: due ore a mostrare "in corso" per
-        un'analisi finita da un pezzo.
+        un'analisi finita da un pezzo. Le fasi tornano per lo stesso motivo:
+        chi apre la finestra a metà lavoro deve vedere a che punto è, non solo
+        che qualcosa sta succedendo.
         """
-        return {"in_corso": bool(state["analisi_in_corso"])}
+        return {
+            "in_corso": bool(state["analisi_in_corso"]),
+            "session_id": state.get("analisi_session_id"),
+            "fasi": state.get("analisi_fasi") or [],
+        }
 
     @app.get("/sessions/{session_id}/analysis", dependencies=[Depends(check_token)])
     async def analysis(session_id: int) -> dict[str, Any]:
@@ -440,10 +667,37 @@ def create_app(
                 for e in store.task_evidence(t["id"])
             ]
             tasks.append(task)
+
+        riassunto = output.get("summary")
+        punti_salienti = output.get("highlights")
+
+        meta_row = store.get_analysis_meta(session_id)
+        meta = None
+        errore = None
+        if meta_row is not None:
+            errore = meta_row["errore"]
+            # finita_at si valorizza solo su un'analisi riuscita (vedi
+            # set_analysis_meta/set_analysis_errore): la sua presenza è come si
+            # distingue "non ancora analizzata" da "analizzata, ma l'ultimo
+            # tentativo di rianalisi è fallito".
+            if meta_row["finita_at"] is not None:
+                meta = {
+                    "provider": meta_row["provider"],
+                    "etichetta_provider": meta_row["etichetta_provider"],
+                    "modello": meta_row["modello"],
+                    "costo_usd": meta_row["costo_usd"],
+                    "durata_ms": meta_row["durata_ms"],
+                    "finita_at": meta_row["finita_at"],
+                }
+
         return {
-            "riassunto": output.get("summary"),
-            "punti_salienti": output.get("highlights"),
+            "riassunto": riassunto,
+            "punti_salienti": punti_salienti,
+            "riassunto_gruppi": _riassunto_a_gruppi(riassunto),
+            "salienti": _salienti_da_markdown(punti_salienti),
             "tasks": tasks,
+            "meta": meta,
+            "errore": errore,
         }
 
     @app.post("/tasks/{task_id}", dependencies=[Depends(check_token)])
@@ -488,31 +742,15 @@ def create_app(
         attuale = settings.llm()
         elenco = [
             {
-                "id": "local",
-                "etichetta": "Modello locale",
-                "descrizione": "Non esce nulla dal computer. Più lento: "
-                "una call di un'ora richiede una decina di minuti.",
-                "model": attuale.get("model") if attuale.get("provider") == "local" else "gemma-4-12b-it",
-            },
-            {
-                "id": "claude-cli",
-                "etichetta": "Abbonamento Claude",
-                "descrizione": "Usa l'abbonamento già attivo, nessun costo a consumo. "
-                "Circa tre minuti per una call di un'ora. La trascrizione viene inviata ad Anthropic.",
-                "model": "sonnet",
-            },
-            {
-                "id": "anthropic",
-                "etichetta": "API Anthropic",
-                "descrizione": "Richiede una chiave. Si paga a consumo.",
-                "model": "claude-sonnet-5",
-            },
-            {
-                "id": "openai",
-                "etichetta": "API OpenAI",
-                "descrizione": "Richiede una chiave. Si paga a consumo.",
-                "model": "gpt-5-mini",
-            },
+                "id": id_,
+                "etichetta": info["etichetta"],
+                "descrizione": info["descrizione"],
+                "model": attuale.get("model") if attuale.get("provider") == id_ else info["model"],
+                "esce_dal_computer": info["esce_dal_computer"],
+                "costo_ora_eur": info["costo_ora_eur"],
+                "minuti_per_ora": info["minuti_per_ora"],
+            }
+            for id_, info in PROVIDERS_INFO.items()
         ]
 
         for voce in elenco:
@@ -526,6 +764,9 @@ def create_app(
             except Exception:
                 voce["disponibile"] = False
             voce["attivo"] = voce["id"] == attuale.get("provider")
+            # Detto solo quando serve: una voce già utilizzabile non ha nulla
+            # da rimediare.
+            voce["rimedio"] = None if voce["disponibile"] else PROVIDERS_INFO[voce["id"]]["rimedio"]
         return elenco
 
     @app.post("/settings", dependencies=[Depends(check_token)])
@@ -536,15 +777,34 @@ def create_app(
 
     @app.get("/sessions", dependencies=[Depends(check_token)])
     async def sessions(limit: int = 50) -> list[dict[str, Any]]:
+        # n_task e n_da_confermare in una query sola con LEFT JOIN + COUNT
+        # condizionale: l'elenco si ricarica a ogni fine registrazione, e una
+        # query per sessione per contare le task diventerebbe lenta con lo
+        # storico che cresce.
         rows = store.conn.execute(
             """
-            SELECT id, uuid, titolo, piattaforma, started_at, ended_at, durata_ms,
-                   stato, lingua, stt_model
-              FROM sessions ORDER BY started_at DESC LIMIT ?
+            SELECT s.id, s.titolo, s.piattaforma, s.started_at, s.ended_at,
+                   s.durata_ms, s.stato, s.lingua,
+                   COUNT(CASE WHEN t.stato <> 'rejected' THEN 1 END) AS n_task,
+                   COUNT(CASE WHEN t.stato <> 'rejected' AND t.needs_review = 1
+                              THEN 1 END) AS n_da_confermare
+              FROM sessions s
+              LEFT JOIN tasks t ON t.session_id = s.id
+             GROUP BY s.id
+             ORDER BY s.started_at DESC
+             LIMIT ?
             """,
             (limit,),
         )
-        return [dict(r) for r in rows]
+        sessione_in_analisi = state.get("analisi_session_id") if state.get("analisi_in_corso") else None
+        risultato = []
+        for r in rows:
+            voce = dict(r)
+            voce["stato"] = _traduci_stato_sessione(
+                voce["stato"], in_analisi=voce["id"] == sessione_in_analisi
+            )
+            risultato.append(voce)
+        return risultato
 
     @app.get("/sessions/{session_id}/segments", dependencies=[Depends(check_token)])
     async def segments(session_id: int) -> list[dict[str, Any]]:
@@ -606,6 +866,25 @@ def create_app(
             pass
         finally:
             broadcaster.disconnect(ws)
+
+    # -------------------------------------------------------- rotte per argomento
+    #
+    # Montate qui, non definite qui: modelli locali e dispositivi cambiano molto
+    # più spesso del resto e non c'è motivo di farli abitare nella stessa
+    # funzione della registrazione.
+    from .api import Contesto
+    from .api import modelli as api_modelli
+    from .api import sistema as api_sistema
+
+    contesto = Contesto(
+        store=store,
+        settings=settings,
+        db_path=Path(db_path),
+        publish=broadcaster.publish,
+        state=state,
+    )
+    for crea in (api_modelli.crea_router, api_sistema.crea_router):
+        app.include_router(crea(contesto), dependencies=[Depends(check_token)])
 
     app.state.store = store
     app.state.settings = settings

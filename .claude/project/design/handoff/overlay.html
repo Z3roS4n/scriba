@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="it" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Scriba — 3a Overlay</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="harness">
+  <h1>Scriba — 3a Overlay</h1>
+  <div></div>
+  <p>Vetro scuro sempre, anche a tema chiaro: sotto può esserci qualunque cosa. La scena è metà scura e metà chiara apposta, è il caso peggiore. Colori fissi, non presi dai token.</p>
+  <div class="harness__bar"><a href="index.html">Indice</a><a href="prima-apertura.html">1a Prima apertura</a><a href="analizzata.html">1a Analizzata</a><a href="task-prove.html">1a Task e prove</a><a href="rassegna.html">2b Rassegna</a><a href="overlay.html" class="is-current">3a Overlay</a><a href="impostazioni.html">4a Impostazioni</a><a href="dialoghi.html">5 Dialoghi</a><button class="btn" id="theme">Tema scuro</button></div>
+  <div class="stage">
+    <div class="stage__half stage__half--dark"><i></i><b></b></div>
+    <div class="stage__half stage__half--light"><i></i><b></b></div>
+    <div class="overlay is-recording">
+      <div class="overlay__bar">
+        <i class="overlay__dot"></i><span class="overlay__timer">48:31</span>
+        <div class="overlay__spacer"></div>
+        <button class="ovbtn">Scatta</button>
+        <button class="ovbtn ovbtn--stop">Ferma</button>
+        <button class="ovbtn ovbtn--icon" aria-label="Ingrandisci">▢</button>
+        <button class="ovbtn ovbtn--icon" aria-label="Chiudi">✕</button>
+      </div>
+      <div class="overlay__lines">
+        <div class="ovline ovline--me"><span class="ovline__t">46:50</span><span class="ovline__text">Va bene, allora chiudiamo qui il punto sulla dashboard.</span></div>
+        <div class="ovline ovline--other"><span class="ovline__t">47:12</span><span class="ovline__text">Sì, direi che è chiaro per tutti.</span></div>
+        <div class="ovline ovline--other"><span class="ovline__t">47:31</span><span class="ovline__text">Ultima cosa: chi ci mette mano?</span></div>
+        <div class="ovline ovline--other"><span class="ovline__t">48:00</span><span class="ovline__text">Per i mockup se ne occupa Marco, ha già fatto quelli del portale.</span></div>
+        <div class="ovline ovline--me"><span class="ovline__t">48:22</span><span class="ovline__text">Perfetto, gli passo io il contesto e i link al portale.</span></div>
+        <div class="ovline ovline--other"><span class="ovline__t">48:31</span><span class="ovline__text"><span class="is-provisional">Sull’altro punto invece direi di rimandare la decisione a</span><i class="caret"></i></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:var(--sp-8);flex-wrap:wrap">
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <span class="label">NON REGISTRA</span>
+      <div class="overlay" style="height:120px">
+        <div class="overlay__bar">
+          <i class="overlay__dot"></i><span style="font-size:var(--fs-md)">Scriba</span>
+          <div class="overlay__spacer"></div>
+          <button class="ovbtn ovbtn--stop">Registra</button>
+          <button class="ovbtn ovbtn--icon" aria-label="Chiudi">✕</button>
+        </div>
+        <div class="overlay__empty"><span>Non sto registrando.</span><small>Alt+R nasconde · Ctrl+Shift+S scatta</small></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <span class="label">SCREENSHOT APPENA SCATTATO · DUE SECONDI</span>
+      <div class="overlay is-recording" style="height:120px">
+        <div class="overlay__bar">
+          <i class="overlay__dot"></i><span class="overlay__timer">48:44</span>
+          <span class="overlay__flash">Salvato nella trascrizione</span>
+          <div class="overlay__spacer"></div>
+          <button class="ovbtn">Scatta</button>
+        </div>
+        <div class="overlay__shot"><i></i><span>Lo screenshot finisce nella trascrizione al minuto in cui è stato preso.</span></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <span class="label">VARIANTE RIDOTTA · 420×92</span>
+      <div class="overlay overlay--mini is-recording">
+        <div class="overlay__bar">
+          <i class="overlay__dot"></i><span class="overlay__timer">48:31</span>
+          <div class="overlay__spacer"></div>
+          <button class="ovbtn ovbtn--icon" aria-label="Scatta">◎</button>
+          <button class="ovbtn ovbtn--icon" aria-label="Ferma">■</button>
+          <button class="ovbtn ovbtn--icon" aria-label="Ingrandisci">▢</button>
+          <button class="ovbtn ovbtn--icon" aria-label="Chiudi">✕</button>
+        </div>
+        <div class="overlay__lines">
+          <div class="ovline ovline--me"><span class="ovline__text">Perfetto, gli passo io il contesto e i link al portale.</span></div>
+          <div class="ovline ovline--other"><span class="ovline__text"><span class="is-provisional">Sull’altro punto invece direi di rimandare la decisione a</span><i class="caret"></i></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="demo.js"></script>
+</body>
+</html>

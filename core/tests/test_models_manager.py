@@ -142,20 +142,19 @@ class TestCatalogo:
     def test_ogni_modello_dichiara_quanto_pesa(self) -> None:
         # Serve a controllare lo spazio su disco prima di iniziare, e a dirlo
         # all'utente prima di fargli scaricare sette gigabyte.
-        assert all(m.gb > 0 for m in CATALOGO)
+        assert all(m.size_bytes > 0 for m in CATALOGO)
 
     def test_un_modello_sconosciuto_viene_rifiutato(self, manager: ModelsManager) -> None:
         with pytest.raises(ValueError, match="sconosciuto"):
             manager.installa_modello("modello-che-non-esiste")
 
-    def test_lo_stato_elenca_cosa_manca(self, manager: ModelsManager) -> None:
-        stato = manager.stato()
-        assert stato["motore_installato"] is False
-        assert len(stato["modelli"]) == len(CATALOGO)
-        assert all(m["installato"] is False for m in stato["modelli"])
+    def test_lo_stato_elenca_ogni_modello_del_catalogo(self, manager: ModelsManager) -> None:
+        elenco = manager.elenco_modelli()
+        assert len(elenco) == len(CATALOGO)
+        assert all(m["stato"] == "non_installato" for m in elenco)
 
 
 class TestAvvio:
     def test_non_si_avvia_senza_modello(self, manager: ModelsManager) -> None:
-        with pytest.raises(RuntimeError, match="non installato"):
+        with pytest.raises(RuntimeError, match="non è installato"):
             manager.avvia_server("gemma-4-12b")

@@ -1,68 +1,124 @@
 /**
  * Contenuto dell'overlay: le ultime righe di trascrizione e i comandi minimi.
  *
- * Tiene poche righe di proposito. Sta sopra la finestra della call, e una
- * finestra che cresce copre quello che si sta guardando: serve a cogliere con
- * la coda dell'occhio cosa e' appena stato detto, non a rileggere la riunione.
+ * Sta sopra la finestra della call — niente cornice, sempre in primo piano —
+ * quindi il vetro scuro e la sua struttura sono quelli fissati dal handoff
+ * (`.overlay`, `.overlay__bar`, `.ovline`...): qui c'è solo la logica che li
+ * riempie. Tiene poche righe di proposito: serve a cogliere con la coda
+ * dell'occhio cosa è appena stato detto, non a rileggere la riunione.
  */
 
 import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
+import type { Impostazioni, Traccia } from './tipi'
+import { scorciatoiaLeggibile, tempo } from './tipi'
+
 interface Riga {
   chiave: string
-  source: 'mic' | 'loopback'
+  source: Traccia
+  t_ms: number
   testo: string
   provvisoria: boolean
 }
 
-const ETICHETTA: Record<string, string> = { mic: 'Io', loopback: 'Altri' }
-const MAX_RIGHE = 6
+const CLASSE_PARLANTE: Record<Traccia, string> = { mic: 'ovline--me', loopback: 'ovline--other' }
+const MAX_RIGHE_PREDEFINITO = 6
+/** Quanto resta visibile «Salvato nella trascrizione»: il tempo di leggerlo di sfuggita. */
+const DURATA_FLASH_MS = 2000
 
-function tempo(ms: number): string {
-  const t = Math.max(0, Math.floor(ms / 1000))
-  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`
+/** Una riga di trascrizione, con o senza il minuto (la variante ridotta lo nasconde). */
+function LineaOverlay({ riga, conMinuto }: { riga: Riga; conMinuto: boolean }) {
+  return (
+    <div className={`ovline ${CLASSE_PARLANTE[riga.source]}`}>
+      {conMinuto && <span className="ovline__t">{tempo(riga.t_ms)}</span>}
+      <span className="ovline__text">
+        {riga.provvisoria ? (
+          <>
+            <span className="is-provisional">{riga.testo}</span>
+            <i className="caret" />
+          </>
+        ) : (
+          riga.testo
+        )}
+      </span>
+    </div>
+  )
 }
 
 function App() {
   const [righe, setRighe] = useState<Riga[]>([])
   const [registrando, setRegistrando] = useState(false)
-  const [pronto, setPronto] = useState(false)
   const [trascorsi, setTrascorsi] = useState(0)
+  const [ridotto, setRidotto] = useState(false)
+  const [scattoRecente, setScattoRecente] = useState(false)
+  const [scorciatoie, setScorciatoie] = useState<{ overlay: string | null; screenshot: string | null }>({
+    overlay: null,
+    screenshot: null,
+  })
+
   const contatore = useRef(0)
+  const maxRighe = useRef(MAX_RIGHE_PREDEFINITO)
+  const timerFlash = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
+    // Il tipo dell'evento resta `any`: `EventoCore` è un'unione discriminata con
+    // in coda una variante generica (`{ type: string; ... }`) per gli eventi non
+    // ancora tipizzati, e quella variante impedisce a TypeScript di restringere
+    // i campi anche dentro i rami noti come 'transcript'.
     const off = window.scriba.on('core:event', (ev: any) => {
       if (ev.type === 'transcript') {
         setRighe((prec) => {
           // Un parziale e il suo definitivo sono lo stesso pezzo di parlato: si
-          // sostituisce la riga invece di accodarne un'altra.
+          // sostituisce la riga invece di accodarne un'altra, e la chiave resta
+          // la stessa — altrimenti la riga si smonta e rimonta e la lista salta.
           const i = prec.findIndex((r) => r.provvisoria && r.source === ev.source)
           const riga: Riga = {
             chiave: i >= 0 ? prec[i].chiave : `r${contatore.current++}`,
             source: ev.source,
+            t_ms: ev.t_start_ms,
             testo: ev.text,
             provvisoria: !ev.is_final,
           }
           const aggiornate = i >= 0 ? prec.map((r, k) => (k === i ? riga : r)) : [...prec, riga]
-          return aggiornate.slice(-MAX_RIGHE)
+          return aggiornate.slice(-maxRighe.current)
         })
       } else if (ev.type === 'session_started') {
         setRegistrando(true)
         setRighe([])
       } else if (ev.type === 'session_stopped') {
         setRegistrando(false)
+      } else if (ev.type === 'screenshot') {
+        // Arriva per qualunque scatto, non solo quelli presi da qui: la
+        // conferma è dello stesso tipo ovunque sia partito il comando.
+        setScattoRecente(true)
+        clearTimeout(timerFlash.current)
+        timerFlash.current = setTimeout(() => setScattoRecente(false), DURATA_FLASH_MS)
       }
     })
 
     window.scriba.get<{ in_registrazione: boolean }>('/session/state').then((r) => {
       if (r.ok) setRegistrando(Boolean(r.body?.in_registrazione))
     })
-    window.scriba.get<{ modello: string }>('/health').then((r) => {
-      if (r.ok) setPronto(r.body?.modello === 'pronto')
+
+    // La variante ridotta è una preferenza salvata, non uno stato che nasce qui:
+    // si legge da dove la scrive anche la finestra delle impostazioni. Le
+    // scorciatoie mostrate quando non si registra vengono da lì per lo stesso
+    // motivo — scriverle a mano le farebbe divergere alla prima modifica.
+    window.scriba.get<Impostazioni>('/settings').then((r) => {
+      if (!r.ok) return
+      setRidotto(Boolean(r.body?.interfaccia?.overlay_ridotto))
+      if (r.body?.interfaccia?.righe_overlay) maxRighe.current = r.body.interfaccia.righe_overlay
+      setScorciatoie({
+        overlay: r.body?.interfaccia?.scorciatoia_overlay ?? null,
+        screenshot: r.body?.interfaccia?.scorciatoia_screenshot ?? null,
+      })
     })
 
-    return off
+    return () => {
+      off()
+      clearTimeout(timerFlash.current)
+    }
   }, [])
 
   useEffect(() => {
@@ -74,70 +130,110 @@ function App() {
     return () => clearInterval(timer)
   }, [registrando])
 
-  const avvia = async () => {
-    // Dall'overlay non si salta il consenso: si apre la finestra grande, dove
-    // la conferma c'e'. Registrare altre persone non e' un gesto da un clic
-    // dentro una striscia senza cornice.
-    window.scriba.overlay.apriPrincipale()
+  const scatta = () => window.scriba.screenshot()
+  const ferma = () => window.scriba.post('/session/stop')
+  // Dall'overlay non si salta il consenso: si apre la finestra grande, dove la
+  // conferma c'è. Registrare altre persone non è un gesto da un clic dentro una
+  // striscia senza cornice.
+  const apriPrincipale = () => window.scriba.overlay.apriPrincipale()
+  const nascondi = () => window.scriba.overlay.nascondi()
+
+  /**
+   * Passa fra striscia intera e variante ridotta.
+   *
+   * Sta sul pulsante ▢ e non su un doppio clic sulla barra: la barra è zona di
+   * trascinamento (`-webkit-app-region: drag`) e dentro Electron una zona di
+   * trascinamento non riceve eventi del mouse, quindi quel doppio clic non
+   * sarebbe mai arrivato — un comando che sembra esserci e non risponde.
+   *
+   * Nel design ▢ si chiama «Ingrandisci» ed è l'unico comando che, su una
+   * striscia da 420 px, può volere dire quello. La finestra grande resta
+   * raggiungibile dall'area di notifica, dove il comando c'è già.
+   */
+  const alternaRidotto = async () => {
+    const nuovo = await window.scriba.overlay.alternaRidotto()
+    setRidotto(nuovo)
   }
 
-  const ferma = () => window.scriba.post('/session/stop')
+  const righeMostrate = ridotto ? righe.slice(-2) : righe
 
   return (
-    <div className="guscio">
-      <div className="testa">
-        <span className={`spia ${registrando ? 'registra' : pronto ? 'pronto' : ''}`} />
-        <span className="tempo">{registrando ? tempo(trascorsi) : 'Scriba'}</span>
-
-        <button onClick={() => window.scriba.screenshot()} disabled={!registrando} title="Screenshot">
-          Scatta
-        </button>
+    <div className={`overlay ${registrando ? 'is-recording' : ''} ${ridotto ? 'overlay--mini' : ''}`.trim()}>
+      <div className="overlay__bar">
+        <i className="overlay__dot" />
         {registrando ? (
-          <button className="rec" onClick={ferma}>
-            Ferma
-          </button>
+          <span className="overlay__timer">{tempo(trascorsi)}</span>
         ) : (
-          <button onClick={avvia}>Registra</button>
+          <span style={{ fontSize: 'var(--fs-md)' }}>Scriba</span>
         )}
-        <button
-          className="icona"
-          onClick={() => window.scriba.overlay.apriPrincipale()}
-          title="Apri la finestra principale"
-        >
-          ⤢
-        </button>
-        <button className="icona" onClick={() => window.scriba.overlay.nascondi()} title="Nascondi">
-          ✕
-        </button>
+        {scattoRecente && <span className="overlay__flash">Salvato nella trascrizione</span>}
+        <div className="overlay__spacer" />
+        {registrando ? (
+          ridotto ? (
+            <>
+              <button className="ovbtn ovbtn--icon" aria-label="Scatta" onClick={scatta}>
+                ◎
+              </button>
+              <button className="ovbtn ovbtn--icon" aria-label="Ferma" onClick={ferma}>
+                ■
+              </button>
+              <button className="ovbtn ovbtn--icon" aria-label="Ingrandisci la striscia" onClick={alternaRidotto}>
+                ▢
+              </button>
+              <button className="ovbtn ovbtn--icon" aria-label="Chiudi" onClick={nascondi}>
+                ✕
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="ovbtn" onClick={scatta}>
+                Scatta
+              </button>
+              <button className="ovbtn ovbtn--stop" onClick={ferma}>
+                Ferma
+              </button>
+              <button className="ovbtn ovbtn--icon" aria-label="Riduci la striscia" onClick={alternaRidotto}>
+                ▢
+              </button>
+              <button className="ovbtn ovbtn--icon" aria-label="Chiudi" onClick={nascondi}>
+                ✕
+              </button>
+            </>
+          )
+        ) : (
+          <>
+            <button className="ovbtn ovbtn--stop" onClick={apriPrincipale}>
+              Registra
+            </button>
+            <button className="ovbtn ovbtn--icon" aria-label="Chiudi" onClick={nascondi}>
+              ✕
+            </button>
+          </>
+        )}
       </div>
 
-      <div className="righe">
-        {righe.length === 0 ? (
-          <div className="vuoto">
-            {registrando ? (
-              'In ascolto…'
-            ) : (
-              <>
-                Nessuna registrazione in corso.
-                <br />
-                <kbd>Alt</kbd> + <kbd>R</kbd> per nascondere questa striscia.
-              </>
-            )}
+      {registrando ? (
+        scattoRecente && !ridotto ? (
+          <div className="overlay__shot">
+            <i />
+            <span>Lo screenshot finisce nella trascrizione al minuto in cui è stato preso.</span>
           </div>
         ) : (
-          righe.map((r, i) => (
-            <div
-              key={r.chiave}
-              className={`riga ${r.source} ${r.provvisoria ? 'provvisoria' : ''} ${
-                i < righe.length - 3 ? 'vecchia' : ''
-              }`}
-            >
-              <span className="chi">{ETICHETTA[r.source] ?? r.source}</span>
-              <span className="testo">{r.testo}</span>
-            </div>
-          ))
-        )}
-      </div>
+          <div className="overlay__lines">
+            {righeMostrate.map((r) => (
+              <LineaOverlay key={r.chiave} riga={r} conMinuto={!ridotto} />
+            ))}
+          </div>
+        )
+      ) : (
+        <div className="overlay__empty">
+          <span>Non sto registrando.</span>
+          <small>
+            {scorciatoiaLeggibile(scorciatoie.overlay)} nasconde · {scorciatoiaLeggibile(scorciatoie.screenshot)}{' '}
+            scatta
+          </small>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="it" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Scriba — Da analizzare</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="harness">
+  <h1>Scriba — Da analizzare</h1>
+  <div></div>
+  <div class="harness__bar"><a href="index.html">Indice</a><a href="prima-apertura.html">Prima apertura</a><a href="da-analizzare.html" class="is-current">Da analizzare</a><a href="analisi-in-corso.html">Analisi in corso</a><a href="non-riuscita.html">Analisi non riuscita</a><a href="registrazione-silenzio.html">In registrazione, silenzio</a><a href="registrazione-dal-vivo.html">Trascrizione dal vivo</a><a href="analizzata.html">Analizzata</a><a href="task-prove.html">Task e prove</a><button class="btn" id="theme">Tema scuro</button></div>
+  <div class="win">
+      <header class="topbar">
+        <span class="brand">Scriba</span>
+        <div class="status"><i class="status__dot"></i>Pronto</div>
+        
+        <div class="topbar__spacer"></div>
+        <div class="toolbar">
+          <button class="btn is-disabled" disabled>Screenshot</button>
+          <button class="btn">Esporta</button>
+          <button class="btn btn--icon" aria-label="Impostazioni"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="2.4"/><circle cx="8" cy="8" r="6"/></svg></button>
+          <button class="btn btn--rec">Registra</button>
+        </div>
+        <div class="wincontrols"><button>—</button><button>▢</button><button>✕</button></div>
+      </header>
+    <div class="win__body">
+      <aside class="calls">
+        <div class="calls__head"><span class="label">CALL</span><span class="count">5 salvate</span></div>
+        <div class="calls__list">
+        <div class="call is-selected"><span class="call__title">Revisione sprint 24 — dashboard clienti</span><span class="call__meta">12 ago · 14:05<span>·</span>52:14</span><span class="call__status call__status--ok">analizzata</span></div>
+        <div class="call"><span class="call__title">Call #23</span><span class="call__meta">11 ago · 09:30<span>·</span>28:40</span><span class="call__status">registrata</span></div>
+        <div class="call"><span class="call__title">Allineamento fornitore SMS</span><span class="call__meta">9 ago · 16:00<span>·</span>41:52</span><span class="call__status call__status--err">analisi non riuscita</span></div>
+        <div class="call"><span class="call__title">Call #21</span><span class="call__meta">8 ago · 11:15<span>·</span>12:07</span><span class="call__status">registrata</span></div>
+        <div class="call"><span class="call__title">Primo incontro cliente Bertoni</span><span class="call__meta">5 ago · 10:00<span>·</span>1:04:18</span><span class="call__status call__status--ok">analizzata</span></div>
+        </div>
+      </aside>
+      <main class="transcript">
+        <div class="transcript__head"><span class="transcript__title">Revisione sprint 24 — dashboard clienti</span><span class="transcript__meta">12 ago · 52:14</span><span class="legend"><i class="me"></i>Io<i class="other"></i>Altri</span></div>
+        <div class="transcript__body">
+        <div class="line line--other"><span class="line__t">04:12</span><span class="line__who">Altri</span><span class="line__text">Allora, il punto principale di oggi è la dashboard clienti. Sulla parte visiva siamo ancora fermi.</span></div>
+        <div class="line line--me"><span class="line__t">04:31</span><span class="line__who">Io</span><span class="line__text">Sì, non abbiamo ancora niente da mostrare. Nemmeno uno schema.</span></div>
+        <div class="line line--other"><span class="line__t">05:00</span><span class="line__who">Altri</span><span class="line__text">Dovremmo preparare i mockup della dashboard prima di parlarne con loro.</span></div>
+        <div class="line line--me"><span class="line__t">05:14</span><span class="line__who">Io</span><span class="line__text">D’accordo. Serve almeno la vista principale e il dettaglio cliente.</span></div>
+        <div class="line line--other"><span class="line__t">05:39</span><span class="line__who">Altri</span><span class="line__text">E i filtri. Senza filtri non si capisce a cosa serve.</span></div>
+        <div class="shot"><span class="shot__t">06:02</span><div><div class="shot__frame">screenshot 1280×760</div><span class="shot__cap">Schermata condivisa · clicca per aprirla</span></div></div>
+        <div class="line line--me"><span class="line__t">06:20</span><span class="line__who">Io</span><span class="line__text">Questo è il pannello vecchio, lo tengo come riferimento di cosa non rifare.</span></div>
+        <div class="line line--other"><span class="line__t">18:40</span><span class="line__who">Altri</span><span class="line__text">Non mi è chiaro se un utente esterno vede anche i dati degli altri clienti.</span></div>
+        <div class="line line--other"><span class="line__t">19:12</span><span class="line__who">Altri</span><span class="line__text">Comunque va chiarito prima del rilascio, non dopo.</span></div>
+        <div class="line line--me"><span class="line__t">31:44</span><span class="line__who">Io</span><span class="line__text">Quando li vogliamo pronti?</span></div>
+        <div class="line line--other"><span class="line__t">32:00</span><span class="line__who">Altri</span><span class="line__text">Diciamo entro il quattordici, così abbiamo una settimana per rivederli.</span></div>
+        <div class="line line--me"><span class="line__t">32:18</span><span class="line__who">Io</span><span class="line__text">Il quattordici è un venerdì, va bene.</span></div>
+        <div class="line line--other"><span class="line__t">47:31</span><span class="line__who">Altri</span><span class="line__text">Ultima cosa: chi ci mette mano?</span></div>
+        <div class="line line--other"><span class="line__t">48:00</span><span class="line__who">Altri</span><span class="line__text">Per i mockup se ne occupa Marco, ha già fatto quelli del portale.</span></div>
+        <div class="line line--me"><span class="line__t">48:22</span><span class="line__who">Io</span><span class="line__text">Perfetto, gli passo io il contesto e i link al portale.</span></div>
+        </div>
+      </main>
+      <section class="analysis">
+        <div class="pad">
+          <span class="label">ANALISI</span>
+          <p style="font-size:var(--fs-base);line-height:1.6;color:var(--fg2)">Questa call non è ancora stata analizzata.</p>
+          <button class="btn btn--primary btn--block">Analizza la call</button>
+          <div class="kv">
+            <div class="kv__row"><span>Motore</span><b>API Anthropic</b></div>
+            <div class="kv__row"><span>Durata stimata</span><b>circa 3 min</b></div>
+            <div class="kv__row"><span>Costo stimato</span><b>0,04 €</b></div>
+          </div>
+          <!-- conseguenza, non errore: va mostrata anche quando il motore è già scelto -->
+          <div class="callout"><p>La trascrizione di 52 minuti esce da questo computer e viene inviata ad Anthropic.</p></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+<script src="demo.js"></script>
+</body>
+</html>

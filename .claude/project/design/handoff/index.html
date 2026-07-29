@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="it" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Scriba — handoff</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="harness">
+  <h1>Scriba — handoff</h1>
+  <div></div>
+  <p>CSS puro, nessun framework, nessun font di rete, nessun controllo di form nativo. I token stanno in <code>tokens.css</code> (tema chiaro M's Works e tema scuro), i componenti in <code>app.css</code>. <code>demo.js</code> è solo il ponteggio della demo: in React quella logica vive nei componenti. Le regole che il codice deve rispettare stanno in <code>comportamento.md</code>.</p>
+
+  <div style="display:flex;flex-direction:column;gap:var(--sp-7);margin-top:var(--sp-2)">
+    <div style="display:flex;flex-direction:column;gap:var(--sp-3)">
+      <span class="label">1A · FINESTRA PRINCIPALE, TRE COLONNE — UNO STATO PER FILE</span>
+      <div class="harness__bar">
+        <a href="prima-apertura.html">Prima apertura</a>
+        <a href="da-analizzare.html">Da analizzare</a>
+        <a href="analisi-in-corso.html">Analisi in corso</a>
+        <a href="non-riuscita.html">Analisi non riuscita</a>
+        <a href="registrazione-silenzio.html">In registrazione, silenzio</a>
+        <a href="registrazione-dal-vivo.html">Trascrizione dal vivo</a>
+        <a href="analizzata.html">Analizzata</a>
+        <a href="task-prove.html">Task e prove</a>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:var(--sp-3)">
+      <span class="label">LE ALTRE SCHERMATE</span>
+      <div class="harness__bar">
+        <a href="rassegna.html">2b Rassegna task</a>
+        <a href="overlay.html">3a Overlay</a>
+        <a href="impostazioni.html">4a Impostazioni</a>
+        <a href="dialoghi.html">5 Dialoghi e momenti</a>
+        <a href="comportamento.md">comportamento.md</a>
+        <button class="btn" id="theme">Tema scuro</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="demo.js"></script>
+</body>
+</html>

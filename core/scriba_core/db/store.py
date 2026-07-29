@@ -20,6 +20,25 @@ from pathlib import Path
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 SCHEMA_VERSION = 1
 
+# Tabella aggiunta per l'esito dell'analisi, tenuta fuori da schema.sql invece
+# di modificarlo: session_id come chiave permette un UPSERT che aggiorna
+# l'ultimo tentativo senza doverlo cercare prima. `errore` e le altre colonne
+# si aggiornano indipendentemente (vedi set_analysis_meta/set_analysis_errore):
+# una call già analizzata con successo deve continuare a mostrare quel
+# risultato anche se un "Rianalizza" successivo fallisce.
+_SCHEMA_EXTRA = """
+CREATE TABLE IF NOT EXISTS analysis_meta (
+  session_id          INTEGER PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
+  provider            TEXT,
+  etichetta_provider  TEXT,
+  modello             TEXT,
+  costo_usd           REAL,
+  durata_ms           INTEGER,
+  finita_at           INTEGER,
+  errore              TEXT
+);
+"""
+
 
 @dataclass(frozen=True)
 class Segment:
@@ -96,6 +115,7 @@ class Store:
     def _migrate(self) -> None:
         conn = self.conn
         conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+        conn.executescript(_SCHEMA_EXTRA)
         row = conn.execute("SELECT MAX(version) AS v FROM schema_version").fetchone()
         if row is None or row["v"] is None:
             conn.execute("INSERT INTO schema_version(version) VALUES (?)", (SCHEMA_VERSION,))
@@ -494,3 +514,116 @@ class Store:
                 (task_id,),
             )
         )
+
+    # ----------------------------------------------------------- esito analisi
+
+    def set_analysis_meta(
+        self,
+        session_id: int,
+        *,
+        provider: str | None,
+        etichetta_provider: str | None,
+        modello: str | None,
+        costo_usd: float | None,
+        durata_ms: int | None,
+        finita_at: int,
+    ) -> None:
+        """Registra un'analisi riuscita, azzerando l'errore di un tentativo precedente.
+
+        Una nuova analisi finita bene rende irrilevante un eventuale fallimento
+        prima di questa: non ha senso continuare a mostrare "ultimo tentativo
+        fallito" sopra un risultato buono.
+        """
+        with self.tx() as conn:
+            conn.execute(
+                """
+                INSERT INTO analysis_meta
+                  (session_id, provider, etichetta_provider, modello, costo_usd,
+                   durata_ms, finita_at, errore)
+                VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
+                ON CONFLICT(session_id) DO UPDATE SET
+                  provider = excluded.provider,
+                  etichetta_provider = excluded.etichetta_provider,
+                  modello = excluded.modello,
+                  costo_usd = excluded.costo_usd,
+                  durata_ms = excluded.durata_ms,
+                  finita_at = excluded.finita_at,
+                  errore = NULL
+                """,
+                (session_id, provider, etichetta_provider, modello, costo_usd, durata_ms, finita_at),
+            )
+
+    def set_analysis_errore(self, session_id: int, messaggio: str) -> None:
+        """Registra un tentativo fallito, senza toccare l'esito dell'ultima analisi riuscita.
+
+        Chi ha già una call analizzata deve continuare a vederne il risultato
+        anche se un "Rianalizza" successivo non è andato a segno: si aggiorna
+        solo la colonna dell'errore, non tutta la riga.
+        """
+        with self.tx() as conn:
+            conn.execute(
+                """
+                INSERT INTO analysis_meta
+                  (session_id, provider, etichetta_provider, modello, costo_usd,
+                   durata_ms, finita_at, errore)
+                VALUES (?, NULL, NULL, NULL, NULL, NULL, NULL, ?)
+                ON CONFLICT(session_id) DO UPDATE SET errore = excluded.errore
+                """,
+                (session_id, messaggio),
+            )
+
+    def get_analysis_meta(self, session_id: int) -> sqlite3.Row | None:
+        return self.conn.execute(
+            "SELECT * FROM analysis_meta WHERE session_id = ?", (session_id,)
+        ).fetchone()
+
+    # --------------------------------------------------------- cancellazioni
+
+    def elimina_sessione(self, session_id: int) -> dict[str, list[str]] | None:
+        """Toglie una call per intero: audio, trascrizione, screenshot, task.
+
+        Le tabelle a valle sono in CASCADE (transcript_segments, screenshots,
+        tasks, task_evidence, ai_outputs, analysis_meta): basta cancellare la
+        riga di sessions. I file sul disco, però, un DELETE non li tocca — si
+        raccolgono i percorsi prima di cancellare la riga, così chi chiama può
+        toglierli lui.
+        """
+        with self.tx() as conn:
+            riga = conn.execute(
+                "SELECT audio_mic_path, audio_loop_path FROM sessions WHERE id = ?",
+                (session_id,),
+            ).fetchone()
+            if riga is None:
+                return None
+            audio = [p for p in (riga["audio_mic_path"], riga["audio_loop_path"]) if p]
+            screenshot = [
+                p
+                for r in conn.execute(
+                    "SELECT path, thumb_path FROM screenshots WHERE session_id = ?",
+                    (session_id,),
+                )
+                for p in (r["path"], r["thumb_path"])
+                if p
+            ]
+            conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+            return {"audio": audio, "screenshots": screenshot}
+
+    def azzera_percorsi_audio(self) -> list[str]:
+        """Toglie i riferimenti audio da tutte le sessioni, tenendo il resto.
+
+        Le task e le loro prove restano intatte: puntano a segmenti di
+        trascrizione, non a file audio. Restituisce i percorsi che c'erano,
+        perché toglierli dal disco spetta a chi chiama, non allo store.
+        """
+        with self.tx() as conn:
+            percorsi = [
+                p
+                for r in conn.execute(
+                    "SELECT audio_mic_path, audio_loop_path FROM sessions "
+                    "WHERE audio_mic_path IS NOT NULL OR audio_loop_path IS NOT NULL"
+                )
+                for p in (r["audio_mic_path"], r["audio_loop_path"])
+                if p
+            ]
+            conn.execute("UPDATE sessions SET audio_mic_path = NULL, audio_loop_path = NULL")
+            return percorsi

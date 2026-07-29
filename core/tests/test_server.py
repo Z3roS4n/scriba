@@ -197,6 +197,13 @@ class TestAnalisiNonBlocca:
 
     def test_la_rotta_risponde_subito(self, client: TestClient, monkeypatch) -> None:
         import scriba_core.ai.analyze as modulo_analisi
+        from scriba_core.llm.providers import LocalProvider
+
+        # Qui si misura solo che la rotta non aspetti la fine del lavoro. Senza
+        # questo, il test misurava anche se su questa macchina c'e' un
+        # llama-server acceso: falliva a seconda di cosa era in esecuzione, che
+        # e' il modo piu' rapido di far smettere di guardare i test rossi.
+        monkeypatch.setattr(LocalProvider, "available", lambda self: True)
 
         partita = threading.Event()
         libera = threading.Event()
@@ -300,7 +307,19 @@ class TestAnalisi:
         client.post(auth("/session/stop"))
 
         body = client.get(auth(f"/sessions/{session_id}/analysis")).json()
-        assert body == {"riassunto": None, "punti_salienti": None, "tasks": []}
+        # Il confronto e' esatto di proposito: la forma di questa risposta e' il
+        # contratto con l'interfaccia (ui/renderer/tipi.ts, `Analisi`), e un
+        # campo che compare o sparisce senza che nessuno se ne accorga e' un
+        # pannello che smette di mostrare qualcosa.
+        assert body == {
+            "riassunto": None,
+            "punti_salienti": None,
+            "riassunto_gruppi": [],
+            "salienti": [],
+            "tasks": [],
+            "meta": None,
+            "errore": None,
+        }
 
     def test_modificare_una_task_toglie_il_da_rivedere(self, client: TestClient) -> None:
         client.post(auth("/session/start"), json={})

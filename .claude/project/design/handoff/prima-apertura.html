@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="it" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Scriba — Prima apertura</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="harness">
+  <h1>Scriba — Prima apertura</h1>
+  <div></div>
+  <div class="harness__bar"><a href="index.html">Indice</a><a href="prima-apertura.html" class="is-current">Prima apertura</a><a href="da-analizzare.html">Da analizzare</a><a href="analisi-in-corso.html">Analisi in corso</a><a href="non-riuscita.html">Analisi non riuscita</a><a href="registrazione-silenzio.html">In registrazione, silenzio</a><a href="registrazione-dal-vivo.html">Trascrizione dal vivo</a><a href="analizzata.html">Analizzata</a><a href="task-prove.html">Task e prove</a><button class="btn" id="theme">Tema scuro</button></div>
+  <div class="win">
+      <header class="topbar">
+        <span class="brand">Scriba</span>
+        <div class="status"><i class="status__dot"></i>Pronto</div>
+        
+        <div class="topbar__spacer"></div>
+        <div class="toolbar">
+          <button class="btn is-disabled" disabled>Screenshot</button>
+          <button class="btn">Esporta</button>
+          <button class="btn btn--icon" aria-label="Impostazioni"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="2.4"/><circle cx="8" cy="8" r="6"/></svg></button>
+          <button class="btn btn--rec">Registra</button>
+        </div>
+        <div class="wincontrols"><button>—</button><button>▢</button><button>✕</button></div>
+      </header>
+    <div class="win__body">
+      <aside class="calls">
+        <div class="calls__head"><span class="label">CALL</span></div>
+        <div class="pad" style="padding-top:0">
+          <p style="font-size:var(--fs-md);color:var(--fg4);line-height:1.5">Nessuna call registrata.</p>
+          <p style="font-size:var(--fs-sm);color:var(--fg6);line-height:1.5">Le registrazioni restano su questo computer.</p>
+        </div>
+      </aside>
+      <main class="transcript">
+        <div class="transcript__head"><span class="transcript__title">Nessuna call</span></div>
+        <div class="state">
+          <div class="state__ph"></div>
+          <div>
+            <p class="state__title">Non hai ancora registrato niente</p>
+            <p class="state__body" style="margin-top:var(--sp-2)">Avvia la registrazione quando entri in una call. Sentirai il tuo microfono e l’audio del computer, così la trascrizione contiene tutti.</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:var(--sp-4)">
+            <button class="btn btn--rec">Registra</button>
+            <span class="state__hint">oppure Alt+R per la striscia</span>
+          </div>
+        </div>
+      </main>
+      <section class="analysis">
+        <div class="state"><p class="state__body">Riassunto, punti salienti e task<br>appaiono qui dopo la prima call.</p></div>
+      </section>
+    </div>
+  </div>
+</div>
+<script src="demo.js"></script>
+</body>
+</html>

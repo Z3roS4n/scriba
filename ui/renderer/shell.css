@@ -1,0 +1,26 @@
+/* Adattamento del handoff alla finestra vera.
+
+   Nelle pagine di prova `.win` era un rettangolo disegnato dentro una pagina:
+   misure fisse, bordo, angoli, ombra. Qui `.win` È la finestra, quindi occupa
+   tutto e la cornice la mette il sistema — o meglio non la mette nessuno,
+   perché le finestre sono senza cornice e la barra in alto è la nostra.
+
+   Solo questo. Ogni altra differenza rispetto a app.css sarebbe uno scarto dal
+   design, non un adattamento. */
+
+html, body, #root { height:100%; }
+body { overflow:hidden; }
+
+.win, .win.settings {
+  width:100%; height:100%;
+  min-width:0; min-height:0;
+  border:none; border-radius:0; box-shadow:none;
+}
+
+/* I comandi della finestra sono cliccabili anche se stanno nella zona di
+   trascinamento della barra. */
+.wincontrols, .wincontrols button { -webkit-app-region:no-drag; }
+
+/* L'overlay è una finestra trasparente: il vetro lo disegna .overlay. */
+body.overlay-body { background:transparent; }
+body.overlay-body .overlay { width:100%; height:100%; }

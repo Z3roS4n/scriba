@@ -1,0 +1,97 @@
+/* Scriba — token di design
+   Palette M's Works. Tema chiaro (default) e tema scuro.
+   Applicare data-theme="dark" su <html> per il tema scuro. */
+
+:root {
+  /* superfici */
+  --page:#E9E9EC; --win:#FFFFFF; --chrome:#F7F7F8; --panel:#FBFBFC; --subhead:#F3F3F5;
+  --card:#F7F7F8; --card2:#FFFFFF; --btn:#FFFFFF; --sel:#EEEEF1; --card-settled:#F4F4F6;
+
+  /* linee */
+  --line-soft:#EDEDF0; --line:#E3E3E7; --line2:#D6D6DB; --line3:#C2C2C8; --line4:#AEAEB5; --divider:#E8E8EB;
+
+  /* testo */
+  --fg:#111111; --fg-body:#1C1C20; --fg2:#35353B; --fg3:#55555C;
+  --fg4:#63636A; --fg5:#737379; --fg6:#85858C; --fg7:#96969D;
+
+  /* primario = inchiostro del brand */
+  --pri:#111111; --pri-fg:#FFFFFF; --pri-soft-bg:#111111; --pri-bd:#111111;
+  --pri-chip-bg:#111111; --pri-chip-bd:#111111;
+
+  /* parlanti: nessun secondo colore, solo peso */
+  --me-band:#F1F1F4; --me-fg:#111111; --me-bd:#D6D6DB;
+  --other-band:#FAF6F1; --other-fg:#6E6E76; --other-rule:#A9A9B0;
+
+  /* rosso M's Works: registrazione e conseguenze, nient'altro */
+  --red:#E2231A; --red-fg:#A51A13; --red-text:#7E1710; --red-dim:#A51A13; --red-bar:#E2231A;
+  --red-soft:#FDECEA; --red-soft2:#FCE3E1; --red-soft3:#FEF2F1; --red-bd:#F4C7C3; --red-bd2:#E28A83;
+
+  /* stati delle task */
+  --warn:#B37409; --warn-fg:#7C4F05; --warn-dim:#8B6A2B;
+  --warn-soft:#FDF5E5; --warn-soft2:#F9EBCF; --warn-bd:#EFDCAF; --warn-bd2:#DDBE77;
+  --ok:#1E7A4C; --ok-fg:#15613B; --ok-dim:#2A7350; --ok-soft:#EDF7F1; --ok-bd:#BFE0CE;
+
+  /* pannello prove */
+  --ev-bg:#F2FAF5; --ev-line:#CBE6D8; --ev-card:#FFFFFF; --ev-card-bd:#D6E9DE;
+  --ev-chip-bg:#E7F5ED; --ev-chip-bd:#BFE0CE; --ev-label:#2F7350; --ev-text:#22302A; --ev-row:#EBF7F0;
+
+  --link:#A51A13; --link-hover:#E2231A;
+
+  --stripe:repeating-linear-gradient(115deg,#F2F2F4 0 9px,#E9E9EC 9px 18px);
+  --scrim:rgba(17,17,17,.35);
+  --shadow-win:0 14px 40px -14px rgba(17,17,17,.28);
+  --shadow-pill:0 4px 14px -4px rgba(17,17,17,.25);
+  --shadow-pop:0 18px 44px -12px rgba(17,17,17,.30);
+
+  /* tipografia — nessun font di rete: l'app è offline */
+  --font:"Segoe UI", system-ui, sans-serif;
+  --mono:Consolas, "Cascadia Mono", ui-monospace, monospace;
+  --fs-label:10.5px; --fs-mono:11px; --fs-xs:11.5px; --fs-sm:12px; --fs-md:12.5px;
+  --fs-base:13px; --fs-line:13.5px; --fs-lg:14px; --fs-xl:19px;
+  --lh-tight:1.4; --lh-body:1.55; --lh-loose:1.62;
+  --ls-label:.11em;
+
+  /* spaziature */
+  --sp-1:4px; --sp-2:6px; --sp-3:8px; --sp-4:10px; --sp-5:12px; --sp-6:14px; --sp-7:16px; --sp-8:20px;
+
+  /* raggi */
+  --r-1:3px; --r-2:4px; --r-3:5px; --r-4:6px; --r-pill:16px;
+
+  /* misure fisse della finestra */
+  --w-calls:212px; --w-calls-rail:46px; --w-analysis:392px;
+  --w-analysis-rec:250px; --w-evidence:288px;
+}
+
+[data-theme="dark"] {
+  --page:#08090A; --win:#141416; --chrome:#0E0E10; --panel:#101012; --subhead:#17171A;
+  --card:#1A1A1D; --card2:#17171A; --btn:#1C1C20; --sel:#202024; --card-settled:#16161A;
+
+  --line-soft:#1F1F23; --line:#26262B; --line2:#2F2F35; --line3:#3A3A41; --line4:#48484F; --divider:#2B2B31;
+
+  --fg:#F1F1F3; --fg-body:#E4E4E8; --fg2:#C6C6CC; --fg3:#9E9EA6;
+  --fg4:#8E8E96; --fg5:#7A7A82; --fg6:#68686F; --fg7:#5C5C63;
+
+  --pri:#F1F1F3; --pri-fg:#F1F1F3; --pri-soft-bg:#26262B; --pri-bd:#45454D;
+  --pri-chip-bg:#2A2A30; --pri-chip-bd:#4A4A52;
+
+  --me-band:#1E1E22; --me-fg:#E4E4E8; --me-bd:#33333A;
+  --other-band:#1E1C19; --other-fg:#B3A897; --other-rule:#7A7264;
+
+  --red:#FF4A3D; --red-fg:#FFA6A0; --red-text:#E39A96; --red-dim:#D08883; --red-bar:#FF4A3D;
+  --red-soft:#2A1513; --red-soft2:#331A17; --red-soft3:#241311; --red-bd:#4A211D; --red-bd2:#7E2A24;
+
+  --warn:#E0A64A; --warn-fg:#EBCC97; --warn-dim:#A28A5F;
+  --warn-soft:#241D10; --warn-soft2:#2E2415; --warn-bd:#40321A; --warn-bd2:#4E3D1F;
+  --ok:#4FB185; --ok-fg:#93CFAE; --ok-dim:#7FB79A; --ok-soft:#14231C; --ok-bd:#2A4A38;
+
+  --ev-bg:#101A15; --ev-line:#1F3428; --ev-card:#15201A; --ev-card-bd:#22362B;
+  --ev-chip-bg:#1A2A21; --ev-chip-bd:#2C4737; --ev-label:#74A18A; --ev-text:#CBD5CF; --ev-row:#17251E;
+
+  --link:#FF7A70; --link-hover:#FFA6A0;
+
+  --stripe:repeating-linear-gradient(115deg,#191919 0 9px,#1E1E21 9px 18px);
+  --scrim:rgba(6,6,7,.55);
+  --shadow-win:0 18px 50px -12px rgba(0,0,0,.7);
+  --shadow-pill:0 6px 18px -6px rgba(0,0,0,.8);
+  --shadow-pop:0 20px 48px -12px rgba(0,0,0,.85);
+}

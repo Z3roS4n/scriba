@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="it" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Scriba — 2b Rassegna task</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="harness">
+  <h1>Scriba — 2b Rassegna task</h1>
+  <div></div>
+  <p>Una task alla volta. Ogni campo mostra la frase da cui viene, e la trascrizione a sinistra è ferma sulle righe citate. Conferma passa alla successiva. Quando un campo non ha una frase, lo dice invece di fingere una prova.</p>
+  <div class="harness__bar"><a href="index.html">Indice</a><a href="prima-apertura.html">1a Prima apertura</a><a href="analizzata.html">1a Analizzata</a><a href="task-prove.html">1a Task e prove</a><a href="rassegna.html" class="is-current">2b Rassegna</a><a href="overlay.html">3a Overlay</a><a href="impostazioni.html">4a Impostazioni</a><a href="dialoghi.html">5 Dialoghi</a><button class="btn" id="theme">Tema scuro</button></div>
+  <div class="win">
+    <div class="review__bar">
+      <span style="font-size:var(--fs-base);font-weight:600">Rassegna task</span>
+      <span class="review__count">1 di 5</span>
+      <div class="review__progress"><i style="width:20%"></i></div>
+      <span style="margin-left:auto;font-family:var(--mono);font-size:var(--fs-mono);color:var(--fg5)">Revisione sprint 24 · 12 ago</span>
+      <button class="btn">Esci dalla rassegna</button>
+    </div>
+    <div class="review">
+      <main class="transcript">
+        <div class="transcript__head"><span class="transcript__meta">Trascrizione, ferma sulle righe citate</span><span class="legend"><i class="me"></i>Io<i class="other"></i>Altri</span></div>
+        <div class="transcript__body">
+            <div class="line line--other"><span class="line__t">04:12</span><span class="line__who">Altri</span><span class="line__text">Allora, il punto principale di oggi è la dashboard clienti. Sulla parte visiva siamo ancora fermi.</span></div>
+            <div class="line line--me"><span class="line__t">04:31</span><span class="line__who">Io</span><span class="line__text">Sì, non abbiamo ancora niente da mostrare. Nemmeno uno schema.</span></div>
+            <div class="line line--other is-cited"><span class="line__t">05:00</span><span class="line__who">Altri</span><span class="line__text">Dovremmo preparare i mockup della dashboard prima di parlarne con loro.</span></div>
+            <div class="line line--me"><span class="line__t">05:14</span><span class="line__who">Io</span><span class="line__text">D’accordo. Serve almeno la vista principale e il dettaglio cliente.</span></div>
+            <div class="line line--other"><span class="line__t">05:39</span><span class="line__who">Altri</span><span class="line__text">E i filtri. Senza filtri non si capisce a cosa serve.</span></div>
+            <div class="line line--other"><span class="line__t">18:40</span><span class="line__who">Altri</span><span class="line__text">Non mi è chiaro se un utente esterno vede anche i dati degli altri clienti.</span></div>
+            <div class="line line--me"><span class="line__t">31:44</span><span class="line__who">Io</span><span class="line__text">Quando li vogliamo pronti?</span></div>
+            <div class="line line--other is-cited"><span class="line__t">32:00</span><span class="line__who">Altri</span><span class="line__text">Diciamo entro il quattordici, così abbiamo una settimana per rivederli.</span></div>
+            <div class="line line--me"><span class="line__t">32:18</span><span class="line__who">Io</span><span class="line__text">Il quattordici è un venerdì, va bene.</span></div>
+            <div class="line line--other"><span class="line__t">47:31</span><span class="line__who">Altri</span><span class="line__text">Ultima cosa: chi ci mette mano?</span></div>
+            <div class="line line--other is-cited"><span class="line__t">48:00</span><span class="line__who">Altri</span><span class="line__text">Per i mockup se ne occupa Marco, ha già fatto quelli del portale.</span></div>
+            <div class="line line--me"><span class="line__t">48:22</span><span class="line__who">Io</span><span class="line__text">Perfetto, gli passo io il contesto e i link al portale.</span></div>
+        </div>
+      </main>
+      <aside class="review__side">
+        <div class="review__head">
+          <div style="display:flex;align-items:center;gap:9px">
+            <span class="task__flag">DA CONFERMARE</span>
+            <span style="margin-left:auto;font-family:var(--mono);font-size:var(--fs-mono);color:var(--fg5)">conf. 0,92</span>
+          </div>
+          <h2 class="review__title">Preparare i mockup della dashboard clienti</h2>
+        </div>
+        <div class="review__fields">
+          <div class="field">
+            <div class="field__top"><span class="field__label">Titolo</span><span class="field__value">Preparare i mockup della dashboard clienti</span><button class="btn btn--sm">Modifica</button></div>
+            <div class="field__proof"><div class="field__quote"><button class="ev__t">05:00</button><span>Dovremmo preparare i mockup della dashboard prima di parlarne con loro.</span></div></div>
+          </div>
+          <div class="field">
+            <div class="field__top"><span class="field__label">Responsabile</span><span class="field__value">Marco</span><button class="btn btn--sm">Modifica</button></div>
+            <div class="field__proof"><div class="field__quote"><button class="ev__t">48:00</button><span>Per i mockup se ne occupa Marco, ha già fatto quelli del portale.</span></div></div>
+          </div>
+          <div class="field">
+            <div class="field__top"><span class="field__label">Scadenza</span><span class="field__value">14 ago 2026 · «entro il quattordici»</span><button class="btn btn--sm">Modifica</button></div>
+            <div class="field__proof"><div class="field__quote"><button class="ev__t">32:00</button><span>Diciamo entro il quattordici, così abbiamo una settimana per rivederli.</span></div></div>
+          </div>
+          <div class="field">
+            <div class="field__top"><span class="field__label">Priorità</span><span class="field__value">alta</span><button class="btn btn--sm">Modifica</button></div>
+            <div class="field__proof"><div class="field__quote is-empty"><span>Dedotta dal tono della discussione, non da una frase.</span></div></div>
+          </div>
+        </div>
+        <div class="review__actions">
+          <div style="display:flex;gap:var(--sp-2);align-items:center">
+            <button class="btn btn--confirm" style="font-weight:600">Conferma</button>
+            <button class="btn">Scarta</button>
+            <button class="btn" style="margin-left:auto">‹</button>
+            <button class="btn">Salta ›</button>
+          </div>
+          <span class="review__keys">C conferma e avanza · X scarta e avanza · ← → naviga · Esc torna alla lista</span>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+<script src="demo.js"></script>
+</body>
+</html>

@@ -7,9 +7,11 @@
   "private": true,
   "scripts": {
     "build:main": "esbuild main/index.ts main/preload.ts --bundle --platform=node --target=node20 --external:electron --outdir=dist/main",
-    "build:renderer": "esbuild renderer/index.tsx renderer/overlay.tsx --bundle --minify --target=chrome120 --define:process.env.NODE_ENV=\\\"production\\\" --outdir=dist/renderer --entry-names=[name] && node -e \"require('fs').renameSync('dist/renderer/index.js','dist/renderer/bundle.js')\"",
-    "copy:assets": "node -e \"const{cpSync,mkdirSync}=require('fs');mkdirSync('dist/renderer',{recursive:true});for(const f of ['index.html','style.css','overlay.html','overlay.css'])cpSync('renderer/'+f,'dist/renderer/'+f)\"",
+    "build:renderer": "esbuild renderer/index.tsx renderer/overlay.tsx renderer/avvio-impostazioni.tsx --bundle --minify --target=chrome120 --define:process.env.NODE_ENV=\\\"production\\\" --outdir=dist/renderer --entry-names=[name] && node -e \"require('fs').renameSync('dist/renderer/index.js','dist/renderer/bundle.js')\"",
+    "copy:assets": "node -e \"const{cpSync,mkdirSync}=require('fs');mkdirSync('dist/renderer',{recursive:true});for(const f of ['index.html','overlay.html','impostazioni.html','tokens.css','app.css','shell.css'])cpSync('renderer/'+f,'dist/renderer/'+f)\"",
     "typecheck": "tsc --noEmit",
+    "confronta": "node scripts/confronta-handoff.mjs",
+    "anteprima": "npm run build && node -e \"const{cpSync}=require('fs');cpSync('../.claude/project/design/handoff','scripts/anteprima/design',{recursive:true,filter:(s)=>!s.endsWith('.js')})\"",
     "build": "npm run build:main && npm run copy:assets && npm run build:renderer",
     "start": "npm run build && electron .",
     "dev": "npm run build && electron . --dev"

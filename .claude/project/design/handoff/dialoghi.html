@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="it" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Scriba — 5 Dialoghi e momenti</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="harness">
+  <h1>Scriba — 5 Dialoghi e momenti</h1>
+  <div></div>
+  <p>Tre livelli di invadenza. Modale solo quando senza risposta non si può procedere: è il caso del consenso. Prova la spunta: il pulsante si accende.</p>
+  <div class="harness__bar"><a href="index.html">Indice</a><a href="prima-apertura.html">1a Prima apertura</a><a href="analizzata.html">1a Analizzata</a><a href="task-prove.html">1a Task e prove</a><a href="rassegna.html">2b Rassegna</a><a href="overlay.html">3a Overlay</a><a href="impostazioni.html">4a Impostazioni</a><a href="dialoghi.html" class="is-current">5 Dialoghi</a><button class="btn" id="theme">Tema scuro</button></div>
+  <div style="display:flex;gap:36px;align-items:flex-start;flex-wrap:wrap">
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <span class="label">AVVIO REGISTRAZIONE · L’UNICO MODALE</span>
+      <div class="scrimwrap">
+        <div class="scrimwrap__bg"></div><div class="scrimwrap__scrim"></div>
+        <div class="modal">
+          <div class="modal__head"><h2>Registrare questa call</h2><p>Verranno registrati il tuo microfono e l’audio del computer.</p></div>
+          <div class="modal__field"><span class="label">TITOLO (FACOLTATIVO)</span><div class="textfield">Revisione sprint 24</div></div>
+      <div class="consent">
+        <button class="checkbox is-on" data-consent>✓</button>
+        <div class="consent__text">
+          <b>Ho avvisato le persone in call che sto registrando.</b>
+          <span>Registrare gli altri significa trattare i loro dati personali. Questa spunta viene annotata nella sessione, ma non sostituisce l’averglielo detto.</span>
+        </div>
+      </div>
+          <div class="modal__foot"><span class="modal__hint">Invio per registrare</span><button class="btn">Annulla</button><button class="btn btn--go" data-go>Registra</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <span class="label">PRIMA DELLA SPUNTA · IL PULSANTE È SPENTO</span>
+      <div class="modal">
+      <div class="consent">
+        <button class="checkbox" data-consent>✓</button>
+        <div class="consent__text">
+          <b>Ho avvisato le persone in call che sto registrando.</b>
+          <span>Registrare gli altri significa trattare i loro dati personali. Questa spunta viene annotata nella sessione, ma non sostituisce l’averglielo detto.</span>
+        </div>
+      </div>
+        <div class="modal__foot"><span class="modal__hint">Senza la conferma non si registra.</span><button class="btn">Annulla</button><button class="btn btn--go" data-go disabled>Registra</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:36px;align-items:flex-start;flex-wrap:wrap">
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <span class="label">CALL RILEVATA · IN BASSO A DESTRA</span>
+      <div class="toast">
+        <div class="toast__top"><i class="toast__dot"></i><div class="toast__text"><b>Sembra che tu sia in una call su Zoom</b><span>Posso registrarla. Include l’audio degli altri partecipanti, non solo la tua voce.</span></div><button class="btn--link">✕</button></div>
+        <div class="toast__actions"><button class="btn btn--primary btn--sm" style="padding:7px 14px;font-size:var(--fs-md)">Registra</button><button class="btn" style="font-size:var(--fs-md)">No grazie</button><span class="toast__note">torna alla prossima call</span></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <span class="label">ANALISI IN CORSO · SE LA FINESTRA È CHIUSA</span>
+      <div class="toast">
+        <div class="toast__text"><b>Sto analizzando «Revisione sprint 24»</b><span>Estrazione task, 3 di 6 blocchi. Puoi lasciar perdere: ti avviso quando è pronto.</span></div>
+        <div class="progress"><i></i></div>
+        <div class="toast__actions"><button class="btn" style="font-size:var(--fs-md)">Apri Scriba</button><button class="btn" style="font-size:var(--fs-md)">Interrompi</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:var(--sp-4);max-width:700px">
+    <span class="label">ERRORI · IL POSTO DIPENDE DA QUANTO PESANO</span>
+
+    <span class="level">1 · barra in alto — non impedisce niente</span>
+    <div class="notice">La scorciatoia Alt+R è già usata da un’altra applicazione.<span class="notice__spacer"></span><button class="btn btn--sm">Cambia scorciatoia</button><button class="btn--link">✕</button></div>
+
+    <span class="level">2 · dentro il pannello — blocca una funzione sola</span>
+    <div class="alert">
+      <h3>Il modello di analisi non è raggiungibile</h3>
+      <p>Il servizio locale su 127.0.0.1:8080 non risponde. La trascrizione è salva: si può ritentare quando vuoi.</p>
+      <div style="display:flex;gap:var(--sp-2)"><button class="btn btn--primary btn--sm" style="padding:6px 12px;font-size:var(--fs-md)">Avvia il modello</button><button class="btn" style="font-size:var(--fs-md)">Usa un altro motore</button></div>
+    </div>
+
+    <span class="level">3 · prima di cominciare — cambierebbe il risultato senza dirlo</span>
+    <div class="alert">
+      <h3>Nessun dispositivo di loopback</h3>
+      <p>Si registrerebbe solo la tua voce, e te ne accorgeresti a call finita. Serve attivare il mixer stereo o installare un dispositivo di loopback.</p>
+      <div style="display:flex;gap:var(--sp-2)"><button class="btn btn--primary btn--sm" style="padding:6px 12px;font-size:var(--fs-md)">Come si attiva</button><button class="btn" style="font-size:var(--fs-md)">Registra solo la mia voce</button></div>
+    </div>
+
+    <span class="level">4 · nel punto in cui si è premuto — dove serve la risposta</span>
+    <div class="alert alert--inline">
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <p>Spazio insufficiente per scaricare llama-3.3-70b-q4: servono 17 GB, ne restano 12.</p>
+        <div style="display:flex;gap:var(--sp-2)"><button class="btn btn--sm">Libera spazio</button><button class="btn btn--sm">Scegli un modello più piccolo</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="demo.js"></script>
+</body>
+</html>

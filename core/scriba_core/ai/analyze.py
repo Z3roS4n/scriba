@@ -11,12 +11,23 @@ campo si porta dietro il punto della call da cui viene.
 from __future__ import annotations
 
 import json
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 
 from ..db.store import Segment, Store
 from ..llm.base import Completion, LLMProvider
 from . import date_italiane, prompts
+
+
+class AnalisiInterrotta(Exception):
+    """Sollevata dal callback di avanzamento quando l'utente ha chiesto di fermarsi.
+
+    Non viene sollevata da qui dentro: la decisione di interrompere non spetta
+    all'analizzatore, che non sa nemmeno che esiste una richiesta HTTP dietro.
+    Il callback la solleva quando gliela si passa già "armata".
+    """
 
 # Ampiezza delle finestre di estrazione. Volutamente molto sotto al contesto che
 # i modelli dichiarano di reggere: la qualità del recall cala ben prima del
@@ -158,9 +169,21 @@ def _prove_dai_candidati(candidati: list[dict]) -> list[dict]:
 
 
 class Analizzatore:
-    def __init__(self, provider: LLMProvider, store: Store) -> None:
+    def __init__(
+        self,
+        provider: LLMProvider,
+        store: Store,
+        *,
+        on_fase: Callable[[str, str, str | None], None] | None = None,
+    ) -> None:
         self.provider = provider
         self.store = store
+        # Chi chiama scopre a che punto è l'analisi da qui, non frugando nello
+        # stato interno: un callback invece di un getter perché il lavoro dura
+        # minuti e nessuno vuole interrogare a intervalli per saperlo.
+        # Passato dal server, che non è cosa sa dell'analizzatore: qui non si
+        # conosce il broadcaster né il websocket, solo "fase X, stato Y".
+        self.on_fase = on_fase
 
     # ------------------------------------------------------------------ utili
 
@@ -168,6 +191,10 @@ class Analizzatore:
         return self.provider.complete(
             system=sistema, user=testo, schema=schema, max_tokens=max_tokens
         )
+
+    def _avvisa(self, chiave: str, stato: str, nota: str | None = None) -> None:
+        if self.on_fase is not None:
+            self.on_fase(chiave, stato, nota)
 
     @staticmethod
     def _somma(analisi: Analisi, c: Completion) -> None:
@@ -208,7 +235,15 @@ class Analizzatore:
         tutti: list[dict] = []
         completions: list[Completion] = []
 
-        for i, finestra in enumerate(finestre(segmenti)):
+        tutte_le_finestre = finestre(segmenti)
+        n_finestre = len(tutte_le_finestre)
+
+        for i, finestra in enumerate(tutte_le_finestre):
+            # Il numero del blocco è l'unico modo per chi guarda di capire che
+            # un'estrazione lunga sta avanzando e non è ferma: una finestra di
+            # 5000 token su CPU può richiedere più di un minuto da sola.
+            self._avvisa("task", "in_corso", f"{i + 1} di {n_finestre} blocchi")
+
             # A ogni finestra vanno solo le schermate catturate nel suo arco di
             # tempo: una slide mostrata al minuto 40 non aiuta a capire cosa si
             # diceva al minuto 5, e occupa spazio che serve altrove.
@@ -317,23 +352,34 @@ class Analizzatore:
         # quello che si diceva mentre erano sullo schermo.
         schermate = self.store.screenshots(session_id)
 
+        self._avvisa("riassunto", "in_corso")
+        t0 = time.monotonic()
         riassunto = self.riassumi(segmenti, schermate)
         analisi.riassunto = riassunto.text.strip()
         self._somma(analisi, riassunto)
         self._salva_output(session_id, "summary", analisi.riassunto, riassunto, prompts.SUMMARY)
+        self._avvisa("riassunto", "fatta", f"{round(time.monotonic() - t0)} s")
 
+        self._avvisa("salienti", "in_corso")
+        t0 = time.monotonic()
         salienti = self.punti_salienti(segmenti, schermate)
         analisi.punti_salienti = salienti.text.strip()
         self._somma(analisi, salienti)
         self._salva_output(
             session_id, "highlights", analisi.punti_salienti, salienti, prompts.HIGHLIGHTS
         )
+        self._avvisa("salienti", "fatta", f"{round(time.monotonic() - t0)} s")
 
+        # candidati() avvisa "task" finestra per finestra: qui si segna solo
+        # l'inizio, per il caso raro di zero finestre (nessun segmento finale).
+        self._avvisa("task", "in_corso", None)
         candidati, completions = self.candidati(segmenti, schermate)
         for c in completions:
             self._somma(analisi, c)
+        self._avvisa("task", "fatta", f"{len(candidati)} candidati")
 
         if candidati:
+            self._avvisa("unione", "in_corso")
             unione = self.unisci(candidati, quando)
             self._somma(analisi, unione)
             dati = unione.data or {}
@@ -347,6 +393,9 @@ class Analizzatore:
             )
             tasks = self.completa_da_candidati(dati.get("tasks", []), candidati)
             analisi.tasks = self._salva_tasks(session_id, tasks, output_id)
+            self._avvisa("unione", "fatta", f"{len(analisi.tasks)} task")
+        else:
+            self._avvisa("unione", "fatta", "nessun candidato")
 
         self.store.set_session_state(session_id, "analyzed")
         return analisi

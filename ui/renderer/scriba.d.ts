@@ -1,8 +1,9 @@
 /**
  * Cosa il processo principale mette a disposizione delle pagine.
  *
- * Dichiarato una volta sola e condiviso: finestra principale e overlay usano lo
- * stesso ponte, e tenerne due descrizioni separate significa vederle divergere.
+ * Dichiarato una volta sola e condiviso: finestra principale, impostazioni e
+ * overlay usano lo stesso ponte, e tenerne tre descrizioni separate significa
+ * vederle divergere.
  */
 
 export interface RispostaCore<T = unknown> {
@@ -21,14 +22,44 @@ export interface ScribaApi {
 
   screenshot(): Promise<void>
   mostraFile(percorso: string): Promise<void>
+  /** Apre una cartella nell'esplora risorse. Solo percorsi dentro i dati dell'app. */
+  apriCartella(percorso: string): Promise<void>
+  /** Chiede una cartella all'utente. Null se annulla. */
+  scegliCartella(): Promise<string | null>
+
+  /**
+   * Comandi della barra del titolo.
+   *
+   * Le finestre sono senza cornice — la barra in alto la disegniamo noi, perché
+   * quella di Windows ignora il tema scuro — quindi ridurre, ingrandire e
+   * chiudere vanno rifatti a mano.
+   */
+  finestra: {
+    riduci(): Promise<void>
+    ingrandisci(): Promise<void>
+    chiudi(): Promise<void>
+  }
+
+  /** Apre la finestra delle impostazioni, o la porta davanti se è già aperta. */
+  apriImpostazioni(): Promise<void>
 
   overlay: {
     nascondi(): Promise<void>
     apriPrincipale(): Promise<void>
+    /** Passa fra striscia intera e variante ridotta. Restituisce lo stato nuovo. */
+    alternaRidotto(): Promise<boolean>
   }
 
-  /** Rilegge la combinazione dalle impostazioni. Restituisce quella attiva, o null. */
-  registraScorciatoiaOverlay(): Promise<string | null>
+  /** Rilegge le combinazioni dalle impostazioni e le registra. */
+  registraScorciatoie(): Promise<{ overlay: string | null; screenshot: string | null }>
+  /**
+   * Prova a registrare una combinazione senza salvarla.
+   *
+   * Serve al campo che cattura i tasti: Windows rifiuta in silenzio una
+   * combinazione già presa, e senza provarla prima si finirebbe a premere un
+   * tasto che non fa niente.
+   */
+  provaScorciatoia(combinazione: string): Promise<boolean>
 
   /** Eventi dal processo principale. Restituisce la funzione per disiscriversi. */
   on(canale: string, callback: (payload: any) => void): () => void

@@ -21,8 +21,20 @@ PREDEFINITE: dict[str, Any] = {
         "model": "gemma-4-12b-it",
         "api_key": "",
     },
-    "stt": {"provider": "local", "lingua": "it"},
+    "stt": {
+        "provider": "local",
+        "lingua": "it",
+        # None = predefinito di sistema. Valorizzati solo se l'utente sceglie
+        # un dispositivo specifico dalle impostazioni.
+        "microfono_id": None,
+        "loopback_id": None,
+        "filtro_eco": "medio",
+    },
     "analisi_automatica": True,
+    # Aggiorna una nota di lavoro mentre la call è ancora in corso, invece di
+    # aspettare la fine. Spento di default: costa una chiamata al modello ogni
+    # finestra, e non tutti la vogliono accesa per ogni call.
+    "note_incrementali": False,
     "interfaccia": {
         # Scorciatoie globali: funzionano anche quando Scriba non ha il fuoco,
         # che è il punto — durante una call il fuoco ce l'ha la riunione.
@@ -32,6 +44,7 @@ PREDEFINITE: dict[str, Any] = {
         # finestra della call e più cresce più copre quello che serve vedere.
         "righe_overlay": 6,
         "opacita_overlay": 0.92,
+        "overlay_ridotto": False,
     },
     "rilevamento": {
         # Sorveglia il microfono per accorgersi quando si entra in una call.
@@ -42,6 +55,12 @@ PREDEFINITE: dict[str, Any] = {
         # altre persone non è una decisione che spetta a un programma.
         "avvio_automatico": False,
         "conferma_s": 5.0,
+    },
+    "export": {
+        # None = accanto al database, come già fa /export/markdown quando non
+        # gli si passa una destinazione.
+        "cartella": None,
+        "formato": "markdown",
     },
 }
 
