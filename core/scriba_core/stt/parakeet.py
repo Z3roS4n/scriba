@@ -21,6 +21,25 @@ SAMPLE_RATE = 16_000
 MAX_CHUNK_S = 25.0
 
 
+def scarica_modello(*, quantization: str | None = "int8") -> None:
+    """Forza l'acquisizione dei pesi, senza tenere in RAM la sessione dopo.
+
+    `ParakeetEngine.__init__` fa la stessa chiamata al primo utilizzo reale;
+    questa esiste per «Modelli locali», così chi vuole può scaricare i ~640 MB
+    prima di aprire la prima call invece di scoprirlo a metà della prima
+    trascrizione. onnx-asr scarica, mette in cache e costruisce comunque una
+    sessione ONNX in un solo passaggio — non espone un download "puro"
+    separato dal caricamento — quindi il modello resta in memoria per il
+    tempo di questa chiamata e va in garbage collection subito dopo.
+
+    `quantization` è tenuto uguale al default di `ParakeetEngine`: scaricare
+    pesi diversi da quelli che l'app userà davvero sarebbe un download inutile.
+    """
+    import onnx_asr
+
+    onnx_asr.load_model(MODEL_ID, quantization=quantization)
+
+
 class ParakeetEngine:
     """Wrapper sul modello ONNX, utilizzabile da più thread.
 

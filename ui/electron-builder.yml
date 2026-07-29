@@ -1,0 +1,65 @@
+# Configurazione di electron-builder: pacchetto Windows installabile di Scriba.
+#
+# Un file YAML separato invece di un campo "build" dentro package.json: tiene
+# i dettagli di packaging (icone, extraResources, target NSIS) lontani dagli
+# script npm, che restano leggibili. electron-builder lo trova da solo perche'
+# sta accanto a package.json e non c'e' nessun campo "build" li' dentro.
+#
+# Spiegazione di ogni scelta in .claude/project/10-packaging.md.
+
+appId: it.scriba.app
+productName: Scriba
+copyright: Copyright (c) 2026 Scriba
+
+directories:
+  output: release
+  buildResources: build-resources
+
+# Il renderer e' gia' un bundle autosufficiente: esbuild lo impacchetta,
+# React compreso (vedi lo script "build:renderer" in package.json). Al
+# processo principale, a runtime, node_modules non serve: si esclude per
+# intero invece di lasciare che electron-builder porti dentro anche i
+# devDependencies di sviluppo (typescript, esbuild, e Electron stesso, che
+# electron-builder sostituisce comunque con il proprio binario scaricato).
+files:
+  - dist/main/**/*
+  - dist/renderer/**/*
+  - package.json
+  - "!node_modules"
+  - "!**/*.map"
+
+extraResources:
+  # L'eseguibile del core, prodotto da PyInstaller in modalita' onedir (vedi
+  # scripts/pyinstaller/scriba_core.spec). sidecar.ts lo cerca in
+  # `resources/core-dist/scriba_core/scriba_core.exe`: risalendo di una
+  # cartella da `app.getAppPath()` pacchettizzato si arriva esattamente in
+  # `resources/`, che e' dove electron-builder copia questa cartella.
+  - from: ../dist/core/scriba_core
+    to: core-dist/scriba_core
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: ../assets/scriba.ico
+  # Nessuna firma del codice: decisione presa all'inizio del progetto, che e'
+  # personale e open source. Windows mostrera' l'avviso di SmartScreen alla
+  # prima apertura — e' un compromesso accettato, non un difetto da
+  # "aggiustare" con un certificato self-signed (che non toglie l'avviso e
+  # aggiunge solo un altro segreto da gestire).
+  signAndEditExecutable: false
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Scriba
+  # I dati dell'utente (registrazioni, database, screenshot, impostazioni)
+  # stanno in app.getPath('userData'), fuori dalla cartella di installazione:
+  # un disinstallatore che cancella quest'ultima non li tocca. Questa opzione
+  # e' comunque esplicita, cosi' resta scritto nero su bianco che e' una
+  # scelta e non una dimenticanza — vedi la verifica in 10-packaging.md.
+  deleteAppDataOnUninstall: false

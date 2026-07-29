@@ -1,4 +1,5 @@
-"""Scarica e avvia il modello di analisi locale.
+"""Scarica e avvia i modelli locali: analisi (GGUF, via llama-server) e
+trascrizione (Parakeet, via onnx-asr).
 
 Si spedisce `llama-server` come binario invece di dipendere da Ollama o LM
 Studio installati dall'utente: la versione del motore la controlliamo noi, e si
@@ -13,6 +14,14 @@ I download sono da 5 a 17 GB su connessioni domestiche: durano, si interrompono
 e vanno ripresi. Per questo ogni operazione lunga vive in un thread proprio,
 con uno stato per-modello che sopravvive al riavvio dell'applicazione perché è
 letto dal filesystem, non da una variabile in memoria che si perde riavviando.
+
+Parakeet è un caso a parte, non un dettaglio: non è un singolo file GGUF con un
+hash che possiamo fissare, è `onnx-asr` a scaricarlo (più file, in una cache di
+Hugging Face che gestisce lei). Niente ripresa byte a byte, niente sospensione
+vera: fingerle in interfaccia sarebbe peggio che non gestirlo affatto. Un
+`ModelloDisponibile` con `scaricatore` valorizzato prende un percorso separato
+in tutto questo file — vedi i metodi `_gestito` e `_cache_hf()` — che legge lo
+stato vero dalla cache invece di un flag nostro.
 """
 
 from __future__ import annotations
@@ -44,6 +53,52 @@ GH_API = "https://api.github.com/repos/ggml-org/llama.cpp/releases"
 LLAMA_BUILD = "b10151"
 
 
+# --------------------------------------------------------- modelli gestiti da terzi
+#
+# Parakeet non passa da `_scarica`: è `huggingface_hub` (usato da `onnx-asr`
+# sotto banco) a scaricarlo e a tenerlo in cache per conto suo. Le due funzioni
+# qui sotto sono l'unico punto in cui questo file guarda dentro quella cache,
+# così i test possono sostituirle con una finta invece di dover scrivere una
+# cache Hugging Face vera sul disco (il suo formato interno non è nostro da
+# replicare in un test).
+
+
+def _cache_hf() -> list[tuple[str, int, float]]:
+    """Repo presenti nella cache locale di Hugging Face: (repo_id, byte, quando).
+
+    Guardare la cache vera invece di tenere un flag nostro è l'unico modo per
+    cui un modello scaricato da mesi dall'applicazione (Parakeet, al primo
+    avvio) risulti installato senza che nessuno lo dica esplicitamente a
+    questo manager.
+    """
+    try:
+        from huggingface_hub import scan_cache_dir
+
+        info = scan_cache_dir()
+    except Exception:
+        # Cache assente, huggingface_hub non importabile, permessi negati:
+        # in ogni caso, meglio "non installato" (si può sempre riscaricare)
+        # che un errore che blocca l'intera sezione impostazioni.
+        return []
+    return [(repo.repo_id, int(repo.size_on_disk), float(repo.last_modified)) for repo in info.repos]
+
+
+def _cartella_cache_hf() -> Path:
+    """Dove huggingface_hub (e quindi onnx-asr) tiene davvero i pesi scaricati.
+
+    Rispetta HF_HOME/HF_HUB_CACHE come fa la libreria stessa: calcolare questo
+    percorso a mano, senza passare dalla sua costante, rischierebbe di
+    controllare lo spazio libero sul disco sbagliato se l'utente li ha
+    spostati con una variabile d'ambiente.
+    """
+    try:
+        from huggingface_hub import constants
+
+        return Path(constants.HF_HUB_CACHE)
+    except Exception:
+        return Path.home() / ".cache" / "huggingface" / "hub"
+
+
 class _Sospeso(Exception):
     """Il download è stato interrotto volontariamente (sospendi), non da un errore.
 
@@ -71,6 +126,13 @@ class ModelloDisponibile:
     # puntare a un server locale invece che alla rete.
     url_override: str | None = None
     sha256: str | None = None
+    # Valorizzato solo per i modelli la cui acquisizione non passa da questo
+    # file (Parakeet): quando c'è, bypassa tutta la logica GGUF (percorso
+    # singolo, hash, ripresa byte a byte), che per questi modelli non si
+    # applica. `repo` resta comunque il repo Hugging Face vero: è la chiave
+    # con cui si cerca il modello nella cache locale, la stessa che usa la
+    # libreria che lo scarica.
+    scaricatore: Callable[[], None] | None = None
 
     @property
     def url(self) -> str:
@@ -81,6 +143,18 @@ class ModelloDisponibile:
     @property
     def nota(self) -> str:
         return self.descrizione
+
+
+def _scarica_parakeet() -> None:
+    """Avvia il download di Parakeet delegando a onnx-asr.
+
+    Import differito: `stt.parakeet` importa `onnx_asr`, e quel modulo non
+    deve pesare sull'avvio del core per chi non tocca mai questa voce del
+    catalogo.
+    """
+    from .stt.parakeet import scarica_modello
+
+    scarica_modello()
 
 
 CATALOGO: list[ModelloDisponibile] = [
@@ -123,6 +197,28 @@ CATALOGO: list[ModelloDisponibile] = [
         descrizione="Qualità migliore, molto più lento. Solo 3,8 miliardi di parametri "
         "attivi per token: sta in 10 GB di VRAM tenendo gli esperti in RAM.",
         size_bytes=16_947_541_728,
+    ),
+    ModelloDisponibile(
+        id="parakeet-tdt-0.6b-v3",
+        # Repo Hugging Face vero, usato anche per cercare il modello nella
+        # cache locale (vedi `_installato_gestito`). commit/file non si
+        # applicano: onnx-asr risolve da sé quali file scaricare.
+        repo="istupakov/parakeet-tdt-0.6b-v3-onnx",
+        commit="",
+        file="",
+        etichetta="Parakeet TDT 0.6B v3",
+        descrizione="Trascrizione locale predefinita, già in uso dall'applicazione. "
+        "Il download (~640 MB, più file) è gestito da onnx-asr: niente ripresa "
+        "byte a byte né sospensione, ma l'integrità la verifica la libreria "
+        "stessa a ogni caricamento.",
+        # Byte reali misurati sulla cache locale con quantizzazione int8 (la
+        # stessa che usa ParakeetEngine di default): encoder + decoder_joint +
+        # vocab + config. Se onnx-asr cambia i file scaricati questo numero
+        # resta solo una stima per chi non l'ha ancora installato — una volta
+        # installato, `descrivi()` mostra la dimensione vera dalla cache.
+        size_bytes=670_480_039,
+        uso="trascrizione",
+        scaricatore=_scarica_parakeet,
     ),
 ]
 
@@ -313,6 +409,8 @@ class ModelsManager:
         return self.dir / modello.file
 
     def installato(self, modello: ModelloDisponibile) -> bool:
+        if modello.scaricatore is not None:
+            return self._installato_gestito(modello)[0]
         return self.percorso(modello).exists()
 
     @staticmethod
@@ -325,8 +423,24 @@ class ModelsManager:
                 return modello
         raise ValueError(f"Modello sconosciuto: {model_id}")
 
+    @staticmethod
+    def _installato_gestito(modello: ModelloDisponibile) -> tuple[bool, int, float | None]:
+        """(installato, byte davvero occupati, quando) per un modello gestito.
+
+        Legge la cache di Hugging Face invece di un flag nostro: è l'unico modo
+        onesto di sapere se Parakeet c'è già, dato che è la libreria a
+        scaricarlo, non questo file.
+        """
+        for repo_id, byte, quando in _cache_hf():
+            if repo_id == modello.repo:
+                return True, byte, quando
+        return False, 0, None
+
     def descrivi(self, modello: ModelloDisponibile) -> dict:
         """Un `Modello` completo, nella forma esatta di `ui/renderer/tipi.ts`."""
+        if modello.scaricatore is not None:
+            return self._descrivi_gestito(modello)
+
         percorso = self.percorso(modello)
         parziale = self._parziale(percorso)
         rt = self._runtime.get(modello.id)
@@ -390,6 +504,64 @@ class ModelsManager:
             "ram_bytes": ram_bytes,
         }
 
+    def _descrivi_gestito(self, modello: ModelloDisponibile) -> dict:
+        """`Modello` per un download che una libreria esterna gestisce da sola.
+
+        Niente byte progressivi, niente velocità, niente pausa: onnx-asr non ci
+        dà questi agganci. Quello che possiamo garantire è che `stato` e
+        `size_bytes` vengano dalla cache vera sul disco quando è installato,
+        non da un flag nostro che potrebbe disallinearsi da quello che
+        `ParakeetEngine` vede davvero.
+
+        NOTA per chi tocca `ui/renderer/tipi.ts`: `StatoModello` non ha un
+        valore per "in corso, non sospendibile, senza percentuale" — qui si
+        usa `in_verifica`, il più vicino nel vocabolario esistente, ma il
+        testo fisso della UI per quello stato ("controllo dell'integrità ·
+        sha256") non è accurato per un download. Un campo booleano tipo
+        `sospendibile` sul contratto `Modello` renderebbe questo caso onesto
+        anche in interfaccia, invece che solo qui nel backend.
+        """
+        rt = self._runtime.get(modello.id)
+        installato, byte_disco, quando = self._installato_gestito(modello)
+
+        if rt is not None and rt.stato is not None:
+            # Un download è attivo in questo processo: il suo stato vince,
+            # come per i modelli GGUF.
+            stato = rt.stato
+        elif installato:
+            stato = "installato"
+        else:
+            stato = "non_installato"
+
+        return {
+            "id": modello.id,
+            "nome": modello.etichetta,
+            "uso": modello.uso,
+            # Prima dell'installazione è la stima nel catalogo; da installato
+            # in poi è quello che occupa davvero, letto dalla cache.
+            "size_bytes": byte_disco if installato else modello.size_bytes,
+            "stato": stato,
+            # Nessun conteggio byte-a-byte da dare mentre scarica: onnx-asr
+            # non lo espone. 0 finché non è finito, il totale reale a fine
+            # lavoro — mai un progresso inventato.
+            "scaricati_bytes": byte_disco if installato else 0,
+            "velocita_bps": None,
+            "secondi_rimanenti": None,
+            "installato_at": int(quando * 1000) if (installato and quando is not None) else None,
+            # Mentre lavora la nota dice cosa sta succedendo davvero. Serve
+            # perché lo stato riusato è `in_verifica`, e il testo che
+            # l'interfaccia mostra di suo per quello stato parla di controllo
+            # dell'integrità: qui non si sta verificando niente, si sta
+            # scaricando. Una riga che descrive la cosa sbagliata è peggio di
+            # una riga assente.
+            "nota": "scaricamento in corso · non si può sospendere"
+            if stato == "in_verifica"
+            else modello.nota,
+            "errore": rt.errore if rt else None,
+            "endpoint": None,
+            "ram_bytes": None,
+        }
+
     def elenco_modelli(self) -> list[dict]:
         return [self.descrivi(m) for m in self.catalogo]
 
@@ -407,18 +579,29 @@ class ModelsManager:
 
     # -------------------------------------------------------------- download
 
+    @staticmethod
+    def _basta_spazio(cartella: Path, mancano_byte: int) -> tuple[bool, float]:
+        """(basta, GB mancanti) per scrivere `mancano_byte` dentro `cartella`.
+
+        Condiviso fra il percorso GGUF e quello dei modelli gestiti: la
+        regola — controllare PRIMA di scrivere, non a metà — è la stessa,
+        cambia solo su quale cartella (e quindi disco) si controlla.
+        """
+        libero = shutil.disk_usage(cartella).free
+        # Margine del 2%: l'ultimo pezzo di un file da 17 GB non deve fermarsi
+        # per differenze fra la dimensione annunciata e quella davvero scritta.
+        margine = mancano_byte * 1.02
+        basta = libero >= margine
+        mancano_gb = max(0.0, (margine - libero) / 1e9)
+        return basta, mancano_gb
+
     def _controllo_spazio(self, modello: ModelloDisponibile) -> tuple[bool, float, int]:
         """(basta, GB mancanti, byte già presenti nel parziale)."""
         percorso = self.percorso(modello)
         parziale = self._parziale(percorso)
         gia_presenti = parziale.stat().st_size if parziale.exists() else 0
         mancano_byte = max(0, modello.size_bytes - gia_presenti)
-        libero = shutil.disk_usage(self.dir).free
-        # Margine del 2%: l'ultimo pezzo di un file da 17 GB non deve fermarsi
-        # per differenze fra la dimensione annunciata e quella davvero scritta.
-        margine = mancano_byte * 1.02
-        basta = libero >= margine
-        mancano_gb = max(0.0, (margine - libero) / 1e9)
+        basta, mancano_gb = self._basta_spazio(self.dir, mancano_byte)
         return basta, mancano_gb, gia_presenti
 
     def _scarica(
@@ -576,6 +759,9 @@ class ModelsManager:
         scaricamento con il disco già pieno per niente.
         """
         modello = self._trova(model_id)
+        if modello.scaricatore is not None:
+            return self._avvia_download_gestito(modello)
+
         if self.percorso(modello).exists():
             return self.descrivi(modello)
 
@@ -607,6 +793,69 @@ class ModelsManager:
             rt.thread = thread
             thread.start()
         return self.descrivi(modello)
+
+    def _avvia_download_gestito(self, modello: ModelloDisponibile) -> dict:
+        """Avvia, in un thread, l'acquisizione di un modello che si scarica da sé.
+
+        Lo spazio si controlla comunque PRIMA di partire, come per gli altri:
+        è la stessa regola, non fa eccezione solo perché qui non c'è un file
+        singolo da misurare — si controlla il disco della cache Hugging Face,
+        che potrebbe non essere lo stesso di `self.dir` se l'utente ha spostato
+        HF_HOME. Quello che non possiamo offrire è la ripresa byte a byte o
+        una sospensione vera: se il processo muore a metà, è `huggingface_hub`
+        a decidere se riprendere o ricominciare al prossimo avvio, non questo
+        file.
+        """
+        installato, _, _ = self._installato_gestito(modello)
+        if installato:
+            return self.descrivi(modello)
+
+        with self._lock:
+            rt = self._runtime.setdefault(modello.id, _StatoRuntime())
+            if rt.thread is not None and rt.thread.is_alive():
+                return self.descrivi(modello)  # già in corso, la richiesta è idempotente
+
+            basta, mancano_gb = self._basta_spazio(_cartella_cache_hf(), modello.size_bytes)
+            if not basta:
+                rt.stato = "spazio_insufficiente"
+                rt.errore = f"Mancano circa {mancano_gb:.1f} GB liberi."
+                self._pubblica(modello)
+                return self.descrivi(modello)
+
+            # Non è un vero 'in_download': non abbiamo byte né un modo di
+            # sospendere, e l'interfaccia decide cosa mostrare (barra,
+            # bottone Sospendi) in base a questo stato. 'in_verifica' è il
+            # valore più vicino, nel vocabolario che l'interfaccia già
+            # conosce, a "sto lavorando, non si può interrompere" — non è
+            # perfetto (vedi la nota in `_descrivi_gestito`), ma non promette
+            # una sospensione che non esiste.
+            rt.stato = "in_verifica"
+            rt.errore = None
+            rt.scaricati_bytes = 0
+            thread = threading.Thread(
+                target=self._esegui_download_gestito,
+                args=(modello, rt),
+                daemon=True,
+                name=f"scarica-{modello.id}",
+            )
+            rt.thread = thread
+            thread.start()
+        return self.descrivi(modello)
+
+    def _esegui_download_gestito(self, modello: ModelloDisponibile, rt: _StatoRuntime) -> None:
+        try:
+            assert modello.scaricatore is not None
+            modello.scaricatore()
+        except Exception as exc:
+            rt.stato = "errore"
+            rt.errore = str(exc)
+        else:
+            rt.stato = None  # torna a essere derivato dalla cache HF: "installato"
+            rt.errore = None
+        finally:
+            rt.scaricati_bytes = 0
+            rt.thread = None
+            self._pubblica(modello)
 
     def _esegui_download(self, modello: ModelloDisponibile, rt: _StatoRuntime) -> None:
         ultimo_pubblicato = 0.0
@@ -666,6 +915,15 @@ class ModelsManager:
     def sospendi_download(self, model_id: str) -> dict:
         """Ferma il thread di download tenendo il parziale: si riprende dopo."""
         modello = self._trova(model_id)
+        if modello.scaricatore is not None:
+            # Non c'è niente da sospendere: onnx-asr non espone un modo di
+            # interrompere a metà senza perdere il lavoro fatto finora.
+            # L'interfaccia non mostra il bottone finché lo stato resta
+            # 'in_verifica' (mai 'in_download'); se questa richiesta arriva
+            # comunque — un client diverso dall'app, uno stato UI stantio —
+            # è un no-op innocuo invece di un errore o di un'attesa inutile.
+            return self.descrivi(modello)
+
         rt = self._runtime.get(model_id)
         if rt is not None and rt.thread is not None and rt.thread.is_alive():
             rt.annulla.set()
@@ -674,6 +932,20 @@ class ModelsManager:
 
     def elimina_modello(self, model_id: str) -> dict:
         modello = self._trova(model_id)
+
+        if modello.uso == "trascrizione":
+            # Oggi è l'unico motore di trascrizione che l'applicazione sa
+            # usare — caricato all'avvio, non selezionabile — quindi è
+            # sempre "in uso" nel senso che conta: senza, le call non si
+            # trascrivono più. Se in futuro ce ne fosse più di uno tra cui
+            # scegliere, qui servirebbe sapere qual è quello attivo davvero
+            # (informazione che oggi vive in server.py, non in questo
+            # manager) prima di poter permettere l'eliminazione di uno spento.
+            raise RuntimeError(
+                f"{modello.etichetta} è il motore di trascrizione dell'applicazione: "
+                "eliminarlo lascerebbe le call senza modo di essere trascritte."
+            )
+
         if (
             self._server_model_id == model_id
             and self._server is not None

@@ -196,7 +196,13 @@ function RigaModello({
           {dimensione(m.scaricati_bytes)} di {dimensione(m.size_bytes)} · in pausa
         </span>
       )}
-      {m.stato === 'in_verifica' && <span className="model__meta">controllo dell’integrità · sha256</span>}
+      {/* La nota del core ha la precedenza: non tutti i modelli si scaricano
+          allo stesso modo, e per quelli affidati a una libreria esterna qui
+          non si sta verificando un hash — si sta ancora scaricando. Il testo
+          fisso vale solo quando il core non ha niente di più preciso da dire. */}
+      {m.stato === 'in_verifica' && (
+        <span className="model__meta">{m.nota || 'controllo dell’integrità · sha256'}</span>
+      )}
       {m.stato === 'installato' && m.installato_at != null && (
         <span className="model__meta">installato il {dataBreve(m.installato_at)}</span>
       )}

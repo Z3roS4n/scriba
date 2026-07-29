@@ -31,9 +31,42 @@ FINESTRA_MS = 12_000
 # l'altro ha appena detto — e sopprimerle sarebbe peggio del problema.
 SOGLIA = 0.72
 
+# I tre livelli che l'utente sceglie in Impostazioni > Trascrizione. Il testo
+# che legge lì è «Riconosce quando il microfono riprende l'altoparlante. Se
+# alzi troppo, le sovrapposizioni di voce si perdono»: alzare il livello vuol
+# dire scartare più a cuor leggero, quindi una soglia di somiglianza più
+# bassa (basta assomigliarsi meno per essere giudicata eco).
+#
+# "medio" resta 0.72: è il valore di sempre, calibrato sulla call vera in
+# cima a questo file (somiglianza ~0.9 fra le due tracce). Chi non tocca
+# l'impostazione non deve vedere cambiare la trascrizione.
+# "basso" sale a 0.85: serve una somiglianza quasi verbatim per scartare, e
+# in cambio si accetta di lasciar passare qualche eco più smorzato — quello
+# che "medio" avrebbe preso lo stesso, dato che il caso reale sta a ~0.9.
+# "alto" scende a 0.55: scarta anche quando l'ASR diverge parecchio fra le
+# due tracce (succede, l'eco è più smorzato dell'originale), al prezzo che il
+# testo delle impostazioni dichiara — più sovrapposizioni vere finiscono
+# buttate via.
+SOGLIE_PER_LIVELLO: dict[str, float] = {
+    "basso": 0.85,
+    "medio": SOGLIA,
+    "alto": 0.55,
+}
+
 # Sotto questa lunghezza non si giudica: "sì", "certo", "esatto" compaiono di
 # continuo su entrambe le tracce senza essere eco.
 MIN_PAROLE = 4
+
+
+def soglia_per_livello(livello: str | None) -> float:
+    """La soglia di somiglianza per il livello scelto nelle impostazioni.
+
+    Un livello non riconosciuto — impostazioni salvate da una versione
+    vecchia, file toccato a mano — non deve impedire la registrazione: si
+    ripiega su "medio", lo stesso comportamento di prima che questa scelta
+    esistesse.
+    """
+    return SOGLIE_PER_LIVELLO.get(livello or "medio", SOGLIE_PER_LIVELLO["medio"])
 
 
 def _parole(testo: str) -> list[str]:

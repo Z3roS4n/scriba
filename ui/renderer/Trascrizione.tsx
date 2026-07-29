@@ -20,7 +20,7 @@ import {
   type MouseEvent,
 } from 'react'
 
-import { tempo, type Scatto, type Segmento, type Sessione } from './tipi'
+import { tempo, type Scatto, type Segmento, type Sessione, type Voce } from './tipi'
 
 export interface TrascrizioneHandle {
   /** Scorre alla riga del minuto indicato e la fa lampeggiare una volta. */
@@ -35,6 +35,19 @@ const ETICHETTA: Record<Segmento['source'], string> = { mic: 'Io', loopback: 'Al
  * un'ora di call ricostruirebbe centinaia di righe a ogni parola nuova.
  */
 const Riga = memo(function Riga({ s, citata }: { s: Segmento; citata: boolean }) {
+  // Il microfono e' per definizione una persona sola: resta "Io" anche se la
+  // diarizzazione (fatta a call finita, su un'altra traccia) gli assegnasse
+  // per errore uno speaker.
+  //
+  // Per gli altri vale anche l'etichetta provvisoria, non solo il nome vero:
+  // "Voce 2" e "Voce 3" sono gia' la risposta alla domanda da cui e' partita
+  // questa funzione — quante persone diverse stanno parlando. Aspettare che
+  // l'utente le battezzi tutte prima di mostrarle vorrebbe dire tenere
+  // nascosto proprio il lavoro appena fatto.
+  const chi =
+    s.source === 'mic'
+      ? ETICHETTA.mic
+      : s.speaker?.nome_reale || s.speaker?.label || ETICHETTA.loopback
   return (
     // data-t serve a ritrovare la riga quando si clicca un minuto altrove nella finestra.
     <div
@@ -42,7 +55,7 @@ const Riga = memo(function Riga({ s, citata }: { s: Segmento; citata: boolean })
       data-t={s.t_start_ms}
     >
       <span className="line__t">{tempo(s.t_start_ms)}</span>
-      <span className="line__who">{ETICHETTA[s.source]}</span>
+      <span className="line__who">{chi}</span>
       {/* Provvisorio: colore fioco, MAI corsivo (rallenta la lettura periferica). Alla
           chiusura della frase si toglie solo la classe, la riga non si smonta. */}
       <span className={`line__text ${s.is_final ? '' : 'is-provisional'}`}>
@@ -70,6 +83,59 @@ const RigaScatto = memo(function RigaScatto({
         <span className="shot__cap">Schermata condivisa · clicca per aprirla</span>
       </div>
     </div>
+  )
+})
+
+/**
+ * Una voce trovata dalla diarizzazione e ancora senza nome vero: «Voce 2»,
+ * «Voce 3»... Il campo compare qui, non altrove, perché è leggendo la
+ * trascrizione — dove quell'etichetta provvisoria si vede davvero — che nasce
+ * la domanda "chi è?". Una volta salvato il nome la riga sparisce da sola: il
+ * nome si dà una volta, non si tiene un modulo aperto per sempre.
+ */
+const RigaVoceDaNominare = memo(function RigaVoceDaNominare({
+  voce,
+  onSalva,
+}: {
+  voce: Voce
+  onSalva: (speakerId: number, nome: string) => Promise<boolean>
+}) {
+  const [nome, setNome] = useState('')
+  const [salvando, setSalvando] = useState(false)
+
+  const salva = useCallback(async () => {
+    const pulito = nome.trim()
+    if (!pulito || salvando) return
+    setSalvando(true)
+    const riuscito = await onSalva(voce.id, pulito)
+    setSalvando(false)
+    // Il campo si svuota solo se e' andata bene: se il core ha rifiutato il
+    // nome resta li', pronto a riprovare senza doverlo riscrivere.
+    if (riuscito) setNome('')
+  }, [nome, salvando, onSalva, voce.id])
+
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
+      <span className="chip chip--muted">{voce.label}</span>
+      <input
+        className="textfield"
+        type="text"
+        placeholder="nome vero"
+        value={nome}
+        disabled={salvando}
+        onChange={(e) => setNome(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            salva()
+          }
+        }}
+        style={{ width: 130, padding: '3px 7px', fontSize: 'var(--fs-sm)' }}
+      />
+      <button className="btn btn--sm btn--confirm" onClick={salva} disabled={salvando || !nome.trim()}>
+        {salvando ? '…' : 'Salva'}
+      </button>
+    </span>
   )
 })
 
@@ -101,10 +167,81 @@ export const Trascrizione = forwardRef<
     scorciatoiaStriscia: string | null
     onRegistra: () => void
     onApriScatto: (percorso: string) => void
+    /**
+     * Salva il nome vero di una voce (PATCH .../voci/{id}) e, se riuscito,
+     * aggiorna anche i segmenti di questa finestra: senza, il nome nuovo si
+     * vedrebbe solo riaprendo la call, e il punto di questo comando e'
+     * vederlo subito dove "Voce 2" si stava leggendo un momento prima.
+     */
+    onVoceRinominata: (speakerId: number, nome: string) => void
   }
 >(function Trascrizione(props, ref) {
-  const { sessione, segmenti, scatti, inDiretta, citate, scorciatoiaStriscia, onRegistra, onApriScatto } =
-    props
+  const {
+    sessione,
+    segmenti,
+    scatti,
+    inDiretta,
+    citate,
+    scorciatoiaStriscia,
+    onRegistra,
+    onApriScatto,
+    onVoceRinominata,
+  } = props
+
+  // Le voci trovate dalla diarizzazione, per sapere quali non hanno ancora un
+  // nome vero. Vive qui e non nel pannello analisi perche' e' leggendo la
+  // trascrizione che ci si accorge del problema ("Voce 2" al posto di un
+  // nome), ed e' qui che deve trovarsi la soluzione.
+  const [voci, setVoci] = useState<Voce[]>([])
+
+  const ricaricaVoci = useCallback((id: number) => {
+    window.scriba.get<Voce[]>(`/sessions/${id}/voci`).then((r) => {
+      if (r.ok) setVoci(r.body)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!sessione) {
+      setVoci([])
+      return
+    }
+    ricaricaVoci(sessione.id)
+  }, [sessione?.id, ricaricaVoci])
+
+  // La diarizzazione la si avvia dal pannello analisi, ma l'esito (le voci
+  // nuove) e un rinomino fatto altrove (un'altra finestra) devono arrivare
+  // anche qui senza dover cambiare call e tornare indietro.
+  useEffect(() => {
+    if (!sessione) return
+    const id = sessione.id
+    return window.scriba.on('core:event', (ev: any) => {
+      if (ev?.type !== 'diarizzazione' || ev.session_id !== id) return
+      if (ev.stato === 'fatto' || ev.stato === 'voce_rinominata') ricaricaVoci(id)
+    })
+  }, [sessione, ricaricaVoci])
+
+  const rinominaVoce = useCallback(
+    async (speakerId: number, nome: string): Promise<boolean> => {
+      const r = await window.scriba.patch<{ id: number; nome_reale: string }>(
+        `/sessions/${sessione?.id}/voci/${speakerId}`,
+        { nome_reale: nome },
+      )
+      if (r.ok) {
+        setVoci((prec) => prec.map((v) => (v.id === speakerId ? { ...v, nome_reale: nome, confermato: true } : v)))
+        onVoceRinominata(speakerId, nome)
+      }
+      return r.ok
+    },
+    [sessione?.id, onVoceRinominata],
+  )
+
+  // Solo le voci vere trovate dalla diarizzazione, non "altri" (il cestino
+  // di chi non e' stato assegnato a nessun cluster: rinominarlo come se fosse
+  // una persona sarebbe fuorviante) e non gia' battezzate.
+  const vociDaNominare = useMemo(
+    () => voci.filter((v) => v.label.startsWith('Voce ') && !v.nome_reale),
+    [voci],
+  )
 
   const corpo = useRef<HTMLDivElement>(null)
   const fine = useRef<HTMLDivElement>(null)
@@ -236,6 +373,21 @@ export const Trascrizione = forwardRef<
         </span>
       </div>
 
+      {/* Compare solo finche' resta almeno una voce senza nome: una volta
+          battezzate tutte, la striscia sparisce da sola — il nome si da'
+          una volta, non e' un modulo che resta aperto per sempre. */}
+      {vociDaNominare.length > 0 && (
+        <div
+          className="transcript__head"
+          style={{ borderTop: 'none', flexWrap: 'wrap', rowGap: 'var(--sp-2)', paddingTop: 0 }}
+        >
+          <span className="label">DAI UN NOME ALLE VOCI</span>
+          {vociDaNominare.map((v) => (
+            <RigaVoceDaNominare key={v.id} voce={v} onSalva={rinominaVoce} />
+          ))}
+        </div>
+      )}
+
       {righe.length === 0 && inDiretta ? (
         <div className="state">
           <div className="meter">
@@ -271,7 +423,12 @@ export const Trascrizione = forwardRef<
       {sospesa && righe.length > 0 && (
         <div className="jump">
           <button className="btn" onClick={tornaAlPresente}>
-            Torna al presente · {righeNuove === 1 ? '1 riga nuova' : `${righeNuove} righe nuove`}
+            {/* Il pulsante esiste per dire quante righe sono arrivate: a zero
+                quella frase non ha senso, quindi si tace il conteggio invece
+                di dire "0 righe nuove". */}
+            {righeNuove === 0
+              ? 'Torna al presente'
+              : `Torna al presente · ${righeNuove === 1 ? '1 riga nuova' : `${righeNuove} righe nuove`}`}
           </button>
         </div>
       )}

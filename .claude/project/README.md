@@ -13,6 +13,7 @@ Documenti essenziali per uno sviluppo coerente. **Leggerli prima di implementare
 | [07-bad-practices.md](07-bad-practices.md) | Cosa NON fare (lista viva) |
 | [08-react-next-performance.md](08-react-next-performance.md) *(solo stack React/Next)* | Direttive performance: waterfall, bundle, RSC, re-render |
 | [09-roadmap.md](09-roadmap.md) | Fasi con checklist e criteri di verifica |
+| [10-packaging.md](10-packaging.md) | Come si costruisce l'installer Windows (PyInstaller + electron-builder), dove sono i pezzi, cosa verificare |
 | `reports/` | Report datati `{DATA}-{ORA}.report-{NOME}.md` per ogni modifica completata |
 | `research/` | Note di ricerca datate `{DATA}.{NOME}.md` |
 | `design/` *(solo se il progetto ha un redesign/nuovo design UI)* | Sistema di design, decisioni, gap funzionali — generato da `/design-setup` |

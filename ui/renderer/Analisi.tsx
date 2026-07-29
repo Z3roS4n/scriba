@@ -9,7 +9,7 @@
  */
 
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import type { Analisi, FaseAnalisi, Provider, Sessione, StatoAnalisi, StatoTask, Task } from './tipi'
+import type { Analisi, FaseAnalisi, Provider, Segmento, Sessione, StatoAnalisi, StatoTask, Task } from './tipi'
 import { tempo } from './tipi'
 
 /**
@@ -240,22 +240,173 @@ function SchedeTask({
   )
 }
 
+/**
+ * Cosa questa finestra sa, in un dato momento, di una diarizzazione in corso.
+ *
+ * `'in_corso_altrove'` esiste perche' il modello resta in memoria un'esecuzione
+ * alla volta (vedi la 409 del core): se il tentativo di avvio la trova gia'
+ * occupata da un'altra call, non e' un errore da correggere, e' solo uno stato
+ * da mostrare — diverso da "sta girando qui", che invece ha una frazione e una
+ * nota da seguire.
+ */
+type DiarizStato =
+  | { fase: 'in_corso'; sessionId: number; frazione: number; nota: string }
+  | { fase: 'in_corso_altrove'; messaggio: string }
+  | null
+
+/** Stima in minuti, 20-30 al minuto per ora — la misura vera è nella
+ * docstring di `stt/diarizzazione.py`, non un numero a caso: sotto ai 40
+ * minuti che l'avrebbero resa impraticabile, ma senza un margine comodo. */
+function stimaDiarizzazione(durata_ms: number | null): { min: number; max: number } {
+  const ore = (durata_ms ?? 0) / 3_600_000
+  const min = Math.max(1, Math.round(ore * 20))
+  const max = Math.max(min + 1, Math.round(ore * 30))
+  return { min, max }
+}
+
+/**
+ * Comando per assegnare le voci dentro «altri», accanto a «Rianalizza»: e' lo
+ * stesso posto in cui vive gia' il vocabolario di "avvia un lavoro lungo su
+ * questa call". Un lavoro di venti-trenta minuti non parte con un solo clic —
+ * c'e' un passo di conferma in mezzo, con la stima scritta chiara.
+ */
+function ControlloDiarizzazione({
+  sessione,
+  disponibile,
+  giaDiarizzata,
+  stato,
+  errore,
+  conferma,
+  onChiediConferma,
+  onAnnullaConferma,
+  onAvvia,
+}: {
+  sessione: Sessione
+  /** null finche' non si e' ancora saputo, per non far comparire il comando e poi sparire. */
+  disponibile: boolean | null
+  giaDiarizzata: boolean
+  stato: DiarizStato
+  errore: { sessionId: number; messaggio: string } | null
+  conferma: boolean
+  onChiediConferma: () => void
+  onAnnullaConferma: () => void
+  onAvvia: () => void
+}) {
+  const inCorsoQui = stato?.fase === 'in_corso' && stato.sessionId === sessione.id
+  const inCorsoAltrove =
+    stato?.fase === 'in_corso_altrove' || (stato?.fase === 'in_corso' && stato.sessionId !== sessione.id)
+  const erroreQui = errore && errore.sessionId === sessione.id ? errore : null
+
+  if (disponibile === false) {
+    // Detto, non nascosto: il pacchetto non include pyannote.audio (pesa 800
+    // MB), e chi apre questa call deve saperlo invece di chiedersi perche'
+    // "Voce 2" non diventa mai un nome.
+    return (
+      <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg5)', margin: 0 }}>
+        Distinguere le voci dentro «altri» non è disponibile: manca pyannote.audio, non incluso nel
+        pacchetto. Va installato a parte.
+      </p>
+    )
+  }
+
+  if (disponibile !== true) return null
+
+  if (giaDiarizzata) {
+    return <span className="chip chip--muted">voci distinte</span>
+  }
+
+  if (inCorsoQui) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}>
+        <div className="progress" style={{ width: 90 }}>
+          <i></i>
+        </div>
+        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--fg5)' }}>{stato.nota || 'in corso'}</span>
+      </div>
+    )
+  }
+
+  if (inCorsoAltrove) {
+    return (
+      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--fg5)' }}>
+        {stato.fase === 'in_corso_altrove'
+          ? stato.messaggio
+          : "C'è già una diarizzazione in corso, su un'altra call."}
+      </span>
+    )
+  }
+
+  if (conferma) {
+    const { min, max } = stimaDiarizzazione(sessione.durata_ms)
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', maxWidth: 320 }}>
+        <div className="kv">
+          <div className="kv__row">
+            <span>Durata stimata</span>
+            <b>
+              {min}-{max} min
+            </b>
+          </div>
+        </div>
+        <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg5)', margin: 0 }}>
+          Misurati davvero su questa macchina. Gira in locale: nessun dato esce dal computer. Puoi
+          chiudere la finestra, il lavoro continua e lo ritrovi finito.
+        </p>
+        <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+          <button className="btn btn--sm btn--confirm" onClick={onAvvia}>
+            Avvia
+          </button>
+          <button className="btn btn--sm" onClick={onAnnullaConferma}>
+            Annulla
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (erroreQui) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}>
+        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--red-dim)' }}>{erroreQui.messaggio}</span>
+        <button className="btn btn--sm" onClick={onChiediConferma}>
+          Riprova
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <button className="btn btn--sm" onClick={onChiediConferma}>
+      Distingui le voci
+    </button>
+  )
+}
+
 export function PannelloAnalisi({
   sessione,
+  segmenti,
   registrando,
   compatto,
   onVaiA,
   onCitazioni,
   onProve,
   onRassegna,
+  onRicaricaSegmenti,
 }: {
   sessione: Sessione | null
+  /** Serve solo a sapere se la call e' gia' stata diarizzata (`speaker` non
+   * nullo su almeno un segmento): la trascrizione li ha gia' caricati, non si
+   * rifanno qui la stessa richiesta. */
+  segmenti: Segmento[]
   registrando: boolean
   compatto: boolean
   onVaiA: (t_ms: number) => void
   onCitazioni: (t_ms: number[]) => void
   onProve: (task: Task | null) => void
   onRassegna: (indice: number) => void
+  /** Rete di sicurezza della diarizzazione: ricarica i segmenti (index.tsx)
+   * quando si sospetta che sia finita ma potrebbe essere passato un evento. */
+  onRicaricaSegmenti: () => void
 }) {
   const [analisi, setAnalisi] = useState<Analisi | null>(null)
   const [scheda, setScheda] = useState<'sum' | 'high' | 'task'>('sum')
@@ -264,6 +415,15 @@ export function PannelloAnalisi({
   const [errore, setErrore] = useState<{ messaggio: string; ora: string | null } | null>(null)
   const [providers, setProviders] = useState<Provider[]>([])
   const [selezionataId, setSelezionataId] = useState<number | null>(null)
+
+  // Stato della diarizzazione: non si azzera cambiando call (a differenza di
+  // analisi/fasi/errore sopra) perche' il lock e' del processo, non della
+  // sessione — una diarizzazione partita su un'altra call resta "in corso"
+  // anche sfogliando qui.
+  const [diarizDisponibile, setDiarizDisponibile] = useState<boolean | null>(null)
+  const [diarizStato, setDiarizStato] = useState<DiarizStato>(null)
+  const [diarizErrore, setDiarizErrore] = useState<{ sessionId: number; messaggio: string } | null>(null)
+  const [diarizConferma, setDiarizConferma] = useState(false)
 
   const carica = useCallback(async (id: number) => {
     const r = await window.scriba.get<Analisi>(`/sessions/${id}/analysis`)
@@ -277,7 +437,86 @@ export function PannelloAnalisi({
     window.scriba.get<Provider[]>('/providers').then((r) => {
       if (r.ok) setProviders(r.body)
     })
+    // Idem per la disponibilita' della diarizzazione: dipende da cosa e'
+    // installato su questa macchina, non dalla call che si guarda.
+    window.scriba.get<{ disponibile: boolean }>('/diarizzazione/disponibile').then((r) => {
+      if (r.ok) setDiarizDisponibile(r.body.disponibile)
+    })
   }, [])
+
+  // Il passo di conferma ("venti-trenta minuti, sicuro?") e' per forza legato
+  // alla call che si sta guardando: cambiandola non deve restare aperto su
+  // quella vecchia.
+  useEffect(() => {
+    setDiarizConferma(false)
+  }, [sessione?.id])
+
+  // Se una call e' gia' stata diarizzata almeno un segmento (mic o loopback,
+  // non importa: il flag scatta per l'intera sessione) porta `speaker` non
+  // nullo — vedi `diarizzata_at` in server.py. E' il modo per sapere "e' gia'
+  // stato fatto" senza un campo dedicato nell'elenco call.
+  const giaDiarizzata = useMemo(() => segmenti.some((s) => s.speaker != null), [segmenti])
+
+  // L'avanzamento arriva per eventi, compreso quello partito da un'altra
+  // finestra (il lock e' del processo, non di questa finestra): si ascolta
+  // sempre, non solo mentre si guarda la call in questione.
+  useEffect(() => {
+    return window.scriba.on('core:event', (ev: any) => {
+      if (ev?.type !== 'diarizzazione') return
+      if (ev.stato === 'in_corso') {
+        setDiarizStato({ fase: 'in_corso', sessionId: ev.session_id, frazione: ev.frazione ?? 0, nota: ev.nota ?? '' })
+        setDiarizErrore(null)
+      } else if (ev.stato === 'fatto') {
+        setDiarizStato((c) => (c?.fase === 'in_corso' && c.sessionId === ev.session_id ? null : c))
+      } else if (ev.stato === 'errore') {
+        setDiarizStato((c) => (c?.fase === 'in_corso' && c.sessionId === ev.session_id ? null : c))
+        setDiarizErrore({ sessionId: ev.session_id, messaggio: ev.dettaglio ?? 'Diarizzazione non riuscita.' })
+      }
+    })
+  }, [])
+
+  // Rete di sicurezza, stesso principio del punto 7 sopra per l'analisi: il
+  // core non ha una rotta "stato diarizzazione" dedicata (il lavoro e' troppo
+  // raro e troppo lungo per giustificarne una), quindi si ricontrolla la
+  // verita' con l'unico segnale che il core da' gia': i segmenti, che dopo la
+  // diarizzazione portano tutti `speaker` non nullo.
+  useEffect(() => {
+    if (!sessione || diarizStato?.fase !== 'in_corso' || diarizStato.sessionId !== sessione.id) return
+    const timer = setInterval(onRicaricaSegmenti, 5000)
+    return () => clearInterval(timer)
+  }, [diarizStato, sessione, onRicaricaSegmenti])
+
+  useEffect(() => {
+    if (sessione && diarizStato?.fase === 'in_corso' && diarizStato.sessionId === sessione.id && giaDiarizzata) {
+      setDiarizStato(null)
+    }
+  }, [giaDiarizzata, diarizStato, sessione])
+
+  const avviaDiarizzazione = useCallback(async () => {
+    if (!sessione) return
+    const idSessione = sessione.id
+    setDiarizErrore(null)
+    setDiarizConferma(false)
+    // Ottimista: il pulsante sparisce subito, non al giro di rete. Se il core
+    // rifiuta (409, gia' in corso altrove) si corregge sotto senza che
+    // l'utente abbia visto un lampo di "Distingui le voci" ancora cliccabile.
+    setDiarizStato({ fase: 'in_corso', sessionId: idSessione, frazione: 0, nota: 'avviata' })
+    const r = await window.scriba.post<{ detail?: string }>(`/sessions/${idSessione}/diarizzazione`)
+    if (!r.ok) {
+      if (r.status === 409) {
+        setDiarizStato({
+          fase: 'in_corso_altrove',
+          messaggio: r.body?.detail ?? "C'è già una diarizzazione in corso.",
+        })
+      } else {
+        setDiarizStato((c) => (c?.fase === 'in_corso' && c.sessionId === idSessione ? null : c))
+        setDiarizErrore({
+          sessionId: idSessione,
+          messaggio: r.body?.detail ?? `Diarizzazione non riuscita (${r.status}).`,
+        })
+      }
+    }
+  }, [sessione])
 
   useEffect(() => {
     if (!sessione) {
@@ -605,6 +844,20 @@ export function PannelloAnalisi({
               </p>
             </div>
           )}
+          {/* Indipendente dall'analisi sopra: lavora sull'audio, non sul suo
+              risultato, quindi ha senso anche prima che l'analisi sia mai
+              partita. */}
+          <ControlloDiarizzazione
+            sessione={sessione}
+            disponibile={diarizDisponibile}
+            giaDiarizzata={giaDiarizzata}
+            stato={diarizStato}
+            errore={diarizErrore}
+            conferma={diarizConferma}
+            onChiediConferma={() => setDiarizConferma(true)}
+            onAnnullaConferma={() => setDiarizConferma(false)}
+            onAvvia={avviaDiarizzazione}
+          />
         </div>
       </section>
     )
@@ -630,6 +883,20 @@ export function PannelloAnalisi({
             </span>
           )}
         </div>
+        {/* Riga propria, non incollata a quella di Rianalizza: a 392 px di
+            larghezza (comportamento.md, 8) il passo di conferma — stima più
+            due pulsanti — non ci starebbe nella stessa riga. */}
+        <ControlloDiarizzazione
+          sessione={sessione}
+          disponibile={diarizDisponibile}
+          giaDiarizzata={giaDiarizzata}
+          stato={diarizStato}
+          errore={diarizErrore}
+          conferma={diarizConferma}
+          onChiediConferma={() => setDiarizConferma(true)}
+          onAnnullaConferma={() => setDiarizConferma(false)}
+          onAvvia={avviaDiarizzazione}
+        />
         <div className="tabs" role="tablist">
           <button className={`tab${scheda === 'sum' ? ' is-active' : ''}`} onClick={() => setScheda('sum')}>
             Riassunto

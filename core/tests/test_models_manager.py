@@ -16,7 +16,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scriba_core.models_manager import CATALOGO, ModelsManager  # noqa: E402
+from scriba_core.models_manager import CATALOGO, ModelloDisponibile, ModelsManager  # noqa: E402
 
 
 class FintaRisposta:
@@ -148,7 +148,18 @@ class TestCatalogo:
         with pytest.raises(ValueError, match="sconosciuto"):
             manager.installa_modello("modello-che-non-esiste")
 
-    def test_lo_stato_elenca_ogni_modello_del_catalogo(self, manager: ModelsManager) -> None:
+    def test_lo_stato_elenca_ogni_modello_del_catalogo(
+        self, manager: ModelsManager, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Il catalogo vero include Parakeet, il cui stato "installato" si legge
+        # dalla cache reale di Hugging Face (vedi TestModelloGestito) e non da
+        # `tmp_path`: senza isolarla, questo test dipende da cosa c'è già
+        # scaricato sulla macchina di chi lo esegue, che è esattamente il tipo
+        # di test fragile che va evitato.
+        import scriba_core.models_manager as mm
+
+        monkeypatch.setattr(mm, "_cache_hf", lambda: [])
+
         elenco = manager.elenco_modelli()
         assert len(elenco) == len(CATALOGO)
         assert all(m["stato"] == "non_installato" for m in elenco)
@@ -158,3 +169,176 @@ class TestAvvio:
     def test_non_si_avvia_senza_modello(self, manager: ModelsManager) -> None:
         with pytest.raises(RuntimeError, match="non è installato"):
             manager.avvia_server("gemma-4-12b")
+
+
+class TestModelloGestito:
+    """Parakeet non passa da `_scarica`: è `onnx-asr` (via huggingface_hub) a
+    scaricarlo e tenerlo in cache per conto suo. Qui si simula quella cache —
+    non è nostra da scrivere per davvero in un test, il suo formato è interno
+    a huggingface_hub — per verificare il contratto che conta: lo stato viene
+    da lì, non da un flag; lo spazio si controlla prima; niente sospensione
+    finta; l'eliminazione del motore di trascrizione viene rifiutata.
+    """
+
+    @staticmethod
+    def _modello_gestito(
+        *, size_bytes: int = 1000, scaricatore=None
+    ) -> ModelloDisponibile:
+        return ModelloDisponibile(
+            id="stt-gestito",
+            repo="qualcuno/modello-gestito",
+            commit="",
+            file="",
+            etichetta="Modello gestito di prova",
+            descrizione="Solo per i test.",
+            size_bytes=size_bytes,
+            uso="trascrizione",
+            scaricatore=scaricatore or (lambda: None),
+        )
+
+    def test_parakeet_e_nel_catalogo_come_trascrizione_gestita(self) -> None:
+        parakeet = next(m for m in CATALOGO if m.id == "parakeet-tdt-0.6b-v3")
+        assert parakeet.uso == "trascrizione"
+        assert parakeet.scaricatore is not None
+
+    def test_risulta_installato_se_gia_nella_cache_hf(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Non un flag nostro: se la cache dice che c'è già, deve risultare
+        # installato anche se nessuno lo ha "scaricato" da qui dentro — è
+        # esattamente il caso di Parakeet, in uso da mesi prima di questo
+        # catalogo.
+        modello = self._modello_gestito(size_bytes=999)
+        manager = ModelsManager(tmp_path, catalogo=[modello])
+
+        import scriba_core.models_manager as mm
+
+        monkeypatch.setattr(mm, "_cache_hf", lambda: [(modello.repo, 12_345, 1_700_000_000.0)])
+
+        stato = manager.descrivi(modello)
+        assert stato["stato"] == "installato"
+        assert stato["size_bytes"] == 12_345  # la dimensione vera, non la stima nel catalogo
+        assert stato["installato_at"] == 1_700_000_000_000
+        assert manager.installato(modello) is True
+
+    def test_non_installato_se_assente_dalla_cache(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        modello = self._modello_gestito()
+        manager = ModelsManager(tmp_path, catalogo=[modello])
+
+        import scriba_core.models_manager as mm
+
+        monkeypatch.setattr(mm, "_cache_hf", lambda: [])
+
+        stato = manager.descrivi(modello)
+        assert stato["stato"] == "non_installato"
+        assert stato["size_bytes"] == modello.size_bytes  # solo la stima, non avendone una vera
+        assert manager.installato(modello) is False
+
+    def test_il_download_chiama_lo_scaricatore_e_poi_risulta_installato(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        chiamato: list[bool] = []
+        cache: list[tuple[str, int, float]] = []
+
+        def scaricatore() -> None:
+            chiamato.append(True)
+            cache.append(("qualcuno/modello-gestito", 999, 1_700_000_000.0))
+
+        modello = self._modello_gestito(scaricatore=scaricatore)
+        manager = ModelsManager(tmp_path, catalogo=[modello])
+
+        import scriba_core.models_manager as mm
+
+        monkeypatch.setattr(mm, "_cache_hf", lambda: cache)
+        monkeypatch.setattr(mm, "_cartella_cache_hf", lambda: tmp_path)
+
+        risposta = manager.avvia_download(modello.id)
+        # Mentre lavora non deve mai dirsi "in_download": in interfaccia quello
+        # stato mostra il bottone "Sospendi", che qui non funzionerebbe.
+        assert risposta["stato"] != "in_download"
+
+        manager.attendi_download(modello.id, timeout=5.0)
+        assert chiamato == [True]
+
+        finale = manager.descrivi(modello)
+        assert finale["stato"] == "installato"
+        assert finale["errore"] is None
+
+    def test_un_errore_dello_scaricatore_va_in_stato_errore(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def scaricatore() -> None:
+            raise RuntimeError("la libreria non ha trovato il modello")
+
+        modello = self._modello_gestito(scaricatore=scaricatore)
+        manager = ModelsManager(tmp_path, catalogo=[modello])
+
+        import scriba_core.models_manager as mm
+
+        monkeypatch.setattr(mm, "_cache_hf", lambda: [])
+        monkeypatch.setattr(mm, "_cartella_cache_hf", lambda: tmp_path)
+
+        manager.avvia_download(modello.id)
+        manager.attendi_download(modello.id, timeout=5.0)
+
+        finale = manager.descrivi(modello)
+        assert finale["stato"] == "errore"
+        assert finale["errore"] is not None
+        assert "non ha trovato" in finale["errore"]
+
+    def test_lo_spazio_si_controlla_prima_di_avviare_lo_scaricatore(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        chiamato: list[bool] = []
+        modello = self._modello_gestito(
+            size_bytes=500_000_000_000, scaricatore=lambda: chiamato.append(True)
+        )
+        manager = ModelsManager(tmp_path, catalogo=[modello])
+
+        import scriba_core.models_manager as mm
+
+        monkeypatch.setattr(mm, "_cache_hf", lambda: [])
+        monkeypatch.setattr(mm.shutil, "disk_usage", lambda _path: _DiscoQuasiPieno())
+
+        risposta = manager.avvia_download(modello.id)
+
+        assert risposta["stato"] == "spazio_insufficiente"
+        assert risposta["errore"] is not None
+        assert "GB" in risposta["errore"]
+        assert chiamato == []  # non deve nemmeno aver provato a scaricare
+
+    def test_sospendi_e_un_no_op_innocuo(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        modello = self._modello_gestito()
+        manager = ModelsManager(tmp_path, catalogo=[modello])
+
+        import scriba_core.models_manager as mm
+
+        monkeypatch.setattr(mm, "_cache_hf", lambda: [])
+
+        # Non deve sollevare né restare bloccato: l'interfaccia non mostra mai
+        # il bottone "Sospendi" per questi modelli, ma se la richiesta arriva
+        # comunque (client diverso, stato UI stantio) deve restare innocua.
+        risultato = manager.sospendi_download(modello.id)
+        assert risultato["errore"] is None
+
+    def test_eliminare_il_modello_di_trascrizione_viene_rifiutato(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        modello = self._modello_gestito()
+        manager = ModelsManager(tmp_path, catalogo=[modello])
+
+        import scriba_core.models_manager as mm
+
+        monkeypatch.setattr(mm, "_cache_hf", lambda: [(modello.repo, 999, 1_700_000_000.0)])
+
+        with pytest.raises(RuntimeError, match="trascrizione"):
+            manager.elimina_modello(modello.id)
+
+
+class _DiscoQuasiPieno:
+    free = 2_000_000_000  # 2 GB liberi, molto meno del dovuto per un modello enorme
+    total = 500_000_000_000

@@ -31,6 +31,12 @@ ui/node_modules/
 ui/dist/
 ui/release/
 
+# Output del packaging: eseguibile PyInstaller del core (scripts/build-core.ps1)
+# e cartella di lavoro intermedia. Centinaia di MB, ricostruibili in ogni
+# momento con `npm run dist` — vedi .claude/project/10-packaging.md.
+/dist/
+/build/
+
 # Sistema
 Thumbs.db
 .DS_Store

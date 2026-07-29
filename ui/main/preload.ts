@@ -29,6 +29,16 @@ const api = {
       body: JSON.stringify(body ?? {}),
     }),
 
+  // Serve a una sola rotta oggi (rinominare una voce dopo la diarizzazione,
+  // PATCH /sessions/{id}/voci/{speaker_id}): senza, quella rotta del core
+  // resterebbe irraggiungibile dal renderer, che non riceve mai il token per
+  // parlare col core direttamente. Rispecchia `post` a uno a uno.
+  patch: <T>(path: string, body?: unknown): Promise<Risposta<T>> =>
+    ipcRenderer.invoke('core:request', path, {
+      method: 'PATCH',
+      body: JSON.stringify(body ?? {}),
+    }),
+
   screenshot: (): Promise<void> => ipcRenderer.invoke('screenshot:capture'),
 
   /** Apre la cartella di un file prodotto dall'app, con il file selezionato. */

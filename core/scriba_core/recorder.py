@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 import threading
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -24,8 +24,9 @@ from .audio.capture import DeviceInfo, DualCapture
 from .audio.writer import TrackWriter
 from .db.store import Store
 from .session import SessionClock, State
+from .settings import Settings
 from .stt.base import TranscriptEvent
-from .stt.eco import FiltroEco
+from .stt.eco import FiltroEco, soglia_per_livello
 from .stt.streaming import StreamingConfig, StreamingTranscriber
 
 log = logging.getLogger(__name__)
@@ -38,6 +39,11 @@ class RecordingInfo:
     session_id: int
     started_at_ms: int
     devices: dict[str, DeviceInfo]
+    # Quali sorgenti sono ripiegate sul predefinito perché l'id salvato nelle
+    # impostazioni non esiste più (cuffie staccate, scheda cambiata), e
+    # perché. Vuoto quando tutto è andato come scelto, o quando non c'era
+    # nessuna scelta da rispettare.
+    fallback: dict[str, str] = field(default_factory=dict)
 
 
 class Recorder:
@@ -57,6 +63,7 @@ class Recorder:
         config: StreamingConfig | None = None,
         capture_factory: Callable[..., DualCapture] | None = None,
         audio_dir: Path | str | None = None,
+        settings: Settings | None = None,
     ) -> None:
         self.engine = engine
         self.store = store
@@ -67,6 +74,10 @@ class Recorder:
         # dipendenti dall'hardware della macchina su cui girano.
         self._capture_factory = capture_factory or DualCapture
         self._lock = threading.Lock()
+        # Da qui arrivano il microfono/loopback scelti e il livello del
+        # filtro eco (settings.py, chiavi `stt.*`). None = nessuna
+        # impostazione da rispettare, si tengono i comportamenti di sempre.
+        self.settings = settings
 
         self.clock: SessionClock | None = None
         self.session_id: int | None = None
@@ -77,9 +88,22 @@ class Recorder:
         # che tiene validi i riferimenti che le task avranno su questi segmenti.
         self._open_segments: dict[str, int] = {}
         # Il microfono riprende sempre un po' di quello che esce dalle casse.
-        self._eco = FiltroEco()
+        self._eco = self._nuovo_filtro_eco()
         self._echi_scartati = 0
         self._writers: dict[str, TrackWriter] = {}
+
+    # --------------------------------------------------------- impostazioni
+
+    def _stt_conf(self) -> dict:
+        """La sezione `stt` delle impostazioni correnti, o vuota se non c'è
+        nessun `Settings` collegato (uso da CLI/test senza impostazioni)."""
+        if self.settings is None:
+            return {}
+        return self.settings.tutto().get("stt", {})
+
+    def _nuovo_filtro_eco(self) -> FiltroEco:
+        livello = self._stt_conf().get("filtro_eco")
+        return FiltroEco(soglia=soglia_per_livello(livello))
 
     # ------------------------------------------------------------------ stato
 
@@ -121,7 +145,7 @@ class Recorder:
                 consenso_confermato_at=consenso_confermato_at,
             )
             self._open_segments.clear()
-            self._eco = FiltroEco()
+            self._eco = self._nuovo_filtro_eco()
             self._echi_scartati = 0
 
             # L'audio si salva sempre. Senza, una trascrizione venuta male non
@@ -141,6 +165,14 @@ class Recorder:
                 t.start()
 
             self._capture = self._capture_factory(self.clock, self._feed)
+            # Gli id scelti nelle impostazioni: si assegnano dopo la
+            # costruzione, non passandoli al factory, perché il factory nei
+            # test è spesso una finta scheda audio con una firma fissa
+            # `(clock, feed)` — attributi extra non richiesti restano lì
+            # inutilizzati invece di rompere la chiamata.
+            stt_conf = self._stt_conf()
+            self._capture.mic_id = stt_conf.get("microfono_id")
+            self._capture.loopback_id = stt_conf.get("loopback_id")
             try:
                 devices = self._capture.start()
             except Exception:
@@ -151,10 +183,18 @@ class Recorder:
                 self.clock = None
                 raise
 
+            # Un id salvato che non esiste più (cuffie staccate, scheda
+            # cambiata) non deve bloccare l'avvio: `find_devices` è già
+            # ripiegato sul predefinito, qui si registra solo il perché.
+            fallback = dict(getattr(self._capture, "fallback", None) or {})
+            for sorgente, motivo in fallback.items():
+                log.warning("Dispositivo audio ripiegato sul predefinito (%s): %s", sorgente, motivo)
+
             return RecordingInfo(
                 session_id=self.session_id,
                 started_at_ms=self.clock.started_at_ms,
                 devices=devices,
+                fallback=fallback,
             )
 
     def _feed(self, source: str, samples: np.ndarray, t_ms: int) -> None:

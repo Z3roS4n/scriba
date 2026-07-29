@@ -34,7 +34,18 @@ from .recorder import Recorder
 from .settings import Settings
 from .stt.base import TranscriptEvent
 
+from .ai.note_correnti import GestoreNote
+
 log = logging.getLogger(__name__)
+
+# Quanto aspetta l'analisi automatica prima di cominciare i suoi controlli,
+# dopo che la registrazione è finita. Non è un rallentamento accettato per
+# pigrizia: se nel frattempo arriva una richiesta esplicita — l'utente ha
+# premuto "Analizza" mentre la call stava ancora fermandosi — è quella a dover
+# vincere. Un processo partito da solo non deve mai scavalcare, né tanto meno
+# far fallire con "già in corso", una richiesta che qualcuno ha fatto apposta.
+# Impercettibile rispetto ai minuti che l'analisi vera richiede comunque.
+RITARDO_ANALISI_AUTOMATICA_S = 2.0
 
 # Le quattro fasi mostrate mentre un'analisi gira, nell'ordine in cui accadono
 # davvero. La chiave è quella che ai/analyze.py usa nel suo callback di
@@ -143,6 +154,20 @@ def _tempo_a_ms(testo: str) -> int | None:
     return ((h * 60 + m) * 60 + s) * 1000
 
 
+def _senza_marcatore_tempo(testo: str, marcatore: re.Match[str]) -> str:
+    """Toglie da `testo` il marcatore `[mm:ss]` già estratto altrove come `t_ms`.
+
+    L'interfaccia mostra quel minuto a parte, come chip cliccabile: lasciarlo
+    anche nel testo lo fa comparire due volte nella stessa riga. Si ripulisce
+    anche lo spazio doppio e la punteggiatura rimasta orfana al suo posto,
+    altrimenti il buco lasciato dal marcatore si vede lo stesso.
+    """
+    pulito = testo[: marcatore.start()] + testo[marcatore.end() :]
+    pulito = re.sub(r"\s{2,}", " ", pulito)
+    pulito = re.sub(r"\s+([.,;:!?])", r"\1", pulito)
+    return pulito.strip()
+
+
 def _salienti_da_markdown(testo: str | None) -> list[dict[str, Any]]:
     """Ogni riga nel formato '[mm:ss] **Etichetta** — corpo' diventa un PuntoSaliente."""
     if not testo:
@@ -155,9 +180,14 @@ def _salienti_da_markdown(testo: str | None) -> list[dict[str, Any]]:
         t_ms = _tempo_a_ms(m.group("t"))
         if t_ms is None:
             continue
-        punti.append(
-            {"t_ms": t_ms, "etichetta": m.group("etichetta").strip(), "corpo": m.group("corpo").strip()}
-        )
+        corpo = m.group("corpo").strip()
+        # Il marcatore d'apertura resta fuori da `corpo` per come è fatta la
+        # regex, ma se il modello lo ripete anche in testa al corpo (capita)
+        # si toglie con la stessa cura: è lo stesso minuto già estratto sopra.
+        ripetuto = _MINUTI_IN_RIGA.match(corpo)
+        if ripetuto is not None and _tempo_a_ms(ripetuto.group("t")) == t_ms:
+            corpo = _senza_marcatore_tempo(corpo, ripetuto)
+        punti.append({"t_ms": t_ms, "etichetta": m.group("etichetta").strip(), "corpo": corpo})
     return punti
 
 
@@ -188,6 +218,12 @@ def _riassunto_a_gruppi(testo: str | None) -> list[dict[str, Any]]:
             continue
         m = _MINUTI_IN_RIGA.search(contenuto)
         t_ms = _tempo_a_ms(m.group("t")) if m else None
+        if m is not None and t_ms is not None:
+            # Il minuto va nel chip a parte (t_ms): lasciarlo anche qui lo
+            # duplica nella stessa riga, una volta nel testo e una nel chip.
+            contenuto = _senza_marcatore_tempo(contenuto, m)
+        if not contenuto:
+            continue  # restava solo il marcatore: una voce vuota non aiuta
         corrente["voci"].append({"testo": contenuto, "t_ms": t_ms})
 
     if corrente and corrente["voci"]:
@@ -323,6 +359,10 @@ def create_app(
         "analisi_annulla": None,
     }
 
+    # Un'unica istanza per processo, come il resto dello stato: le note
+    # incrementali seguono una sola registrazione alla volta.
+    gestore_note = GestoreNote(store, settings, broadcaster.publish)
+
     def load_engine():
         """Carica il modello. Sincrono e lento: non va mai chiamato sul loop."""
         if state["engine"] is None:
@@ -355,9 +395,16 @@ def create_app(
         if state["recorder"] is None:
             engine = await get_engine_async()
             if recorder_factory is not None:
+                # Iniettabile dai test con una firma fissa a tre posizionali:
+                # non le si forza `settings`, che il doppio potrebbe non
+                # accettare. È il percorso di produzione qui sotto che deve
+                # leggere `stt.microfono_id`/`loopback_id`/`filtro_eco` per
+                # davvero.
                 state["recorder"] = recorder_factory(engine, store, _publish_event)
             else:
-                state["recorder"] = Recorder(engine, store, on_event=_publish_event)
+                state["recorder"] = Recorder(
+                    engine, store, on_event=_publish_event, settings=settings
+                )
         return state["recorder"]
 
     def _publish_event(ev: TranscriptEvent) -> None:
@@ -383,11 +430,17 @@ def create_app(
         """Una call è cominciata: si propone, non si avvia.
 
         Registrare coinvolge altre persone. Che il rilevamento sia sicuro non
-        rende la decisione meno di chi usa l'applicazione.
+        rende la decisione meno di chi usa l'applicazione: anche con
+        `rilevamento.avvio_automatico` a vero, qui non si chiama mai
+        `recorder.start`. Cambia solo l'insistenza con cui si chiede — la
+        chiave dice all'interfaccia di aprire subito la finestra col consenso
+        già davanti, invece di lasciare una proposta che si può ignorare —
+        e quella lettura la decide questa funzione, non l'interfaccia da sola.
         """
         recorder = state.get("recorder")
         if recorder is not None and recorder.is_recording:
             return  # si sta già registrando: non c'è niente da proporre
+        conf = settings.tutto().get("rilevamento", {})
         broadcaster.publish(
             {
                 "type": "call_rilevata",
@@ -395,6 +448,10 @@ def create_app(
                 "processo": call.processo,
                 "piattaforma": call.piattaforma,
                 "nome": call.nome,
+                # Letta ora e non quando il rilevatore è partito, così chi
+                # cambia l'impostazione a metà giornata la vede applicata
+                # dalla prossima call rilevata, senza dover riavviare nulla.
+                "avvio_automatico": bool(conf.get("avvio_automatico", False)),
             }
         )
 
@@ -462,10 +519,24 @@ def create_app(
         except RuntimeError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+        if settings.tutto().get("note_incrementali", False):
+            try:
+                gestore_note.avvia(info.session_id)
+            except Exception:
+                # Le note di lavoro sono un aiuto durante la call, non la
+                # ragione per cui esiste: un guasto qui non deve impedire la
+                # registrazione, che è la cosa che nessuno può recuperare dopo.
+                log.exception("Note incrementali non avviate per la sessione %s", info.session_id)
+
         payload = {
             "session_id": info.session_id,
             "started_at_ms": info.started_at_ms,
             "devices": {s: d.name for s, d in info.devices.items()},
+            # Quali sorgenti sono ripiegate sul predefinito perché il device
+            # scelto nelle impostazioni non c'è più (cuffie staccate, scheda
+            # cambiata): senza dirlo subito, chi ha registrato con l'audio
+            # sbagliato lo scopre solo a call finita, quando non si rifà.
+            "fallback": info.fallback,
         }
         broadcaster.publish({"type": "session_started", **payload})
         return payload
@@ -476,7 +547,19 @@ def create_app(
         if recorder is None or not recorder.is_recording:
             raise HTTPException(status_code=409, detail="nessuna registrazione in corso")
         session_id = await asyncio.to_thread(recorder.stop)
+
+        try:
+            # Sempre, anche se non era mai partita: deve essere sicura a
+            # prescindere, per contratto.
+            gestore_note.ferma()
+        except Exception:
+            log.exception("Chiusura delle note incrementali non riuscita per la sessione %s", session_id)
+
         broadcaster.publish({"type": "session_stopped", "session_id": session_id})
+        if session_id is not None:
+            # Nessuno l'ha chiesta esplicitamente: parte in disparte e non deve
+            # allungare l'attesa di chi ha appena premuto "stop".
+            asyncio.create_task(_prova_analisi_automatica(session_id))
         return {"session_id": session_id}
 
     @app.post("/session/pause", dependencies=[Depends(check_token)])
@@ -509,23 +592,17 @@ def create_app(
 
     # ---------------------------------------------------------------- analisi
 
-    @app.post("/sessions/{session_id}/analyze", dependencies=[Depends(check_token)])
-    async def analyze(session_id: int) -> dict[str, Any]:
+    def _avvia_analisi_task(session_id: int, provider, provider_conf: dict[str, Any]) -> None:
+        """Fa davvero partire un'analisi: fasi, thread di lavoro, eventi.
+
+        Condivisa fra la rotta esplicita e l'avvio automatico a fine
+        registrazione (`_prova_analisi_automatica`): la call non deve poter
+        finire in due analisi che girano insieme sullo stesso stato
+        condiviso. Chi chiama si è già assicurato che non ce ne sia una in
+        corso e che il motore risponda.
+        """
         from .ai.analyze import AnalisiInterrotta, Analizzatore
         from .llm.base import LLMError
-        from .llm.providers import costruisci
-
-        if state["analisi_in_corso"]:
-            raise HTTPException(status_code=409, detail="un'analisi è già in corso")
-
-        provider_conf = settings.llm()
-        provider = costruisci(provider_conf)
-        if not provider.available():
-            raise HTTPException(
-                status_code=412,
-                detail="Il modello di analisi non è raggiungibile. Se usi quello locale, "
-                "avvia llama-server; se usi un'API, controlla la chiave nelle impostazioni.",
-            )
 
         provider_id = provider_conf.get("provider", "local")
         etichetta_provider = PROVIDERS_INFO.get(provider_id, {}).get("etichetta", provider_id)
@@ -535,6 +612,7 @@ def create_app(
             for chiave, titolo in FASI_ANALISI
         ]
         annulla = threading.Event()
+        state["analisi_in_corso"] = True
         state["analisi_fasi"] = fasi
         state["analisi_session_id"] = session_id
         state["analisi_annulla"] = annulla
@@ -619,11 +697,78 @@ def create_app(
         # per mezz'ora non funziona: il client la chiude molto prima, e chi
         # aspettava quella risposta per sapere che il lavoro era finito resta ad
         # aspettare per sempre, anche se il lavoro nel frattempo è riuscito.
-        state["analisi_in_corso"] = True
         broadcaster.publish(
             {"type": "analisi", "stato": "in_corso", "session_id": session_id, "fasi": fasi}
         )
         asyncio.create_task(lavora())
+
+    async def _prova_analisi_automatica(session_id: int) -> None:
+        """Fa partire l'analisi da sola a fine registrazione, se si può.
+
+        Gira come task a parte dopo che `/session/stop` ha già risposto:
+        nessuno ha chiesto questa analisi esplicitamente, quindi non deve
+        allungare di un millisecondo l'attesa di chi ha premuto "stop", né
+        rischiare di far sembrare rotta una call che è stata registrata bene.
+        Ogni condizione mancante fa uscire in silenzio, non con un errore.
+        """
+        await asyncio.sleep(RITARDO_ANALISI_AUTOMATICA_S)
+        if not settings.tutto().get("analisi_automatica", True):
+            return
+        if state["analisi_in_corso"]:
+            return  # non se ne avvia una seconda
+        if not store.segments(session_id):
+            return  # niente da leggere senza una trascrizione
+
+        from .llm.providers import costruisci
+
+        provider_conf = settings.llm()
+        try:
+            provider = costruisci(provider_conf)
+            raggiungibile = await asyncio.to_thread(provider.available)
+        except Exception:
+            raggiungibile = False
+        if not raggiungibile:
+            # Il motore non risponde: non è un guasto della call, solo
+            # un'analisi che oggi non può partire. Si lascia "registrata".
+            return
+
+        # Fra l'inizio di questa funzione e adesso il loop ha ceduto il passo
+        # più volte (i due `await` sopra): un'analisi esplicita potrebbe essere
+        # partita nel frattempo. Si ricontrolla prima di far partire la nostra.
+        if state["analisi_in_corso"]:
+            return
+
+        _avvia_analisi_task(session_id, provider, provider_conf)
+
+    @app.post("/sessions/{session_id}/analyze", dependencies=[Depends(check_token)])
+    async def analyze(session_id: int) -> dict[str, Any]:
+        from .llm.providers import costruisci
+
+        if state["analisi_in_corso"]:
+            # Se sta già girando proprio su questa call, la richiesta è
+            # soddisfatta: si risponde di sì invece di rifiutare.
+            #
+            # Non è pignoleria. A fine registrazione l'analisi parte da sola;
+            # chi preme "Rianalizza" un attimo dopo vuole esattamente quello
+            # che sta già succedendo, e un 409 gli mostrerebbe un errore mentre
+            # il lavoro è in corso — con l'interfaccia che a quel punto smette
+            # pure di aspettare il risultato, restando ferma su un guasto che
+            # non c'è. Il ritardo prima dell'analisi automatica riduce la
+            # finestra in cui questo accade, ma non la chiude: qui la si chiude.
+            if state.get("analisi_session_id") == session_id:
+                return {"session_id": session_id, "stato": "già_avviata"}
+            raise HTTPException(status_code=409, detail="un'analisi è già in corso")
+
+        provider_conf = settings.llm()
+        provider = costruisci(provider_conf)
+        if not provider.available():
+            raise HTTPException(
+                status_code=412,
+                detail="Il modello di analisi non è raggiungibile. Se usi quello locale, "
+                "avvia llama-server; se usi un'API, controlla la chiave nelle impostazioni.",
+            )
+
+        _avvia_analisi_task(session_id, provider, provider_conf)
         return {"session_id": session_id, "stato": "avviata"}
 
     @app.get("/analisi/stato", dependencies=[Depends(check_token)])
@@ -808,15 +953,33 @@ def create_app(
 
     @app.get("/sessions/{session_id}/segments", dependencies=[Depends(check_token)])
     async def segments(session_id: int) -> list[dict[str, Any]]:
+        # `diarizzata_at` distingue «non l'ha mai fatta nessuno» da «fatta, e
+        # non ha trovato altre voci». Senza, una call con un solo interlocutore
+        # sembrerebbe in attesa di un lavoro che invece è già stato fatto.
+        sessione = store.get_session(session_id)
+        diarizzata = sessione is not None and sessione["diarizzata_at"] is not None
+
         return [
             {
                 "id": s.id,
+                # `source` viene dalla traccia da cui il suono è entrato: è
+                # l'unica cosa che nessun modello può smentire, e resta anche
+                # dopo la diarizzazione.
                 "source": s.source,
                 "t_start_ms": s.t_start_ms,
                 "t_end_ms": s.t_end_ms,
                 "testo": s.testo,
                 "is_final": s.is_final,
                 "revision": s.revision,
+                "speaker": (
+                    {
+                        "id": s.speaker_id,
+                        "label": s.speaker_label,
+                        "nome_reale": s.speaker_nome_reale,
+                    }
+                    if diarizzata and s.speaker_id is not None
+                    else None
+                ),
             }
             for s in store.segments(session_id)
         ]
@@ -873,7 +1036,9 @@ def create_app(
     # più spesso del resto e non c'è motivo di farli abitare nella stessa
     # funzione della registrazione.
     from .api import Contesto
+    from .api import export as api_export
     from .api import modelli as api_modelli
+    from .api import note as api_note
     from .api import sistema as api_sistema
 
     contesto = Contesto(
@@ -883,7 +1048,24 @@ def create_app(
         publish=broadcaster.publish,
         state=state,
     )
-    for crea in (api_modelli.crea_router, api_sistema.crea_router):
+    fabbriche_router = [
+        api_export.crea_router,
+        api_modelli.crea_router,
+        api_note.crea_router,
+        api_sistema.crea_router,
+    ]
+    # Un altro agente sta scrivendo questo modulo adesso (vedi
+    # contratto-moduli.md): finché il file non esiste sul disco si monta solo
+    # quello che c'è, invece di far fallire l'avvio dell'intero server per un
+    # pezzo che qualcun altro sta ancora scrivendo.
+    try:
+        from .api import diarizzazione as api_diarizzazione
+    except ImportError:
+        pass
+    else:
+        fabbriche_router.append(api_diarizzazione.crea_router)
+
+    for crea in fabbriche_router:
         app.include_router(crea(contesto), dependencies=[Depends(check_token)])
 
     app.state.store = store

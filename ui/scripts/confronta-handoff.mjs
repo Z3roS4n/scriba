@@ -37,6 +37,19 @@ const SOLO_DEMO = new Set([
   'level',
 ])
 
+/**
+ * Divergenze decise, con il motivo accanto.
+ *
+ * Non è una lista di scuse: ogni voce qui è un punto in cui il prodotto è
+ * andato oltre il mockup, e lasciarla segnalata per sempre insegnerebbe solo a
+ * ignorare questo controllo. Una voce va tolta da qui se la ragione smette di
+ * valere, non se dà fastidio.
+ */
+const DIVERGENZE = new Map([
+  ['badge-off', 'la targhetta NON DISPONIBILE era di Notion, che adesso è collegabile davvero'],
+  ['is-unavailable', 'stessa riga: nessuna voce delle impostazioni è più disattivata'],
+])
+
 /** Forma di un nome di classe del design: `blocco`, `blocco__parte`, `blocco--variante`. */
 const NOME_CLASSE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:__[a-z0-9]+(?:-[a-z0-9]+)*)?(?:--[a-z0-9]+(?:-[a-z0-9]+)*)?$/
 
@@ -108,8 +121,13 @@ const codice = paroleDelCodice()
 const css = classiDelCss()
 
 const mancanti = [...handoff.keys()]
-  .filter((c) => !SOLO_DEMO.has(c) && !codice.has(c))
+  .filter((c) => !SOLO_DEMO.has(c) && !DIVERGENZE.has(c) && !codice.has(c))
   .sort()
+
+// Una divergenza che è tornata nel codice non è più una divergenza: va tolta
+// dalla lista, altrimenti quella lista diventa un posto dove le cose entrano e
+// non escono mai.
+const divergenzeRientrate = [...DIVERGENZE.keys()].filter((c) => codice.has(c)).sort()
 
 const inventate = [...codice.keys()]
   .filter((c) => RICONOSCIBILE.test(c) && !css.has(c) && !handoff.has(c))
@@ -133,4 +151,16 @@ if (inventate.length) {
   console.log('Nessuna classe inventata.\n')
 }
 
-process.exitCode = mancanti.length || inventate.length ? 1 : 0
+if (DIVERGENZE.size) {
+  console.log(`Divergenze accettate dal design — ${DIVERGENZE.size}:`)
+  for (const [c, perche] of DIVERGENZE) console.log(`  .${c} — ${perche}`)
+  console.log()
+}
+
+if (divergenzeRientrate.length) {
+  console.log(`Non sono più divergenze, toglile dalla lista — ${divergenzeRientrate.length}:`)
+  for (const c of divergenzeRientrate) console.log(`  .${c}`)
+  console.log()
+}
+
+process.exitCode = mancanti.length || inventate.length || divergenzeRientrate.length ? 1 : 0

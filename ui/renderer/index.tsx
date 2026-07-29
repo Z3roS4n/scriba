@@ -61,8 +61,21 @@ function App() {
   const [scorciatoiaOverlay, setScorciatoiaOverlay] = useState<string | null>(null)
   const [larghezza, setLarghezza] = useState(window.innerWidth)
 
+  // Sotto le soglie strette (comportamento.md, 9) i due pannelli si nascondono
+  // da soli, ma restano raggiungibili: un clic li forza aperti finche' la
+  // finestra resta stretta. Sono scelte manuali, non stato della sessione: non
+  // hanno senso finche' non torna a mancare spazio.
+  const [callsForzate, setCallsForzate] = useState(false)
+  const [analisiForzata, setAnalisiForzata] = useState(false)
+
   const trascrizioneRef = useRef<TrascrizioneHandle>(null)
   const inizioLocale = useRef(Date.now())
+  // L'ascoltatore degli eventi qui sotto si registra una volta sola (dipendenze
+  // stabili, come per gli altri eventi): per sapere se un evento diarizzazione
+  // riguarda la call aperta ADESSO serve leggerla da un ref, non catturarla
+  // nella chiusura, altrimenti resterebbe quella di quando l'ascoltatore si e'
+  // agganciato la prima volta.
+  const sessioneVistaRef = useRef<number | null>(null)
 
   const mostraAvviso = useCallback((testo: string, azione?: Avviso['azione']) => {
     setAvviso({ testo, azione })
@@ -107,6 +120,24 @@ function App() {
     },
     [caricaSegmenti, caricaScatti],
   )
+
+  useEffect(() => {
+    sessioneVistaRef.current = sessioneVista
+  }, [sessioneVista])
+
+  /** Rete di sicurezza della diarizzazione (vedi Analisi.tsx): ricarica i
+   * segmenti della call aperta ora, se ce n'e' una aperta. */
+  const ricaricaSegmentiVisti = useCallback(() => {
+    if (sessioneVista != null) caricaSegmenti(sessioneVista)
+  }, [sessioneVista, caricaSegmenti])
+
+  /** Un nome dato a una voce si vede subito nella trascrizione: si aggiornano
+   * i segmenti gia' in memoria invece di aspettare un giro di rete in più. */
+  const rinominaVoceInSegmenti = useCallback((speakerId: number, nome: string) => {
+    setSegmenti((prec) =>
+      prec.map((s) => (s.speaker?.id === speakerId ? { ...s, speaker: { ...s.speaker, nome_reale: nome } } : s)),
+    )
+  }, [])
 
   const avvia = useCallback(
     async (titolo: string, consenso: boolean) => {
@@ -225,12 +256,30 @@ function App() {
           ])
         } else if (ev.type === 'call_rilevata') {
           const e = ev as Extract<EventoCore, { type: 'call_rilevata' }>
-          // Si propone, non si avvia: registrare coinvolge altre persone.
           setCallRilevata({ pid: e.pid, nome: e.nome, piattaforma: e.piattaforma })
+          // «Avvia da sola» apre la finestra del consenso, non la registrazione.
+          // È il punto in cui questa impostazione si può fraintendere: quello
+          // che diventa automatico è la richiesta, non il permesso. Registrare
+          // altre persone resta una cosa che si conferma a mano, sempre.
+          if (e.avvio_automatico) {
+            setCallRilevata(null)
+            setTitoloProposto(e.piattaforma ?? '')
+            setDialogoConsenso(true)
+          }
         } else if (ev.type === 'modello') {
           const e = ev as Extract<EventoCore, { type: 'modello' }>
           setModello(e.stato)
           if (e.stato === 'errore') mostraAvviso(`Modello non caricato: ${e.dettaglio ?? ''}`)
+        } else if (ev.type === 'diarizzazione') {
+          const e = ev as Extract<EventoCore, { type: 'diarizzazione' }>
+          // Solo "fatto": e' l'unico momento in cui `speaker` sui segmenti
+          // cambia davvero. Si ricarica solo se e' proprio la call che si sta
+          // guardando ora — sessioneVistaRef, non lo stato: questo ascoltatore
+          // si registra una volta sola, catturare sessioneVista lo terrebbe
+          // fermo al valore di quando la finestra si e' aperta.
+          if (e.stato === 'fatto' && sessioneVistaRef.current === e.session_id) {
+            caricaSegmenti(e.session_id)
+          }
         }
       }),
 
@@ -333,13 +382,57 @@ function App() {
 
   // Punti di rottura (comportamento.md, 9): sotto 1100px il pannello analisi
   // sparisce, sotto 900px anche l'elenco call. La trascrizione non sparisce
-  // mai. Non esiste nel handoff un modo dichiarato per "riraggiungere" il
-  // pannello analisi da sotto i 1100px (nessuna classe per quel pulsante e la
-  // vista sotto i 900px e' segnata come mancante in comportamento.md): qui si
-  // nasconde soltanto, senza inventare un controllo che il design non ha
-  // ancora definito.
+  // mai. Il design non ha disegnato i comandi per riraggiungerli (nessuna
+  // classe dedicata nel handoff): qui si costruiscono con .btn/.btn--icon/
+  // .toolbar, che gia' esistono, invece di aggiungerne di nuove.
   const nascondiAnalisi = larghezza < 1100
   const nascondiCalls = larghezza < 900
+
+  // La riapertura manuale vale solo mentre la soglia resta superata: se la
+  // finestra torna larga da sola (l'utente la ridimensiona) il pannello e' di
+  // nuovo al suo posto normale, e la scelta forzata non deve sopravvivere fino
+  // alla prossima volta che si stringe, altrimenti riapparirebbe senza che
+  // nessuno l'abbia chiesto stavolta.
+  useEffect(() => {
+    if (!nascondiCalls) setCallsForzate(false)
+  }, [nascondiCalls])
+  useEffect(() => {
+    if (!nascondiAnalisi) setAnalisiForzata(false)
+  }, [nascondiAnalisi])
+
+  const mostraCalls = !nascondiCalls || callsForzate
+  const mostraAnalisi = !nascondiAnalisi || analisiForzata
+
+  const elencoCall = (
+    <ElencoCall
+      sessioni={sessioni}
+      sessioneVista={sessioneVista}
+      sessioneCorrente={sessioneCorrente}
+      compatta={taskProve !== null}
+      onApri={apriSessione}
+      onRiapri={() => setTaskProve(null)}
+    />
+  )
+
+  const pannelloAnalisi = (
+    <PannelloAnalisi
+      sessione={sessioneVistaObj}
+      segmenti={segmenti}
+      // Stesso valore in entrambe le prop, di proposito: "registrando" e'
+      // cio' che disabilita Analizza (non si analizza una call non ancora
+      // finita), "compatto" e' la stessa condizione vista dal CSS
+      // (.analysis--muted). Il flag e' della call GUARDATA, non globale:
+      // sfogliare una call passata mentre un'altra registra altrove non
+      // deve bloccarne l'analisi.
+      registrando={vistaInDiretta}
+      compatto={vistaInDiretta}
+      onVaiA={vaiA}
+      onCitazioni={setCitazioni}
+      onProve={setTaskProve}
+      onRassegna={setRassegnaIndice}
+      onRicaricaSegmenti={ricaricaSegmentiVisti}
+    />
+  )
 
   return (
     <div className="win">
@@ -366,15 +459,36 @@ function App() {
           pannello analisi di ritrovare da solo la task su cui si era fermato
           quando si torna dalla rassegna (comportamento.md, "Rassegna task"). */}
       <div className="win__body" style={{ display: rassegnaIndice === null ? 'flex' : 'none' }}>
-        {!nascondiCalls && (
-          <ElencoCall
-            sessioni={sessioni}
-            sessioneVista={sessioneVista}
-            sessioneCorrente={sessioneCorrente}
-            compatta={taskProve !== null}
-            onApri={apriSessione}
-            onRiapri={() => setTaskProve(null)}
-          />
+        {mostraCalls ? (
+          nascondiCalls ? (
+            // Riaperto a mano su una finestra ancora stretta: resta un modo
+            // per richiuderlo senza aspettare di allargare la finestra.
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 'none' }}>
+              <div
+                className="toolbar"
+                style={{ justifyContent: 'flex-end', padding: 'var(--sp-2)', borderBottom: '1px solid var(--line)' }}
+              >
+                <button className="btn btn--icon" aria-label="Nascondi elenco call" onClick={() => setCallsForzate(false)}>
+                  ‹
+                </button>
+              </div>
+              {elencoCall}
+            </div>
+          ) : (
+            elencoCall
+          )
+        ) : (
+          // Sotto i 900px l'elenco si nasconde (comportamento.md, 9): la
+          // trascrizione non sparisce mai, quindi questo binario minimo resta
+          // l'unico modo per andarlo a riprendere.
+          <div
+            className="toolbar"
+            style={{ flexDirection: 'column', flex: 'none', padding: 'var(--sp-3) 0', borderRight: '1px solid var(--line)' }}
+          >
+            <button className="btn btn--icon" aria-label="Mostra elenco call" onClick={() => setCallsForzate(true)}>
+              ›
+            </button>
+          </div>
         )}
 
         <Trascrizione
@@ -387,28 +501,43 @@ function App() {
           scorciatoiaStriscia={scorciatoiaOverlay ? scorciatoiaLeggibile(scorciatoiaOverlay) : null}
           onRegistra={apriDialogoRegistra}
           onApriScatto={(percorso) => window.scriba.mostraFile(percorso)}
+          onVoceRinominata={rinominaVoceInSegmenti}
         />
 
         {taskProve && (
           <PannelloProve task={taskProve} onVaiA={vaiA} onChiudi={() => setTaskProve(null)} />
         )}
 
-        {!nascondiAnalisi && (
-          <PannelloAnalisi
-            sessione={sessioneVistaObj}
-            // Stesso valore in entrambe le prop, di proposito: "registrando" e'
-            // cio' che disabilita Analizza (non si analizza una call non ancora
-            // finita), "compatto" e' la stessa condizione vista dal CSS
-            // (.analysis--muted). Il flag e' della call GUARDATA, non globale:
-            // sfogliare una call passata mentre un'altra registra altrove non
-            // deve bloccarne l'analisi.
-            registrando={vistaInDiretta}
-            compatto={vistaInDiretta}
-            onVaiA={vaiA}
-            onCitazioni={setCitazioni}
-            onProve={setTaskProve}
-            onRassegna={setRassegnaIndice}
-          />
+        {mostraAnalisi ? (
+          nascondiAnalisi ? (
+            // Stessa idea del binario dell'elenco call: riaperto a mano, resta
+            // richiudibile senza dover allargare la finestra.
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 'none' }}>
+              <div
+                className="toolbar"
+                style={{ justifyContent: 'flex-start', padding: 'var(--sp-2)', borderBottom: '1px solid var(--line)' }}
+              >
+                <button className="btn btn--icon" aria-label="Nascondi pannello analisi" onClick={() => setAnalisiForzata(false)}>
+                  ›
+                </button>
+              </div>
+              {pannelloAnalisi}
+            </div>
+          ) : (
+            pannelloAnalisi
+          )
+        ) : (
+          // Sotto i 1100px il pannello analisi si nasconde (comportamento.md,
+          // 9) ma resta "raggiungibile dalla barra": questo binario e' quella
+          // barra, con le stesse classi del resto dell'interfaccia.
+          <div
+            className="toolbar"
+            style={{ flexDirection: 'column', flex: 'none', padding: 'var(--sp-3) 0', borderLeft: '1px solid var(--line)' }}
+          >
+            <button className="btn btn--icon" aria-label="Mostra pannello analisi" onClick={() => setAnalisiForzata(true)}>
+              ‹
+            </button>
+          </div>
         )}
       </div>
 

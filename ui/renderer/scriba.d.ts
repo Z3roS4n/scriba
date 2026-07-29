@@ -19,6 +19,12 @@ export interface ScribaApi {
 
   get<T>(path: string): Promise<RispostaCore<T>>
   post<T>(path: string, body?: unknown): Promise<RispostaCore<T>>
+  /**
+   * Solo per dare un nome a una voce (`PATCH /sessions/{id}/voci/{speaker_id}`):
+   * è l'unica rotta del core che non è né una lettura né una creazione. Rispecchia
+   * `post` a uno a uno, cambia solo il metodo.
+   */
+  patch<T>(path: string, body?: unknown): Promise<RispostaCore<T>>
 
   screenshot(): Promise<void>
   mostraFile(percorso: string): Promise<void>

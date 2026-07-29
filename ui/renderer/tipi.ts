@@ -46,6 +46,15 @@ export interface Segmento {
   testo: string
   is_final: boolean
   revision?: number
+  /**
+   * Chi ha parlato, quando la diarizzazione è stata eseguita su quella call.
+   *
+   * Resta null finché nessuno l'ha eseguita, e l'interfaccia deve reggere quel
+   * caso: `source` (io / altri) viene dalla traccia da cui il suono è entrato
+   * ed è l'unica cosa che non può sbagliare. Questo campo la raffina, non la
+   * sostituisce.
+   */
+  speaker?: { id: number; label: string; nome_reale: string | null } | null
 }
 
 export interface Scatto {
@@ -55,6 +64,22 @@ export interface Scatto {
   width: number | null
   height: number | null
   nota_utente: string | null
+}
+
+/**
+ * Un partecipante conosciuto per una sessione: `GET /sessions/{id}/voci`.
+ *
+ * Prima di una diarizzazione ce ne sono sempre e solo due per sessione
+ * (`ruolo: 'me'` con label «io», `ruolo: 'them'` con label «altri») — li crea
+ * il core insieme alla sessione stessa. Dopo, `ruolo: 'them'` può comparire
+ * più volte, una per voce distinta trovata («Voce 2», «Voce 3», …).
+ */
+export interface Voce {
+  id: number
+  ruolo: 'me' | 'them'
+  label: string
+  nome_reale: string | null
+  confermato: boolean
 }
 
 // ------------------------------------------------------------------- analisi
@@ -259,10 +284,39 @@ export type EventoCore =
   | { type: 'session_started'; session_id: number; titolo: string | null }
   | { type: 'session_stopped'; session_id: number; durata_ms: number | null }
   | { type: 'screenshot'; id: number; t_ms: number; path: string }
-  | { type: 'call_rilevata'; pid: number; processo: string; nome: string; piattaforma: string }
+  | {
+      type: 'call_rilevata'
+      pid: number
+      processo: string
+      nome: string
+      piattaforma: string
+      /**
+       * L'utente ha chiesto che Scriba si attivi da solo quando riconosce una
+       * call. Non vuol dire registrare senza permesso: la spunta sul consenso
+       * resta obbligatoria. Cambia solo l'insistenza — invece di una proposta
+       * che si può ignorare, la finestra del consenso si apre da sé.
+       */
+      avvio_automatico?: boolean
+    }
   | { type: 'modello'; stato: 'in_attesa' | 'caricamento' | 'pronto' | 'errore'; dettaglio?: string }
   | { type: 'analisi'; stato: 'in_corso' | 'fatto' | 'errore'; session_id: number; dettaglio?: string; fasi?: FaseAnalisi[] }
   | { type: 'modello_locale'; modello: Modello }
+  | {
+      type: 'diarizzazione'
+      stato: 'in_corso' | 'fatto' | 'errore' | 'voce_rinominata'
+      session_id: number
+      /** Solo con stato 'in_corso': avanzamento 0..1 e la fase corrente in parole. */
+      frazione?: number
+      nota?: string
+      /** Solo con stato 'errore'. */
+      dettaglio?: string
+      /** Solo con stato 'fatto': quante voci nuove, quanti segmenti riassegnati. */
+      voci?: number
+      segmenti_assegnati?: number
+      /** Solo con stato 'voce_rinominata'. */
+      speaker_id?: number
+      nome_reale?: string
+    }
   | { type: string; [k: string]: unknown }
 
 // ----------------------------------------------------------------- formattazione

@@ -53,6 +53,14 @@ class Segment:
     is_final: bool
     revision: int
     confidence: float | None = None
+    # Popolati solo se la sessione è stata diarizzata (vedi stt/diarizzazione.py).
+    # Restano None per ogni chiamante che non li chiede esplicitamente: nessuno
+    # dei call site esistenti li legge, quindi aggiungerli qui non cambia il
+    # comportamento di chi già usa `Segment` con `is_final`/`confidence` posizionali
+    # in coda — sono ulteriori campi opzionali, non un cambio di firma.
+    speaker_id: int | None = None
+    speaker_label: str | None = None
+    speaker_nome_reale: str | None = None
 
 
 class Store:
@@ -116,9 +124,30 @@ class Store:
         conn = self.conn
         conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
         conn.executescript(_SCHEMA_EXTRA)
+        self._migra_colonna_diarizzata_at(conn)
         row = conn.execute("SELECT MAX(version) AS v FROM schema_version").fetchone()
         if row is None or row["v"] is None:
             conn.execute("INSERT INTO schema_version(version) VALUES (?)", (SCHEMA_VERSION,))
+
+    @staticmethod
+    def _migra_colonna_diarizzata_at(conn: sqlite3.Connection) -> None:
+        """Aggiunge `sessions.diarizzata_at` ai database creati prima della diarizzazione.
+
+        Serve a distinguere "nessuno ha ancora eseguito la diarizzazione su
+        questa call" da "eseguita, e non ha trovato altre voci oltre 'altri'":
+        senza questa colonna il secondo caso sarebbe indistinguibile dal
+        primo, e `GET /sessions/{id}/segments` non saprebbe quando può
+        smettere di mandare `speaker: null` (vedi contratto-moduli.md).
+
+        `CREATE TABLE IF NOT EXISTS` in schema.sql non aggiunge colonne a una
+        tabella che esiste già, e SQLite non ha un `ADD COLUMN IF NOT
+        EXISTS`: si controlla a mano con `PRAGMA table_info`, com'è già
+        `analysis_meta` in `_SCHEMA_EXTRA` a stare fuori da schema.sql invece
+        di modificare la CREATE TABLE originale.
+        """
+        colonne = {r["name"] for r in conn.execute("PRAGMA table_info(sessions)")}
+        if "diarizzata_at" not in colonne:
+            conn.execute("ALTER TABLE sessions ADD COLUMN diarizzata_at INTEGER")
 
     # --------------------------------------------------------------- sessioni
 
@@ -175,6 +204,17 @@ class Store:
     def set_session_state(self, session_id: int, stato: str) -> None:
         with self.tx() as conn:
             conn.execute("UPDATE sessions SET stato = ? WHERE id = ?", (stato, session_id))
+
+    def get_session(self, session_id: int) -> sqlite3.Row | None:
+        """La riga intera di `sessions`.
+
+        Serve a chi, come la diarizzazione, ha bisogno di campi che le altre
+        query mirate non portano — qui `audio_loop_path`, per sapere quale
+        file analizzare.
+        """
+        return self.conn.execute(
+            "SELECT * FROM sessions WHERE id = ?", (session_id,)
+        ).fetchone()
 
     # ------------------------------------------------------------ trascrizione
 
@@ -259,15 +299,24 @@ class Store:
             )
 
     def segments(self, session_id: int, *, only_final: bool = False) -> list[Segment]:
+        # Il LEFT JOIN è per costruzione: finché nessuno ha diarizzato la
+        # sessione, speaker_id sui segmenti punta comunque a 'io'/'altri' (lo
+        # imposta già add_segment), quindi la voce c'è sempre — solo `nome_reale`
+        # resta NULL finché l'utente non ha dato un nome. Un segmento senza
+        # speaker_id (non dovrebbe succedere, ma la colonna è nullable) non
+        # deve sparire dai risultati: da qui il LEFT invece di un JOIN semplice.
         sql = """
-            SELECT id, session_id, source, t_start_ms, t_end_ms, testo, is_final,
-                   revision, confidence
-              FROM transcript_segments
-             WHERE session_id = ?
+            SELECT t.id, t.session_id, t.source, t.t_start_ms, t.t_end_ms, t.testo,
+                   t.is_final, t.revision, t.confidence,
+                   sp.id AS speaker_id, sp.label AS speaker_label,
+                   sp.nome_reale AS speaker_nome_reale
+              FROM transcript_segments t
+              LEFT JOIN speakers sp ON sp.id = t.speaker_id
+             WHERE t.session_id = ?
         """
         if only_final:
-            sql += " AND is_final = 1"
-        sql += " ORDER BY t_start_ms, id"
+            sql += " AND t.is_final = 1"
+        sql += " ORDER BY t.t_start_ms, t.id"
         return [
             Segment(
                 id=r["id"],
@@ -279,6 +328,9 @@ class Store:
                 is_final=bool(r["is_final"]),
                 revision=r["revision"],
                 confidence=r["confidence"],
+                speaker_id=r["speaker_id"],
+                speaker_label=r["speaker_label"],
+                speaker_nome_reale=r["speaker_nome_reale"],
             )
             for r in self.conn.execute(sql, (session_id,))
         ]
@@ -576,6 +628,135 @@ class Store:
         return self.conn.execute(
             "SELECT * FROM analysis_meta WHERE session_id = ?", (session_id,)
         ).fetchone()
+
+    # ------------------------------------------------------------------- voci
+
+    def speakers(self, session_id: int) -> list[sqlite3.Row]:
+        """I partecipanti conosciuti per questa sessione, 'io'/'altri' compresi.
+
+        Prima di una diarizzazione ce ne sono sempre e solo due, creati da
+        `create_session`. Dopo, ce ne possono essere altri con `ruolo='them'`
+        e `label` tipo 'Voce 2': è la stessa tabella, la diarizzazione non fa
+        altro che aggiungere righe e ripuntare `speaker_id` dei segmenti.
+        """
+        return list(
+            self.conn.execute(
+                """
+                SELECT id, ruolo, label, nome_reale, confermato
+                  FROM speakers
+                 WHERE session_id = ?
+                 ORDER BY id
+                """,
+                (session_id,),
+            )
+        )
+
+    def applica_diarizzazione(
+        self, session_id: int, assegnazioni: dict[int, str], *, quando_ms: int
+    ) -> dict:
+        """Registra l'esito di una diarizzazione: nuove voci e segmenti riassegnati.
+
+        `assegnazioni` è {segment_id: etichetta_cluster}, con l'etichetta così
+        com'è uscita dal modello (es. "SPEAKER_00"). La corrispondenza fra
+        quell'etichetta e "Voce 2", "Voce 3"... si decide qui, non nel
+        modello: se una versione futura del modello rinumerasse i cluster
+        diversamente, il contratto con chi chiama ("Voce 2" è la prima voce
+        per ordine di comparsa) non cambierebbe. "Voce 1" non esiste: sarebbe
+        concettualmente 'io', che non passa da qui — vedi il modulo
+        `stt/diarizzazione.py` per il perché si diarizza solo il loopback.
+
+        Ogni segment_id viene controllato contro questa sessione e contro la
+        traccia: uno fuori posto (di un'altra sessione, o sul microfono) viene
+        scartato invece di far fallire l'intera chiamata. Il microfono è per
+        costruzione una persona sola, e la garanzia che non gli si possa mai
+        assegnare una voce fra le altre non deve dipendere dal fatto che chi
+        chiama si sia comportato bene.
+
+        Va bene anche con `assegnazioni` vuoto: la diarizzazione è stata
+        comunque eseguita (magari la call non aveva nessun altro sul
+        loopback), e `quando_ms` deve registrarlo lo stesso — è quello che
+        distingue "mai diarizzata" da "diarizzata, niente da aggiungere" per
+        chi decide se mostrare `speaker` nei segmenti (vedi
+        `_migra_colonna_diarizzata_at`).
+        """
+        with self.tx() as conn:
+            righe = conn.execute(
+                "SELECT id, source, t_start_ms FROM transcript_segments WHERE session_id = ?",
+                (session_id,),
+            ).fetchall()
+            inizio_per_id_loopback = {
+                r["id"]: r["t_start_ms"] for r in righe if r["source"] == "loopback"
+            }
+
+            # Solo segmenti loopback di questa sessione, ordinati nel tempo:
+            # l'ordine decide quale cluster diventa "Voce 2" e quale "Voce 3".
+            validi = sorted(
+                (
+                    (inizio_per_id_loopback[sid], sid, etichetta)
+                    for sid, etichetta in assegnazioni.items()
+                    if sid in inizio_per_id_loopback
+                ),
+                key=lambda v: v[0],
+            )
+
+            ordine_cluster: list[str] = []
+            for _, _, etichetta in validi:
+                if etichetta not in ordine_cluster:
+                    ordine_cluster.append(etichetta)
+
+            # Si riparte dopo l'ultima "Voce N" già presente, così rilanciare
+            # la diarizzazione (un altro tentativo, un audio più lungo…) crea
+            # voci nuove invece di andare a sbattere sull'UNIQUE(session_id,
+            # label). Fondere le nuove voci con quelle di un run precedente
+            # richiederebbe cluster stabili fra un'esecuzione e l'altra del
+            # modello, cosa che pyannote non garantisce: unire a mano in
+            # revisione resta più affidabile che indovinare qui.
+            riga_max = conn.execute(
+                """
+                SELECT MAX(CAST(SUBSTR(label, 6) AS INTEGER)) AS n
+                  FROM speakers
+                 WHERE session_id = ? AND ruolo = 'them' AND label LIKE 'Voce %'
+                """,
+                (session_id,),
+            ).fetchone()
+            prossimo_numero = (riga_max["n"] or 1) + 1
+
+            id_speaker_per_cluster: dict[str, int] = {}
+            for etichetta in ordine_cluster:
+                cur = conn.execute(
+                    "INSERT INTO speakers (session_id, ruolo, label) VALUES (?, 'them', ?)",
+                    (session_id, f"Voce {prossimo_numero}"),
+                )
+                id_speaker_per_cluster[etichetta] = int(cur.lastrowid)
+                prossimo_numero += 1
+
+            for _, sid, etichetta in validi:
+                conn.execute(
+                    "UPDATE transcript_segments SET speaker_id = ? WHERE id = ?",
+                    (id_speaker_per_cluster[etichetta], sid),
+                )
+
+            conn.execute(
+                "UPDATE sessions SET diarizzata_at = ? WHERE id = ?", (quando_ms, session_id)
+            )
+
+            return {"voci": len(id_speaker_per_cluster), "segmenti_assegnati": len(validi)}
+
+    def rinomina_voce(self, speaker_id: int, nome_reale: str) -> bool:
+        """Dà un nome a una voce. Vero se la voce esiste, falso altrimenti.
+
+        Senza questo, "Voce 2" resta per sempre: è la sola strada che rende
+        confermabile un'etichetta uscita da un modello probabilistico.
+        `confermato` passa a vero insieme al nome — è quello che distingue,
+        in interfaccia, una voce con un nome dato dall'utente da una ancora
+        anonima.
+        """
+        with self.tx() as conn:
+            cur = conn.execute(
+                "UPDATE speakers SET nome_reale = ?, confermato = 1 WHERE id = ?",
+                (nome_reale, speaker_id),
+            )
+            return cur.rowcount > 0
 
     # --------------------------------------------------------- cancellazioni
 

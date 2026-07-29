@@ -13,6 +13,7 @@ sé l'istante in cui è stato catturato, e la posizione si legge da lì.
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from collections.abc import Callable
@@ -21,6 +22,8 @@ from math import gcd
 
 import numpy as np
 from scipy.signal import resample_poly
+
+log = logging.getLogger(__name__)
 
 TARGET_RATE = 16_000
 FRAMES_PER_BUFFER = 1024
@@ -32,6 +35,34 @@ class DeviceInfo:
     name: str
     channels: int
     rate: int
+
+
+def _dispositivo_input_valido(pa, wasapi: dict, id_: str) -> dict | None:
+    """Il device WASAPI d'ingresso con questo id, se esiste ancora.
+
+    L'id arriva da `audio/devices.py` (`GET /dispositivi`): è l'indice
+    PortAudio del dispositivo, lo stesso sia per sounddevice che per
+    pyaudiowpatch perché sotto usano la stessa libreria. Un indice non più
+    valido — cuffie staccate, scheda cambiata — non solleva: si torna None e
+    chi chiama ripiega sul predefinito.
+    """
+    try:
+        idx = int(id_)
+        dev = pa.get_device_info_by_index(idx)
+    except (ValueError, TypeError, OSError):
+        return None
+    if dev.get("hostApi") != wasapi["index"] or dev.get("maxInputChannels", 0) <= 0:
+        return None
+    return dev
+
+
+def _loopback_valido(loopback_devices: list[dict], id_: str) -> dict | None:
+    """Il dispositivo di loopback con questo id, fra quelli disponibili adesso."""
+    try:
+        idx = int(id_)
+    except (ValueError, TypeError):
+        return None
+    return next((d for d in loopback_devices if d["index"] == idx), None)
 
 
 class _Track:
@@ -90,31 +121,89 @@ class DualCapture:
     mono a 16 kHz. Chi la implementa deve limitarsi ad accodare.
     """
 
-    def __init__(self, clock, on_audio: Callable[[str, np.ndarray, int], None]) -> None:
+    def __init__(
+        self,
+        clock,
+        on_audio: Callable[[str, np.ndarray, int], None],
+        *,
+        mic_id: str | None = None,
+        loopback_id: str | None = None,
+        pyaudio_module=None,
+    ) -> None:
         self.clock = clock
         self.on_audio = on_audio
+        # Gli id scelti in Impostazioni > Trascrizione (audio/devices.py,
+        # `GET /dispositivi`). None = predefinito di sistema, com'era prima
+        # che questa scelta esistesse.
+        self.mic_id = mic_id
+        self.loopback_id = loopback_id
+        # Iniettabile nei test: senza, aprire i device veri legherebbe i test
+        # all'hardware della macchina su cui girano.
+        self._pyaudio_module = pyaudio_module
         self._pa = None
         self._tracks: dict[str, _Track] = {}
         self._lock = threading.Lock()
+        # Quali sorgenti sono ripiegate sul predefinito, e perché. Vuoto
+        # finché `find_devices` non ha ancora provato ad aprire niente.
+        self.fallback: dict[str, str] = {}
+
+    def _pyaudio(self):
+        if self._pyaudio_module is not None:
+            return self._pyaudio_module
+        import pyaudiowpatch as pyaudio
+
+        return pyaudio
 
     # ------------------------------------------------------------------ device
 
-    @staticmethod
-    def find_devices() -> tuple[DeviceInfo, DeviceInfo]:
-        """Microfono di default e loopback dell'uscita di default."""
-        import pyaudiowpatch as pyaudio
+    def find_devices(self) -> tuple[DeviceInfo, DeviceInfo]:
+        """Microfono e loopback da usare per questa registrazione.
+
+        Se `mic_id`/`loopback_id` sono valorizzati si prova prima quelli; se
+        il dispositivo scelto non c'è più si ripiega sul predefinito di
+        sistema e si annota il motivo in `self.fallback`, invece di far
+        fallire l'avvio per una cuffia che nel frattempo è stata staccata.
+        """
+        pyaudio = self._pyaudio()
+        self.fallback = {}
 
         with pyaudio.PyAudio() as pa:
             wasapi = pa.get_host_api_info_by_type(pyaudio.paWASAPI)
-            mic_raw = pa.get_device_info_by_index(wasapi["defaultInputDevice"])
+
+            mic_raw = None
+            if self.mic_id is not None:
+                mic_raw = _dispositivo_input_valido(pa, wasapi, self.mic_id)
+                if mic_raw is None:
+                    self.fallback["mic"] = (
+                        f"il microfono scelto (id {self.mic_id}) non è più disponibile, "
+                        "uso il predefinito"
+                    )
+                    log.warning(self.fallback["mic"])
+            if mic_raw is None:
+                mic_raw = pa.get_device_info_by_index(wasapi["defaultInputDevice"])
+
             speakers = pa.get_device_info_by_index(wasapi["defaultOutputDevice"])
+            loopback_devices = list(pa.get_loopback_device_info_generator())
 
             loop_raw = None
-            for dev in pa.get_loopback_device_info_generator():
-                if speakers["name"] in dev["name"]:
-                    loop_raw = dev
-                    break
+            if self.loopback_id is not None:
+                loop_raw = _loopback_valido(loopback_devices, self.loopback_id)
+                if loop_raw is None:
+                    self.fallback["loopback"] = (
+                        f"il loopback scelto (id {self.loopback_id}) non è più disponibile, "
+                        "uso il predefinito"
+                    )
+                    log.warning(self.fallback["loopback"])
             if loop_raw is None:
+                loop_raw = next(
+                    (d for d in loopback_devices if speakers["name"] in d["name"]), None
+                )
+            if loop_raw is None:
+                # Qui non c'è un id scomparso da recuperare: è il sistema che
+                # non ha proprio un loopback per l'uscita corrente. Diverso
+                # dal caso sopra, e resta un errore che blocca l'avvio — senza
+                # loopback si registrerebbe solo la propria voce, e l'utente
+                # se ne accorgerebbe solo a call finita.
                 raise RuntimeError(
                     f"Nessun dispositivo di loopback per l'uscita corrente "
                     f"({speakers['name']}). Senza, si registra solo la propria voce."
@@ -133,7 +222,7 @@ class DualCapture:
     # ------------------------------------------------------------------- ciclo
 
     def start(self) -> dict[str, DeviceInfo]:
-        import pyaudiowpatch as pyaudio
+        pyaudio = self._pyaudio()
 
         mic, loop = self.find_devices()
         self._pa = pyaudio.PyAudio()

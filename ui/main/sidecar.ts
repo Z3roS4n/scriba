@@ -13,7 +13,7 @@
 
 import { ChildProcess, spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { createInterface } from 'node:readline'
 
 export interface CoreEndpoint {
@@ -39,23 +39,51 @@ export class Sidecar {
     return `http://127.0.0.1:${this.endpoint.port}`
   }
 
-  private pythonPath(): string {
-    const venv = join(this.projectRoot, 'core', '.venv', 'Scripts', 'python.exe')
-    if (!existsSync(venv)) {
-      throw new Error(
-        `Interprete Python non trovato in ${venv}.\n` +
-          'Crea l\'ambiente con: uv venv core/.venv --python 3.12',
-      )
+  /**
+   * Trova come avviare il core, in sviluppo o pacchettizzato, senza che nessuno
+   * debba ricordarsi di cambiare una riga passando dall'uno all'altro.
+   *
+   * In sviluppo `projectRoot` e' la cartella `scriba/` (electron parte dalla
+   * cartella `ui/`, e chi costruisce questo oggetto risale di uno). Una volta
+   * pacchettizzato con electron-builder, `app.getAppPath()` punta dentro
+   * `resources/` (l'app e' in `resources/app.asar`), quindi risalendo di uno
+   * `projectRoot` diventa proprio `resources/` — la cartella in cui
+   * `electron-builder.yml` copia l'eseguibile PyInstaller come extraResource.
+   * Bastano due percorsi noti da controllare, nell'ordine in cui ha senso
+   * cercarli: prima l'ambiente di sviluppo, poi quello installato.
+   */
+  private resolveCommand(): { comando: string; argv: string[]; cwd: string } {
+    const devPython = join(this.projectRoot, 'core', '.venv', 'Scripts', 'python.exe')
+    if (existsSync(devPython)) {
+      // `-m` e non lo script diretto: e' lo stesso modo in cui gira sotto
+      // pytest e in tutta la documentazione del core, e mantiene gli import
+      // relativi del pacchetto `scriba_core` validi.
+      return { comando: devPython, argv: ['-m', 'scriba_core.server'], cwd: join(this.projectRoot, 'core') }
     }
-    return venv
+
+    const eseguibilePacchettizzato = join(this.projectRoot, 'core-dist', 'scriba_core', 'scriba_core.exe')
+    if (existsSync(eseguibilePacchettizzato)) {
+      // Nessun `-m`: l'eseguibile prodotto da PyInstaller (vedi
+      // scripts/pyinstaller/entry_point.py) accetta direttamente il percorso
+      // del database e `--watch-parent`, replicando lo stesso comando.
+      return { comando: eseguibilePacchettizzato, argv: [], cwd: dirname(eseguibilePacchettizzato) }
+    }
+
+    throw new Error(
+      `Core non trovato ne' in ${devPython} ne' in ${eseguibilePacchettizzato}.\n` +
+        'In sviluppo: crea l\'ambiente con  uv venv core/.venv --python 3.12\n' +
+        'In un pacchetto installato questo e\' un problema della build, non della macchina ' +
+        'dell\'utente: manca l\'eseguibile del core sotto core-dist/.',
+    )
   }
 
   /** Avvia il core e aspetta che annunci dove trovarlo. */
   async start(timeoutMs = 30_000): Promise<CoreEndpoint> {
     if (this.endpoint) return this.endpoint
 
-    this.child = spawn(this.pythonPath(), ['-m', 'scriba_core.server', this.dbPath, '--watch-parent'], {
-      cwd: join(this.projectRoot, 'core'),
+    const { comando, argv, cwd } = this.resolveCommand()
+    this.child = spawn(comando, [...argv, this.dbPath, '--watch-parent'], {
+      cwd,
       // stdin resta aperto di proposito: e' il guinzaglio con cui il core
       // capisce che siamo ancora vivi.
       stdio: ['pipe', 'pipe', 'pipe'],

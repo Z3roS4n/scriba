@@ -96,6 +96,32 @@
   due timeline coincidono entro 15 ms su 36 s.
 - **Data:** 2026-07-27
 
+### D-007 — Core pacchettizzato con PyInstaller onedir, UI con electron-builder/NSIS
+- **Contesto:** Scriba si avviava solo dalla cartella di sviluppo (nessun installer). Il
+  core ha dipendenze native pesanti (onnxruntime, PyAudioWPatch, sounddevice, scipy,
+  winsdk) che notoriamente rompono i pacchetti PyInstaller.
+- **Opzioni:** A) onefile PyInstaller · B) onedir PyInstaller · C) lasciare il core come
+  script Python e richiedere Python installato sulla macchina di destinazione.
+- **Scelta:** B — onedir per il core, extraResource dentro un installer NSIS
+  (electron-builder) per la UI. Vedi `.claude/project/10-packaging.md` per i dettagli.
+- **Motivo:** onefile si autoestrae in una cartella temporanea a ogni avvio (centinaia di
+  MB ricopiati ogni volta, riscansionati dall'antivirus). C richiederebbe che l'utente
+  installi Python e le dipendenze native a mano, che è esattamente il problema che il
+  packaging deve risolvere. `app.getAppPath()` risolto da Electron cambia da solo fra
+  sviluppo (`ui/`) e pacchetto (`resources/`), e questo è quello che `sidecar.ts` usa per
+  trovare il core nei due mondi senza un interruttore manuale.
+- **Conseguenze:** trovato e risolto un bug non ovvio — `detect/call.py` isola la sonda
+  COM lanciando `sys.executable -m scriba_core.detect.probe`, invocazione che ha senso
+  solo con un vero interprete Python. L'entry point del core pacchettizzato
+  (`scripts/pyinstaller/entry_point.py`) emula `-m` con `runpy` per restare compatibile
+  senza toccare `core/scriba_core/`. Il core pacchettizzato pesa ~290 MB (nessun modello
+  AI incluso, quelli restano scaricabili dall'interfaccia): la parte piu' pesante e'
+  `scipy`, usata per una sola funzione (`resample_poly`). `core/.venv` e' condiviso con
+  chi sviluppa altre funzioni (es. diarizzazione via PyTorch): lo spec esclude
+  esplicitamente PyTorch e affini, altrimenti una build del core puo' gonfiarsi di 400+ MB
+  senza che il codice del core sia cambiato — successo davvero durante questo lavoro.
+- **Data:** 2026-07-29
+
 ## Decisioni aperte
 
 - **OA-1** — Passare a Qwen3.5-9B come LLM di default? Ha IFEval più alto e KV cache più

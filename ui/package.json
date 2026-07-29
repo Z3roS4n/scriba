@@ -14,14 +14,17 @@
     "anteprima": "npm run build && node -e \"const{cpSync}=require('fs');cpSync('../.claude/project/design/handoff','scripts/anteprima/design',{recursive:true,filter:(s)=>!s.endsWith('.js')})\"",
     "build": "npm run build:main && npm run copy:assets && npm run build:renderer",
     "start": "npm run build && electron .",
-    "dev": "npm run build && electron . --dev"
+    "dev": "npm run build && electron . --dev",
+    "build:core": "powershell -ExecutionPolicy Bypass -File ../scripts/build-core.ps1",
+    "dist": "npm run build && npm run build:core && electron-builder --config electron-builder.yml"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "esbuild": "^0.24.0",
     "electron": "39.2.7",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.24.0",
     "typescript": "^5.7.0"
   },
   "dependencies": {

@@ -29,6 +29,20 @@
     ['mic', 2902, 'Perfetto, gli passo io il contesto e i link al portale.'],
   ]
 
+  // Sessione 24 (l'unica "analyzed"): finta gia' diarizzata, con una voce
+  // ancora senza nome, cosi' la striscia "DAI UN NOME ALLE VOCI" e la riga
+  // "Voce 3" compaiono nell'anteprima senza dover simulare l'intero lavoro.
+  const SPEAKER = {
+    io: { id: 100, label: 'io', nome_reale: null },
+    voce2: { id: 101, label: 'Voce 2', nome_reale: 'Marco' },
+    voce3: { id: 102, label: 'Voce 3', nome_reale: null },
+  }
+  const speakerRighe = [
+    SPEAKER.voce2, null, SPEAKER.voce2, null, SPEAKER.voce3, null,
+    SPEAKER.voce2, SPEAKER.voce2, null, SPEAKER.voce3, null, SPEAKER.voce2,
+    SPEAKER.voce3, null,
+  ]
+
   const segmenti = righe.map(([source, s, testo], i) => ({
     id: i + 1,
     source,
@@ -36,7 +50,19 @@
     t_end_ms: (s + 4) * 1000,
     testo,
     is_final: true,
+    speaker: source === 'loopback' ? speakerRighe[i] : null,
   }))
+
+  const voci24 = [
+    { id: 1, ruolo: 'me', label: 'io', nome_reale: null, confermato: false },
+    { id: 2, ruolo: 'them', label: 'altri', nome_reale: null, confermato: false },
+    { id: SPEAKER.voce2.id, ruolo: 'them', label: 'Voce 2', nome_reale: 'Marco', confermato: true },
+    { id: SPEAKER.voce3.id, ruolo: 'them', label: 'Voce 3', nome_reale: null, confermato: false },
+  ]
+  const vociVuote = [
+    { id: 1, ruolo: 'me', label: 'io', nome_reale: null, confermato: false },
+    { id: 2, ruolo: 'them', label: 'altri', nome_reale: null, confermato: false },
+  ]
 
   const prova = (supports, t, quote) => ({ supports, t_ms: t * 1000, quote, segment_id: null })
 
@@ -163,6 +189,11 @@
       { chiave: 'screenshots', etichetta: 'Screenshot', path: '…\\Scriba\\screenshots', bytes: 312 * 1024 ** 2 },
     ],
     '/analisi/stato': { in_corso: false, session_id: null, fasi: [] },
+    // true: il comando "Distingui le voci" e lo stato "voci distinte" /
+    // "DAI UN NOME ALLE VOCI" si vedono. Per provare lo stato "non
+    // disponibile" (comportamento.md non lo descrive, ma il rapporto lo
+    // richiede) basta mettere questo a false a mano.
+    '/diarizzazione/disponibile': { disponibile: true },
     // Senza questo il modello risulta "in caricamento" e «Registra» resta
     // spento: giusto nell'app, inutile qui, dove serve arrivare al modale.
     '/health': { ok: true, modello: 'pronto', in_registrazione: false },
@@ -177,16 +208,33 @@
     if (/^\/sessions\/\d+\/screenshots$/.test(pulito)) {
       return [{ id: 1, t_ms: 362_000, path: 'C:\\finto\\shot.png', width: 1280, height: 760, nota_utente: null }]
     }
+    if (/^\/sessions\/24\/voci$/.test(pulito)) return voci24
+    if (/^\/sessions\/\d+\/voci$/.test(pulito)) return vociVuote
     return null
   }
 
   const ok = (body) => Promise.resolve({ ok: true, status: 200, body })
+  // Solo per PATCH .../voci/{id}: aggiorna la voce finta cosi' l'anteprima
+  // mostra davvero il nome appena scritto, invece di limitarsi a rispondere
+  // 200 senza cambiare niente.
+  function rinomina(path, body) {
+    const match = path.match(/^\/sessions\/\d+\/voci\/(\d+)/)
+    if (!match) return { ok: false, status: 404, body: { detail: 'voce inesistente' } }
+    const id = Number(match[1])
+    const voce = voci24.find((v) => v.id === id)
+    if (voce) {
+      voce.nome_reale = body?.nome_reale ?? voce.nome_reale
+      voce.confermato = true
+    }
+    return { ok: true, status: 200, body: { id, nome_reale: body?.nome_reale, confermato: true } }
+  }
 
   window.scriba = {
     endpoint: () => Promise.resolve({ port: 1234 }),
     paths: () => Promise.resolve({ dataDir: 'C:\\finto', screenshotDir: 'C:\\finto\\shots' }),
     get: (p) => ok(risolvi(p)),
     post: (p) => ok(risolvi(p) ?? {}),
+    patch: (p, body) => Promise.resolve(rinomina(p, body)),
     screenshot: () => Promise.resolve(),
     mostraFile: () => Promise.resolve(),
     apriCartella: () => Promise.resolve(),

@@ -325,6 +325,13 @@ function registerIpc(): void {
   ipcMain.handle('core:endpoint', () => (sidecar.address ? { port: sidecar.address.port } : null))
 
   ipcMain.handle('core:request', async (_event, path: string, init?: { method?: string; body?: string }) => {
+    // L'interfaccia puo' interrogare il core prima che sia partito (la finestra
+    // si apre subito, il sidecar no): coreFetch lancia in quel caso, ma il
+    // ponte promette sempre {ok, status, body}, mai una promessa rifiutata.
+    // 503 e' lo stato che dice "non ancora disponibile", non un errore del core.
+    if (!sidecar.address) {
+      return { ok: false, status: 503, body: null }
+    }
     const response = await coreFetch(path, init)
     const text = await response.text()
     return {
