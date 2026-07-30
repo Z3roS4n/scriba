@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import sys
+import time
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -169,6 +170,101 @@ class TestAvvio:
     def test_non_si_avvia_senza_modello(self, manager: ModelsManager) -> None:
         with pytest.raises(RuntimeError, match="non è installato"):
             manager.avvia_server("gemma-4-12b")
+
+
+class TestAvvioNonIstantaneo:
+    """Il processo è vivo molto prima che il server risponda.
+
+    Caricare un GGUF da 7-9 GB richiede decine di secondi. Chiamare «in uso» un
+    modello che non risponde ancora lasciava l'interfaccia a dire «non
+    disponibile» del motore appena avviato, senza modo di distinguerlo da uno
+    rotto — è la issue #1.
+    """
+
+    @staticmethod
+    def _installa(manager: ModelsManager) -> ModelloDisponibile:
+        modello = next(m for m in manager.catalogo if m.uso == "analisi")
+        manager.percorso(modello).write_bytes(b"finto gguf")
+        (manager.dir_bin).mkdir(parents=True, exist_ok=True)
+        manager.server_exe.write_bytes(b"finto llama-server")
+        return modello
+
+    @staticmethod
+    def _finto_processo(monkeypatch, vivo: bool = True) -> None:
+        class FintoPopen:
+            pid = 4242
+
+            def __init__(self, *a, **k) -> None:
+                pass
+
+            def poll(self):
+                return None if vivo else 0
+
+        import scriba_core.models_manager as mm
+
+        monkeypatch.setattr(mm.subprocess, "Popen", FintoPopen)
+        monkeypatch.setattr(mm, "_lega_al_processo_padre", lambda _p: None)
+
+    def test_finche_non_risponde_e_in_avvio(self, manager: ModelsManager, monkeypatch) -> None:
+        modello = self._installa(manager)
+        self._finto_processo(monkeypatch)
+        monkeypatch.setattr(ModelsManager, "server_attivo", lambda self, porta=8080: False)
+
+        esito = manager.avvia_server(modello.id)
+        assert esito["stato"] == "in_avvio"
+        # L'endpoint non si dà prima che risponda: sarebbe un indirizzo che
+        # rifiuta le connessioni, e chi lo riceve non ha modo di saperlo.
+        assert esito["endpoint"] is None
+        assert manager.server_in_avvio() is True
+
+    def test_quando_risponde_diventa_in_uso_e_lo_dice(
+        self, manager: ModelsManager, monkeypatch
+    ) -> None:
+        eventi: list[dict] = []
+        manager._on_evento = eventi.append
+        modello = self._installa(manager)
+        self._finto_processo(monkeypatch)
+
+        risposte = iter([False, False, True])
+        monkeypatch.setattr(
+            ModelsManager, "server_attivo", lambda self, porta=8080: next(risposte, True)
+        )
+
+        manager.avvia_server(modello.id)
+        # Si aspetta la sorveglianza invece di dormire a caso: il thread è
+        # quello che decide quando il modello è davvero utilizzabile.
+        for _ in range(100):
+            if manager.descrivi(modello)["stato"] == "in_uso":
+                break
+            time.sleep(0.05)
+
+        descritto = manager.descrivi(modello)
+        assert descritto["stato"] == "in_uso"
+        assert descritto["endpoint"] == "http://127.0.0.1:8080"
+        assert manager.server_in_avvio() is False
+        # Due eventi: «sto partendo» e «adesso rispondo». Senza il secondo
+        # l'interfaccia resta ferma a quello che sapeva al momento del clic.
+        assert len(eventi) >= 2
+        assert eventi[0]["modello"]["stato"] == "in_avvio"
+        assert eventi[-1]["modello"]["stato"] == "in_uso"
+
+    def test_fermarlo_lo_riporta_installato(self, manager: ModelsManager, monkeypatch) -> None:
+        modello = self._installa(manager)
+        self._finto_processo(monkeypatch)
+        monkeypatch.setattr(ModelsManager, "server_attivo", lambda self, porta=8080: True)
+        manager.avvia_server(modello.id)
+
+        class FintoPopenFermabile:
+            def terminate(self):
+                pass
+
+            def wait(self, timeout=None):
+                return 0
+
+        manager._server = FintoPopenFermabile()  # type: ignore[assignment]
+        manager.ferma_server()
+        assert manager.server_in_avvio() is False
+        assert manager.descrivi(modello)["stato"] == "installato"
 
 
 class TestModelloGestito:

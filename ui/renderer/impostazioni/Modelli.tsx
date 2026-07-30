@@ -24,6 +24,7 @@ const ETICHETTA_STATO: Record<Modello['stato'], string> = {
   in_pausa: 'in pausa',
   in_verifica: 'in verifica',
   installato: 'installato',
+  in_avvio: 'in avvio',
   in_uso: 'in uso',
   spazio_insufficiente: 'spazio insufficiente',
   errore: 'errore',
@@ -31,6 +32,7 @@ const ETICHETTA_STATO: Record<Modello['stato'], string> = {
 
 function classeStato(stato: Modello['stato']): string {
   if (stato === 'installato' || stato === 'in_uso') return 'is-ok'
+  if (stato === 'in_avvio') return 'is-busy'
   if (stato === 'in_download' || stato === 'in_pausa' || stato === 'in_verifica') return 'is-busy'
   if (stato === 'spazio_insufficiente' || stato === 'errore') return 'is-err'
   return ''
@@ -159,7 +161,7 @@ function RigaModello({
             Elimina
           </button>
         )}
-        {m.stato === 'in_uso' && (
+        {(m.stato === 'in_uso' || m.stato === 'in_avvio') && (
           <button className="btn btn--sm" onClick={onFerma}>
             Ferma
           </button>
@@ -205,6 +207,12 @@ function RigaModello({
       )}
       {m.stato === 'installato' && m.installato_at != null && (
         <span className="model__meta">installato il {dataBreve(m.installato_at)}</span>
+      )}
+      {m.stato === 'in_avvio' && (
+        <span className="model__meta">
+          si sta caricando in memoria: qualche decina di secondi
+          {m.ram_bytes != null ? ` · ${dimensione(m.ram_bytes)} di RAM finora` : ''}
+        </span>
       )}
       {m.stato === 'in_uso' && (
         <span className="model__meta">

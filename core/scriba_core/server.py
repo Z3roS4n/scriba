@@ -986,9 +986,25 @@ def create_app(
             except Exception:
                 voce["disponibile"] = False
             voce["attivo"] = voce["id"] == attuale.get("provider")
-            # Detto solo quando serve: una voce già utilizzabile non ha nulla
-            # da rimediare.
-            voce["rimedio"] = None if voce["disponibile"] else PROVIDERS_INFO[voce["id"]]["rimedio"]
+            # Il modello locale può essere partito e non rispondere ancora:
+            # caricare un GGUF da 7-9 GB richiede decine di secondi. Dirlo
+            # «non disponibile» in quella finestra è falso, e il rimedio
+            # («scarica e avvia il modello») è quello che l'utente ha appena
+            # fatto.
+            gestore = state.get("gestore_modelli")
+            voce["in_avvio"] = bool(
+                voce["id"] == "local"
+                and not voce["disponibile"]
+                and gestore is not None
+                and gestore.server_in_avvio()
+            )
+            # Detto solo quando serve: una voce già utilizzabile, o che sta
+            # arrivando, non ha nulla da rimediare.
+            voce["rimedio"] = (
+                None
+                if voce["disponibile"] or voce["in_avvio"]
+                else PROVIDERS_INFO[voce["id"]]["rimedio"]
+            )
         return elenco
 
     @app.post("/settings", dependencies=[Depends(check_token)])

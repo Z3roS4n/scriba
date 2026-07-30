@@ -186,6 +186,13 @@ export interface Provider {
   minuti_per_ora: number | null
   /** Cosa manca perché sia utilizzabile, quando non lo è. */
   rimedio: string | null
+  /**
+   * Il modello locale è partito ma non risponde ancora: caricarlo richiede
+   * decine di secondi. Non è «disponibile», ma nemmeno un guasto — e dirgli
+   * «non disponibile» mentre carica manda l'utente a cercare un problema che
+   * non c'è.
+   */
+  in_avvio: boolean
 }
 
 export type StatoModello =
@@ -194,6 +201,8 @@ export type StatoModello =
   | 'in_pausa'
   | 'in_verifica'
   | 'installato'
+  /** Il processo è partito, il modello si sta caricando in memoria. */
+  | 'in_avvio'
   | 'in_uso'
   | 'spazio_insufficiente'
   | 'errore'

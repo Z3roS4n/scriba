@@ -147,10 +147,12 @@
   ]
 
   const providers = [
-    { id: 'local', etichetta: 'Modello locale', descrizione: 'Non esce nulla dal computer.', model: 'gemma-4-12b-it', disponibile: true, attivo: false, esce_dal_computer: false, costo_ora_eur: null, minuti_per_ora: 10, rimedio: null },
-    { id: 'claude-cli', etichetta: 'Abbonamento Claude', descrizione: 'Usa un abbonamento già attivo, nessun costo a consumo.', model: 'sonnet', disponibile: true, attivo: false, esce_dal_computer: true, costo_ora_eur: null, minuti_per_ora: 3, rimedio: null },
-    { id: 'anthropic', etichetta: 'API Anthropic', descrizione: 'Si paga a consumo, circa 0,04 € per un’ora di call.', model: 'claude-sonnet-5', disponibile: true, attivo: true, esce_dal_computer: true, costo_ora_eur: 0.04, minuti_per_ora: 3, rimedio: null },
-    { id: 'openai', etichetta: 'API OpenAI', descrizione: 'Si paga a consumo, circa 0,05 € per un’ora di call.', model: 'gpt-5-mini', disponibile: false, attivo: false, esce_dal_computer: true, costo_ora_eur: 0.05, minuti_per_ora: 3, rimedio: 'Serve una chiave API' },
+    // `local` è di proposito «in avvio»: è lo stato che prima non esisteva e
+    // che qui si vuole poter guardare senza avviare davvero un modello da 9 GB.
+    { id: 'local', etichetta: 'Modello locale', descrizione: 'Non esce nulla dal computer.', model: 'gemma-4-12b-it', disponibile: false, attivo: false, esce_dal_computer: false, costo_ora_eur: null, minuti_per_ora: 10, rimedio: null, in_avvio: true },
+    { id: 'claude-cli', etichetta: 'Abbonamento Claude', descrizione: 'Usa un abbonamento già attivo, nessun costo a consumo.', model: 'sonnet', disponibile: true, attivo: false, esce_dal_computer: true, costo_ora_eur: null, minuti_per_ora: 3, rimedio: null, in_avvio: false },
+    { id: 'anthropic', etichetta: 'API Anthropic', descrizione: 'Si paga a consumo, circa 0,04 € per un’ora di call.', model: 'claude-sonnet-5', disponibile: true, attivo: true, esce_dal_computer: true, costo_ora_eur: 0.04, minuti_per_ora: 3, rimedio: null, in_avvio: false },
+    { id: 'openai', etichetta: 'API OpenAI', descrizione: 'Si paga a consumo, circa 0,05 € per un’ora di call.', model: 'gpt-5-mini', disponibile: false, attivo: false, esce_dal_computer: true, costo_ora_eur: 0.05, minuti_per_ora: 3, rimedio: 'Serve una chiave API', in_avvio: false },
   ]
 
   const GB = 1024 ** 3

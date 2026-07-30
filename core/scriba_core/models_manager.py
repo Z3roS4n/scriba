@@ -157,6 +157,12 @@ def _scarica_parakeet() -> None:
     scarica_modello()
 
 
+# Quanto si sta ad aspettare che il server di analisi cominci a rispondere.
+# Generoso: un modello da 17 GB su disco lento ci mette minuti, e rinunciare
+# prima significherebbe dire «non è partito» di uno che sta ancora caricando.
+ATTESA_AVVIO_SERVER_S = 600.0
+
+
 CATALOGO: list[ModelloDisponibile] = [
     ModelloDisponibile(
         id="gemma-4-12b",
@@ -396,6 +402,12 @@ class ModelsManager:
         self._server: subprocess.Popen | None = None
         self._server_model_id: str | None = None
         self._porta: int = 8080
+        # Il processo è vivo molto prima che il server risponda: caricare un
+        # GGUF da 7-9 GB richiede decine di secondi. Tenerli distinti è tutto il
+        # punto: «acceso» e «pronto» non sono la stessa cosa, e chiamarli così
+        # lasciava l'interfaccia a dire «non disponibile» di un modello che si
+        # stava solo caricando.
+        self._server_pronto = False
         self._lock = threading.Lock()
         self._runtime: dict[str, _StatoRuntime] = {}
 
@@ -464,8 +476,11 @@ class ModelsManager:
                 and self._server.poll() is None
             )
             if server_vivo:
-                stato = "in_uso"
-                endpoint = f"http://127.0.0.1:{self._porta}"
+                # L'endpoint si dà solo quando risponde davvero: prima è un
+                # indirizzo che rifiuta le connessioni, e chi lo riceve non ha
+                # modo di saperlo.
+                stato = "in_uso" if self._server_pronto else "in_avvio"
+                endpoint = f"http://127.0.0.1:{self._porta}" if self._server_pronto else None
                 ram_bytes = _ram_bytes(self._server.pid)  # type: ignore[union-attr]
             else:
                 if self._server_model_id == modello.id:
@@ -990,6 +1005,38 @@ class ModelsManager:
         except Exception:
             return False
 
+    def server_in_avvio(self) -> bool:
+        """Il processo del modello di analisi è partito ma non risponde ancora.
+
+        Lo chiede la rotta `/providers`: senza, «Modello locale» resta «non
+        disponibile» mentre sta soltanto caricando, e chi ha appena premuto
+        avvia legge un guasto che non c'è.
+        """
+        return (
+            self._server is not None
+            and self._server.poll() is None
+            and not self._server_pronto
+        )
+
+    def _sorveglia_avvio(self, modello: ModelloDisponibile, porta: int, attesa_s: float) -> None:
+        """Aspetta che il server cominci a rispondere, poi lo dice.
+
+        Gira in un thread perché l'attesa è lunga: un modello da 17 GB ci mette
+        minuti. Senza questa sorveglianza nessuno emetteva niente quando il
+        server diventava utilizzabile, e l'interfaccia restava ferma a quello
+        che sapeva al momento del clic.
+        """
+        scadenza = time.monotonic() + attesa_s
+        while time.monotonic() < scadenza:
+            server = self._server
+            if server is None or server.poll() is not None:
+                break  # fermato o morto: se ne accorge `descrivi`
+            if self.server_attivo(porta):
+                self._server_pronto = True
+                break
+            time.sleep(1.0)
+        self._pubblica(modello)
+
     def avvia_server(self, model_id: str, *, porta: int = 8080, gpu_layers: int = 0) -> dict:
         """Avvia il modello di analisi come sottoprocesso.
 
@@ -1045,8 +1092,16 @@ class ModelsManager:
         )
         self._server_model_id = model_id
         self._porta = porta
+        self._server_pronto = False
         _lega_al_processo_padre(self._server)
+        # Si pubblica subito «in avvio», e di nuovo quando risponde.
         self._pubblica(modello)
+        threading.Thread(
+            target=self._sorveglia_avvio,
+            args=(modello, porta, ATTESA_AVVIO_SERVER_S),
+            name=f"avvio-{model_id}",
+            daemon=True,
+        ).start()
         return self.descrivi(modello)
 
     def ferma_server(self) -> dict | None:
@@ -1061,6 +1116,7 @@ class ModelsManager:
                     self._server.wait(timeout=5)
             self._server = None
         self._server_model_id = None
+        self._server_pronto = False
         if modello is not None:
             self._pubblica(modello)
             return self.descrivi(modello)

@@ -106,6 +106,15 @@ export function Impostazioni() {
           if (i < 0) return [...prec, aggiornato]
           return prec.map((m, k) => (k === i ? aggiornato : m))
         })
+        // Anche i motori: la disponibilità del modello locale la decide il
+        // core interrogando il server appena avviato, e questo evento è il
+        // momento in cui la risposta cambia. Senza, «Modello locale» restava
+        // «non disponibile» finché non si chiudeva e riapriva la finestra.
+        if (aggiornato.uso === 'analisi') {
+          window.scriba.get<Provider[]>('/providers').then((r) => {
+            if (r.ok) setProviders(r.body)
+          })
+        }
       }
     })
   }, [])
