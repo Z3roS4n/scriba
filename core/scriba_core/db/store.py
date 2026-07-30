@@ -9,13 +9,17 @@ provarci dà errori che compaiono solo sotto carico.
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 import threading
+import time
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 SCHEMA_VERSION = 1
@@ -111,6 +115,36 @@ class Store:
             raise
         else:
             conn.execute("COMMIT")
+
+    def consolida(self, tentativi: int = 3) -> bool:
+        """Travasa il WAL dentro il database e lo azzera.
+
+        Senza questo, tutto ciò che una call scrive resta nel solo file `-wal`
+        finché SQLite non decide di consolidarlo — e il consolidamento
+        automatico è **passivo**: rinuncia in silenzio se un'altra connessione
+        sta usando il WAL, che durante una call è sempre vero (due tracce
+        scrivono un segmento al secondo, e l'interfaccia legge di continuo).
+
+        Non è teoria: su questo progetto sono rimaste 24 ore di lavoro dentro un
+        WAL da 4 MB mentre il database restava fermo allo stato di due giorni
+        prima. Un WAL che nessuno consolida è l'unica copia di quei dati, e
+        basta un riavvio andato storto per non averla più.
+
+        Va chiamata quando c'è qualcosa da mettere in sicurezza — fine
+        registrazione, fine analisi, spegnimento — e **fuori** da una
+        transazione: dentro, il PRAGMA non fa nulla.
+
+        Restituisce False se il WAL è rimasto occupato: chi chiama non deve
+        trattarlo come un guasto (i dati sono comunque scritti e leggibili),
+        ma è giusto che finisca nei log.
+        """
+        for tentativo in range(tentativi):
+            occupato, _, _ = self.conn.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+            if not occupato:
+                return True
+            time.sleep(0.2 * (tentativo + 1))
+        log.warning("Il WAL è rimasto occupato: consolidamento rinviato (%s)", self.path.name)
+        return False
 
     def close(self) -> None:
         conn = getattr(self._local, "conn", None)

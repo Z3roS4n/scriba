@@ -176,6 +176,106 @@ class TestRisposta:
             p.complete(system="s", user="u")
 
 
+class TestAccessoScaduto:
+    """Una sessione OAuth scaduta lascia `claude` al suo posto ed eseguibile.
+
+    È capitato su una call di un'ora: l'analisi è partita, è morta subito, e il
+    messaggio mostrava 300 caratteri di JSON che tagliavano via l'unica frase
+    utile — «Failed to authenticate: OAuth session expired».
+    """
+
+    # La busta vera, ridotta a quello che conta: il CLI esce con 1 e scrive
+    # comunque il suo JSON su stdout, con `result` in fondo.
+    BUSTA_SCADUTA = json.dumps(
+        {
+            "is_error": True,
+            "duration_api_ms": 0,
+            "num_turns": 1,
+            "stop_reason": "stop_sequence",
+            "usage": {"input_tokens": 0, "output_tokens": 0},
+            "terminal_reason": "api_error",
+            "subtype": "success",
+            "result": "Failed to authenticate: OAuth session expired and could not be refreshed",
+        }
+    )
+
+    def test_il_motivo_arriva_all_utente_invece_del_json(self, chiamata, monkeypatch) -> None:
+        def finto_run(comando, **kwargs):
+            return subprocess.CompletedProcess(comando, 1, self.BUSTA_SCADUTA, "")
+
+        monkeypatch.setattr(subprocess, "run", finto_run)
+        with pytest.raises(LLMError) as errore:
+            ClaudeCliProvider().complete(system="s", user="u")
+
+        messaggio = str(errore.value)
+        assert "claude auth login" in messaggio
+        # Il JSON grezzo non è un messaggio d'errore.
+        assert not messaggio.lstrip().startswith("`claude` è uscito con codice 1: {")
+        assert "duration_api_ms" not in messaggio
+
+    def test_un_altro_errore_resta_quello_che_e(self, chiamata, monkeypatch) -> None:
+        busta_quota = json.dumps({"is_error": True, "result": "Usage limit reached"})
+
+        def finto_run(comando, **kwargs):
+            return subprocess.CompletedProcess(comando, 1, busta_quota, "")
+
+        monkeypatch.setattr(subprocess, "run", finto_run)
+        with pytest.raises(LLMError, match="Usage limit reached"):
+            ClaudeCliProvider().complete(system="s", user="u")
+
+    def test_lo_dice_prima_di_far_partire_l_analisi(self, monkeypatch) -> None:
+        # Senza questo controllo l'abbonamento risulta disponibile solo perché
+        # l'eseguibile c'è, e il guasto si scopre a analisi avviata.
+        monkeypatch.setattr("shutil.which", lambda _: "C:/fake/claude.exe")
+        monkeypatch.setattr(
+            subprocess,
+            "run",
+            lambda comando, **kwargs: subprocess.CompletedProcess(
+                comando, 0, json.dumps({"loggedIn": False, "authMethod": "none"}), ""
+            ),
+        )
+        assert ClaudeCliProvider().available() is False
+
+    def test_collegato_resta_disponibile(self, monkeypatch) -> None:
+        monkeypatch.setattr("shutil.which", lambda _: "C:/fake/claude.exe")
+        monkeypatch.setattr(
+            subprocess,
+            "run",
+            lambda comando, **kwargs: subprocess.CompletedProcess(
+                comando, 0, json.dumps({"loggedIn": True, "authMethod": "oauth"}), ""
+            ),
+        )
+        assert ClaudeCliProvider().available() is True
+
+    def test_un_controllo_che_non_riesce_non_blocca(self, monkeypatch) -> None:
+        # Una versione del CLI senza `auth status` non deve far sembrare rotto un
+        # abbonamento che funziona: nel dubbio si prova.
+        monkeypatch.setattr("shutil.which", lambda _: "C:/fake/claude.exe")
+        monkeypatch.setattr(
+            subprocess,
+            "run",
+            lambda comando, **kwargs: subprocess.CompletedProcess(
+                comando, 1, "", "error: unknown command 'auth'"
+            ),
+        )
+        assert ClaudeCliProvider().available() is True
+
+    def test_la_chiave_api_non_falsa_il_controllo(self, monkeypatch) -> None:
+        # Se il controllo la vedesse, direbbe «collegato» per merito di una
+        # chiave che l'analisi poi toglie comunque dall'ambiente.
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-qualcosa")
+        monkeypatch.setattr("shutil.which", lambda _: "C:/fake/claude.exe")
+        visto = {}
+
+        def finto_run(comando, **kwargs):
+            visto["env"] = kwargs.get("env", {})
+            return subprocess.CompletedProcess(comando, 0, json.dumps({"loggedIn": True}), "")
+
+        monkeypatch.setattr(subprocess, "run", finto_run)
+        ClaudeCliProvider().available()
+        assert "ANTHROPIC_API_KEY" not in visto["env"]
+
+
 class TestEstrazioneJson:
     """Qui manca la grammatica che in locale rende il JSON impossibile da
     sbagliare: la risposta va ripulita."""

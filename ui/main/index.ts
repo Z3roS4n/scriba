@@ -429,7 +429,17 @@ function registerIpc(): void {
   ipcMain.handle('scorciatoie:prova', (_event, combinazione: string) => provaScorciatoia(combinazione))
 }
 
+// Due copie dell'app aperte insieme sono due core sullo stesso database, ed e'
+// uno dei modi in cui si perde una call: il WAL di uno viene azzerato mentre
+// l'altro lo sta ancora usando. La seconda istanza porta davanti la prima e si
+// chiude, invece di aprire una finestra che sembra innocua.
+const solaIstanza = app.requestSingleInstanceLock()
+if (!solaIstanza) app.quit()
+
+app.on('second-instance', () => showWindow())
+
 app.whenReady().then(async () => {
+  if (!solaIstanza) return
   mkdirSync(DATA_DIR, { recursive: true })
   registerIpc()
   mainWindow = createWindow()
@@ -465,10 +475,19 @@ app.on('before-quit', () => {
   quitting = true
 })
 
-app.on('will-quit', () => {
+let spegnendo = false
+
+app.on('will-quit', (evento) => {
   globalShortcut.unregisterAll()
   overlay.chiudi()
-  sidecar.stop()
+  if (spegnendo) return
+
+  // Si trattiene la chiusura per il tempo che serve al core a consolidare il
+  // database: ucciderlo a meta' lascia l'ultima call nel solo WAL, che e'
+  // esattamente come la si perde.
+  spegnendo = true
+  evento.preventDefault()
+  sidecar.stop().finally(() => app.exit(0))
 })
 
 // Su Windows chiudere tutte le finestre non deve chiudere l'app: resta nell'area
