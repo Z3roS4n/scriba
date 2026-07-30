@@ -17,7 +17,7 @@ import { PannelloAnalisi } from './Analisi'
 import { PannelloProve } from './Prove'
 import { Rassegna } from './Rassegna'
 import { AvvisoCall, Barra, ModaleConsenso } from './Dialoghi'
-import { scorciatoiaLeggibile, type EventoCore, type Scatto, type Segmento, type Sessione, type Task } from './tipi'
+import { scorciatoiaLeggibile, type DbDanneggiato, type EventoCore, type Scatto, type Segmento, type Sessione, type Task } from './tipi'
 
 interface Avviso {
   testo: string
@@ -38,6 +38,11 @@ function App() {
   const [dialogoConsenso, setDialogoConsenso] = useState(false)
   const [titoloProposto, setTitoloProposto] = useState('')
   const [avviso, setAvviso] = useState<Avviso | null>(null)
+  // Stato suo, separato da `avviso`: quello viene azzerato dai flussi normali
+  // (fine registrazione, cambio call), e un avviso che dice «il tuo database è
+  // stato messo da parte» non deve sparire perché nel frattempo è successo
+  // qualcos'altro.
+  const [dbDanneggiato, setDbDanneggiato] = useState<DbDanneggiato | null>(null)
   const [esportando, setEsportando] = useState(false)
   const [callRilevata, setCallRilevata] = useState<{
     pid: number
@@ -294,8 +299,14 @@ function App() {
       if (!e) return
       setCorePronto(true)
       caricaSessioni()
-      const r = await window.scriba.get<{ modello: StatoModello }>('/health')
+      const r = await window.scriba.get<{
+        modello: StatoModello
+        db_danneggiato: DbDanneggiato | null
+      }>('/health')
       if (r.ok && r.body?.modello) setModello(r.body.modello)
+      // Arriva valorizzato solo quando è successo davvero, e allora va detto:
+      // senza, l'elenco delle call risulta tornato indietro e basta.
+      if (r.ok && r.body?.db_danneggiato) setDbDanneggiato(r.body.db_danneggiato)
     })
 
     return () => off.forEach((f) => f())
@@ -452,6 +463,26 @@ function App() {
           onRegistra={apriDialogoRegistra}
           onFerma={ferma}
         />
+        {dbDanneggiato && (
+          // Prima dell'avviso normale: se ci sono tutti e due, questo è quello
+          // che cambia cosa l'utente sta guardando.
+          <div className="notice notice--error">
+            Il database non si leggeva e Scriba è ripartito
+            {dbDanneggiato.ripristinato ? ' da un backup' : ' da vuoto'}: le call registrate dopo
+            non compaiono più. I file originali non sono stati cancellati.
+            <span className="notice__spacer" />
+            <button
+              type="button"
+              className="btn btn--sm"
+              onClick={() => window.scriba.apriCartella(dbDanneggiato.quarantena)}
+            >
+              Apri la cartella
+            </button>
+            <button type="button" className="btn--link" onClick={() => setDbDanneggiato(null)}>
+              ✕
+            </button>
+          </div>
+        )}
         {avviso && <Barra testo={avviso.testo} azione={avviso.azione} onChiudi={() => setAvviso(null)} />}
       </div>
 

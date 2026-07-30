@@ -224,6 +224,22 @@ export interface Disco {
   totale_bytes: number
 }
 
+/**
+ * Presente in `GET /health` solo quando all'avvio il database non era leggibile
+ * ed è stato messo da parte (`db/manutenzione.py`).
+ *
+ * Non è un dettaglio tecnico da log: l'elenco delle call torna indietro, e chi
+ * guarda l'applicazione deve sapere perché e dove sono finiti i suoi file.
+ */
+export interface DbDanneggiato {
+  /** Cosa ha detto il controllo di integrità. */
+  motivo: string
+  /** La cartella dove sono finiti il database rotto e il suo WAL. */
+  quarantena: string
+  /** Il backup da cui si è ripartiti. Stringa vuota se non ce n'era nessuno. */
+  ripristinato: string
+}
+
 export interface Dispositivo {
   id: string
   nome: string
