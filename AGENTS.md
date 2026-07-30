@@ -24,7 +24,7 @@ Regole per gli agenti AI (Claude Code) che lavorano su questo repo.
 - Aggiorna i doc di progetto toccati dalla decisione (stesso commit).
 
 ## Commit
-- Author: `Thepro007002001@gmail.com`. **Mai co-author.** Messaggi imperativi in inglese.
+- Usa l'identità Git già configurata in locale. **Mai co-author.** Messaggi imperativi in inglese.
 
 ## Comandi rapidi (slash-command)
 - `/report <task>` — nuovo report datato

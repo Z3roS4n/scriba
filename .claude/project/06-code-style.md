@@ -36,6 +36,6 @@ narrazione del task/fix corrente, niente commenti "decorativi" o di sezione supe
 - Il codice critico non si merge senza test.
 
 ## Git & processo
-- Commit: author `Thepro007002001@gmail.com`, **mai co-author**. Messaggi imperativi in inglese.
+- Commit: usa l'identità Git già configurata in locale, **mai co-author**. Messaggi imperativi in inglese.
 - Feature branch per lavori multi-commit.
 - Dopo ogni task: report in `.claude/project/reports/{DATA}-{ORA}.report-{NOME}.md`.

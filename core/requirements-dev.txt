@@ -1,0 +1,19 @@
+# Serve solo per sviluppare e per costruire l'installer, non per far girare Scriba.
+#
+#   uv pip install --python core/.venv/Scripts/python.exe -r core/requirements-dev.txt
+
+-r requirements.txt
+
+pytest==9.0.1
+# Impacchetta il core in un eseguibile: lo usa scripts/build-core.ps1, quindi
+# senza questo `npm run dist` si ferma a metà.
+pyinstaller==6.21.0
+
+# --- opzionale: diarizzazione (distinguere le singole voci fra "gli altri")
+#
+# Non è nell'elenco sopra e non è nell'installer di proposito: si porta dietro
+# l'intero stack PyTorch, centinaia di MB, per una funzione che si usa a fine
+# call e non tutti vogliono. Serve anche un token Hugging Face, perché i pesi
+# del modello sono dietro accettazione delle condizioni.
+#
+#   uv pip install --python core/.venv/Scripts/python.exe "pyannote.audio==4.0.7"

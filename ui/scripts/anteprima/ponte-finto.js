@@ -170,7 +170,7 @@
     note_incrementali: false,
     interfaccia: { scorciatoia_overlay: 'Alt+R', scorciatoia_screenshot: 'CommandOrControl+Shift+S', righe_overlay: 6, opacita_overlay: 0.92, overlay_ridotto: false },
     rilevamento: { attivo: true, avvio_automatico: false, conferma_s: 20 },
-    export: { cartella: 'C:\\Users\\antonio\\Documenti\\Scriba', formato: 'markdown' },
+    export: { cartella: 'C:\\Users\\utente\\Documenti\\Scriba', formato: 'markdown' },
   }
 
   const RISPOSTE = {
@@ -178,7 +178,7 @@
     '/providers': providers,
     '/settings': impostazioni,
     '/modelli': modelli,
-    '/disco': { cartella: 'C:\\Users\\antonio\\AppData\\Scriba\\models', libero_bytes: 12 * GB, totale_bytes: 476 * GB },
+    '/disco': { cartella: 'C:\\Users\\utente\\AppData\\Scriba\\models', libero_bytes: 12 * GB, totale_bytes: 476 * GB },
     '/dispositivi': {
       microfoni: [{ id: 'mic-0', nome: 'Realtek Array', predefinito: true }, { id: 'mic-1', nome: 'Webcam', predefinito: false }],
       loopback: [{ id: 'lb-0', nome: 'Altoparlanti (loopback)', predefinito: true }],

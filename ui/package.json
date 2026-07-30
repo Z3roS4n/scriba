@@ -4,6 +4,7 @@
   "description": "Interfaccia di Scriba",
   "main": "dist/main/index.js",
   "license": "MIT",
+  "author": "Antonio Murabito",
   "private": true,
   "scripts": {
     "build:main": "esbuild main/index.ts main/preload.ts --bundle --platform=node --target=node20 --external:electron --outdir=dist/main",
