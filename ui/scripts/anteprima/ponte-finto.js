@@ -196,7 +196,19 @@
     '/diarizzazione/disponibile': { disponibile: true },
     // Senza questo il modello risulta "in caricamento" e «Registra» resta
     // spento: giusto nell'app, inutile qui, dove serve arrivare al modale.
-    '/health': { ok: true, modello: 'pronto', in_registrazione: false },
+    // `db_danneggiato` valorizzato di proposito: e' lo stato che si vuole poter
+    // guardare senza dover rovinare un database vero. Metterlo a null mostra
+    // l'applicazione com'e' quando va tutto bene.
+    '/health': {
+      ok: true,
+      modello: 'pronto',
+      in_registrazione: false,
+      db_danneggiato: {
+        motivo: 'database disk image is malformed',
+        quarantena: 'C:\\Users\\utente\\AppData\\Scriba\\danneggiato-2026-08-12-1405',
+        ripristinato: 'C:\\Users\\utente\\AppData\\Scriba\\backup\\scriba-2026-08-12-1130.sqlite',
+      },
+    },
     '/session/state': { in_registrazione: false },
   }
 

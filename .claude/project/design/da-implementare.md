@@ -21,7 +21,7 @@
   scoprirlo.
 - **UI ora:** niente. Serve un avviso persistente (non un toast che passa) con il percorso
   della cartella di quarantena, apribile nell'esplora risorse.
-- **Priorità:** P1.
+- **Priorità:** P1. **Risolta** nella issue #6, branch `fix/avviso-database-messo-da-parte`.
 
 <!--
 Template voce:
