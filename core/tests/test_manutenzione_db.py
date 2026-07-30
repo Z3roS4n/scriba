@@ -15,6 +15,7 @@ Ogni test qui sotto verifica una delle tre cose che dovevano esserci:
 
 from __future__ import annotations
 
+import asyncio
 import shutil
 import sqlite3
 import sys
@@ -222,3 +223,67 @@ class TestBackup:
 @pytest.mark.parametrize("mancante", ["p.sqlite", "altro.sqlite"])
 def test_un_database_che_non_esiste_ancora_va_bene(tmp_path: Path, mancante: str) -> None:
     assert manutenzione.controlla(tmp_path / mancante) is None
+
+
+class TestConsolidamentoPeriodico:
+    """Una call dura un'ora: aspettare la fine per mettere al sicuro il lavoro
+    lascia scoperta tutta la registrazione.
+
+    Non è prudenza teorica. Provato: quando l'applicazione Electron muore di
+    colpo, il sistema operativo porta con sé anche il core — il Job Object di
+    Electron non gli lascia il tempo di consolidare, per quanta grazia gli si
+    conceda nel codice. L'unica difesa che regge è aver già travasato.
+    """
+
+    @staticmethod
+    def _stato(registrando: bool) -> dict:
+        class Recorder:
+            is_recording = registrando
+
+        return {"recorder": Recorder()}
+
+    @staticmethod
+    def _gira_un_poco(stato: dict, store: Store) -> None:
+        """Fa girare la guardia per qualche giro e la ferma.
+
+        `asyncio.run` invece di un test asincrono: pytest-asyncio non è fra le
+        dipendenze del progetto, e aggiungerla per due test sarebbe sproporzionato.
+        """
+        import scriba_core.server as srv
+
+        async def gira() -> None:
+            compito = asyncio.create_task(srv._consolida_mentre_registra(stato, store))
+            await asyncio.sleep(0.25)
+            compito.cancel()
+
+        asyncio.run(gira())
+
+    def test_mentre_registra_consolida(self, tmp_path: Path, monkeypatch) -> None:
+        import scriba_core.server as srv
+
+        store = Store(tmp_path / "p.sqlite")
+        _con_una_call(store)
+        monkeypatch.setattr(srv, "INTERVALLO_CONSOLIDAMENTO_S", 0.05)
+
+        self._gira_un_poco(self._stato(True), store)
+
+        solo = _solo_file_principale(store, tmp_path)
+        assert solo.execute("SELECT COUNT(*) FROM transcript_segments").fetchone()[0] == 2
+
+    def test_fuori_da_una_registrazione_non_tocca_niente(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        import scriba_core.server as srv
+
+        store = Store(tmp_path / "p.sqlite")
+        _con_una_call(store)
+        monkeypatch.setattr(srv, "INTERVALLO_CONSOLIDAMENTO_S", 0.05)
+
+        self._gira_un_poco(self._stato(False), store)
+
+        # Niente di nuovo da mettere al sicuro: un checkpoint a vuoto ogni due
+        # minuti sarebbe solo rumore su disco.
+        with pytest.raises(sqlite3.OperationalError):
+            _solo_file_principale(store, tmp_path).execute(
+                "SELECT COUNT(*) FROM transcript_segments"
+            )

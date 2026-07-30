@@ -302,6 +302,34 @@ class Broadcaster:
                 self.disconnect(ws)
 
 
+# Ogni quanto mettere al sicuro quello che una call ha scritto finora.
+# È il tetto alla perdita in caso di morte violenta del processo: verificato che
+# quando l'applicazione Electron muore di colpo il sistema operativo porta con sé
+# anche il core — il Job Object di Electron non gli lascia il tempo di
+# consolidare, per quanta grazia gli si conceda. Due minuti di trascrizione
+# persi sono un fastidio; un'ora di riunione è un danno.
+INTERVALLO_CONSOLIDAMENTO_S = 120.0
+
+
+async def _consolida_mentre_registra(state: dict[str, Any], store) -> None:
+    """Travasa il WAL a intervalli, ma solo mentre si registra.
+
+    Fuori da una registrazione non c'è niente di nuovo da mettere al sicuro, e
+    un checkpoint a vuoto ogni due minuti sarebbe solo rumore su disco.
+    """
+    if store is None:
+        return
+    while True:
+        await asyncio.sleep(INTERVALLO_CONSOLIDAMENTO_S)
+        recorder = state.get("recorder")
+        if recorder is None or not recorder.is_recording:
+            continue
+        try:
+            await asyncio.to_thread(store.consolida)
+        except Exception:  # pragma: no cover - non deve mai fermare una call
+            log.exception("Consolidamento periodico non riuscito")
+
+
 def _lifespan(broadcaster: Broadcaster, state: dict[str, Any], preload, avvia_rilevatore=None, store=None):
     """Aggancia il broadcaster al loop e chiude ciò che resta aperto."""
 
@@ -315,9 +343,11 @@ def _lifespan(broadcaster: Broadcaster, state: dict[str, Any], preload, avvia_ri
         # Girano in un thread perché il caricamento è codice sincrono che
         # altrimenti terrebbe fermo l'intero event loop, websocket compreso.
         asyncio.create_task(preload())
+        guardia = asyncio.create_task(_consolida_mentre_registra(state, store))
         try:
             yield
         finally:
+            guardia.cancel()
             rilevatore = state.get("rilevatore")
             if rilevatore is not None:
                 rilevatore.stop()
