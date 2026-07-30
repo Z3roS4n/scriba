@@ -1,0 +1,90 @@
+# Segna nel progetto le issue chiuse da un contributo pubblico.
+#
+# Regola di progetto (AGENTS.md): una issue risolta da una PR di qualcuno che non è il
+# maintainer finisce in .claude/project/contributi.md. Automaticamente, perché un registro
+# che dipende dal ricordarsene non è un registro.
+#
+# ATTENZIONE — `pull_request_target` gira con i permessi di scrittura del repo base, e
+# riceve l'evento di una PR che può arrivare da un fork. Qui si leggono **solo i metadati
+# dell'evento** e si scrive un file del branch base. Non si deve MAI aggiungere un checkout
+# del codice della PR (`ref: ${{ github.event.pull_request.head.sha }}`) né eseguire script
+# che vengano da lì: sarebbe codice di uno sconosciuto con un token in mano.
+
+name: Registra contributi pubblici
+
+on:
+  pull_request_target:
+    types: [closed]
+
+permissions:
+  contents: write
+
+jobs:
+  registra:
+    # Solo PR davvero unite, e solo da chi non ha già i permessi sul repo: un merge del
+    # maintainer non è un contributo pubblico.
+    if: >
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.author_association != 'OWNER' &&
+      github.event.pull_request.author_association != 'MEMBER' &&
+      github.event.pull_request.author_association != 'COLLABORATOR'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prendi il branch base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+
+      - name: Trova le issue citate e aggiorna il registro
+        env:
+          # Via env e non interpolati nello script: il titolo di una PR è testo scritto da
+          # chiunque, e dentro uno script shell diventerebbe eseguibile.
+          CORPO: ${{ github.event.pull_request.body }}
+          TITOLO: ${{ github.event.pull_request.title }}
+          AUTORE: ${{ github.event.pull_request.user.login }}
+          NUMERO_PR: ${{ github.event.pull_request.number }}
+          URL_PR: ${{ github.event.pull_request.html_url }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          registro=".claude/project/contributi.md"
+
+          # `Closes #12`, `fixes #7`, `resolve #3`: le forme che GitHub stesso riconosce.
+          # Il `|| true` non è decorativo: senza match `grep` esce 1, e con `set -e` il
+          # passo fallirebbe proprio nel caso normale di una PR che non cita niente.
+          issue=$( { printf '%s' "$CORPO" \
+            | grep -oiE '(clos(e|es|ed)|fix(es|ed)?|resolv(e|es|ed)) +#[0-9]+' \
+            | grep -oE '[0-9]+' | sort -un | tr '\n' ' ' | sed 's/ $//'; } || true )
+
+          if [ -z "$issue" ]; then
+            echo "La PR #$NUMERO_PR non cita nessuna issue: niente da registrare."
+            exit 0
+          fi
+
+          oggi=$(date -u +%Y-%m-%d)
+          for numero in $issue; do
+            if grep -q "issues/$numero)" "$registro"; then
+              echo "La issue #$numero era già registrata."
+              continue
+            fi
+            titolo=$(printf '%s' "$TITOLO" | tr '|' '/' | tr -d '\n')
+            printf '| %s | [#%s](https://github.com/%s/issues/%s) | [#%s](%s) | @%s | %s |\n' \
+              "$oggi" "$numero" "$REPO" "$numero" "$NUMERO_PR" "$URL_PR" "$AUTORE" "$titolo" \
+              >> "$registro"
+          done
+
+          # La riga segnaposto sparisce al primo contributo vero.
+          sed -i '/_(nessuno ancora)_/d' "$registro"
+
+          if git diff --quiet -- "$registro"; then
+            echo "Registro già aggiornato."
+            exit 0
+          fi
+
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add "$registro"
+          git commit -m "Register public contribution from PR #$NUMERO_PR"
+          # Se main è protetto contro le push dirette, questo passo fallisce: in quel caso
+          # va aperta una PR invece di spingere, e il commento va aggiornato qui.
+          git push
