@@ -74,11 +74,28 @@ export function SezioneMotore({
                     )}
                   </div>
                   <span className={`engine__state ${p.disponibile ? 'is-ok' : ''}`}>
-                    {p.attivo ? 'In uso' : p.disponibile ? 'Pronto' : chiedeChiave ? 'Chiave mancante' : 'Non disponibile'}
+                    {p.attivo
+                      ? 'In uso'
+                      : p.disponibile
+                        ? 'Pronto'
+                        : p.in_avvio
+                          ? 'In avvio…'
+                          : chiedeChiave
+                            ? 'Chiave mancante'
+                            : 'Non disponibile'}
                   </span>
                 </div>
 
-                {!p.disponibile && (
+                {p.in_avvio && (
+                  <div className="engine__need" onClick={(e) => e.stopPropagation()}>
+                    <span>
+                      Il modello si sta caricando in memoria. Diventa selezionabile da solo appena risponde:
+                      non serve riaprire questa finestra.
+                    </span>
+                  </div>
+                )}
+
+                {!p.disponibile && !p.in_avvio && (
                   <div className="engine__need" onClick={(e) => e.stopPropagation()}>
                     {!chiedeChiave ? (
                       <span>{p.rimedio}</span>

@@ -22,6 +22,11 @@ def crea_router(ctx: Contesto) -> APIRouter:
     # richiesta e l'altra. `crea_router` viene chiamata una sola volta
     # all'avvio, quindi il manager vive quanto il server.
     manager = ModelsManager(ctx.db_path.parent / "models", on_evento=ctx.publish)
+    # Lo legge `/providers`, che vive in `server.py` e deve poter distinguere
+    # «il modello locale non c'è» da «sta caricando»: sono due risposte diverse
+    # per chi guarda l'elenco dei motori. Lo stato condiviso è il canale già
+    # previsto dal contesto per questo genere di cose.
+    ctx.state["gestore_modelli"] = manager
 
     @router.get("/modelli")
     async def elenco() -> list[dict]:
