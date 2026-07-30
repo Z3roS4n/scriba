@@ -14,12 +14,17 @@ Documenti essenziali per uno sviluppo coerente. **Leggerli prima di implementare
 | [08-react-next-performance.md](08-react-next-performance.md) *(solo stack React/Next)* | Direttive performance: waterfall, bundle, RSC, re-render |
 | [09-roadmap.md](09-roadmap.md) | Fasi con checklist e criteri di verifica |
 | [10-packaging.md](10-packaging.md) | Come si costruisce l'installer Windows (PyInstaller + electron-builder), dove sono i pezzi, cosa verificare |
+| [contributi.md](contributi.md) | Issue chiuse da una PR di chi non è maintainer. **Non si compila a mano**: lo scrive `.github/workflows/registra-contributi.yml` |
 | `reports/` | Report datati `{DATA}-{ORA}.report-{NOME}.md` per ogni modifica completata |
 | `research/` | Note di ricerca datate `{DATA}.{NOME}.md` |
 | `design/` *(solo se il progetto ha un redesign/nuovo design UI)* | Sistema di design, decisioni, gap funzionali — generato da `/design-setup` |
 | `roadmap-frontend.md` *(sibling di `design/`)* | Avanzamento del redesign UI per fase/sezione |
 
 ## Convenzioni operative
+- **Ogni difetto o richiesta diventa prima una issue su GitHub, e si lavora su un branch —
+  mai su `main`.** Il come sta in [AGENTS.md](../../AGENTS.md), sezione «Issue»: titolo che
+  dice il sintomo, corpo con cosa succede / cosa ci si aspetterebbe / perché / come
+  riprodurlo, e `Closes #N` nel commit che la risolve.
 - Commit: usa l'identità Git già configurata in locale, **niente co-author**.
 - Dopo ogni task completato con successo: report in `reports/`.
 - Ogni integrazione esterna documentata in `.claude/integrations/` (stesso incremento).

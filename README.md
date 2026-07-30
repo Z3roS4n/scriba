@@ -109,6 +109,27 @@ Questo è il punto su cui vale la pena essere espliciti, non vago.
 - L'export verso Notion o verso un endpoint HTTP è un'azione esplicita tua: scriba non
   manda niente altrove di sua iniziativa.
 
+## Cosa succede se qualcosa va storto
+
+Una call registrata è un'ora di lavoro che non si ripete: qui è scritto cosa fa Scriba
+per non fartela perdere, perché è successo davvero durante lo sviluppo.
+
+- **Il lavoro di una call finisce nel database mentre la registri**, non solo quando la
+  fermi: ogni due minuti, più a fine registrazione e a fine analisi. SQLite scrive prima
+  in un file di appoggio (il WAL) e lo travasa nel database solo ogni tanto, per conto
+  suo: se l'applicazione muore prima, quel travaso non è mai avvenuto. Al peggio ora si
+  perdono due minuti di trascrizione, non l'intera riunione.
+- **Un database che non si legge non viene usato.** All'avvio Scriba lo controlla; se non
+  passa, lo mette da parte insieme al suo WAL — in una cartella `danneggiato-<data>`
+  accanto ai dati — e riparte dal backup più recente. Continuare a scriverci dentro
+  renderebbe irrecuperabile quello che ancora si poteva salvare. **Quei file non vengono
+  mai cancellati**, e l'applicazione lo dice con un avviso che porta alla cartella.
+- **I backup li fa da sola**, all'avvio e a fine registrazione, tenendo gli ultimi cinque
+  in `backup/` accanto al database. Sono copie compatte in un file solo: un backup non
+  può soffrire dello stesso disallineamento che ha causato il guasto.
+- **L'audio resta comunque su disco** in `audio/sessione-<n>/`, in due tracce separate.
+  È l'ultima rete: finché ci sono quei file, la call non è perduta.
+
 ## Registrare le call e la legge
 
 Scriba registra anche l'audio degli **altri partecipanti** alla call, non solo il tuo.
@@ -160,6 +181,18 @@ Onestamente, non solo quello che manca ma anche quello che non è mai stato veri
 - **`whisper-large-v3` compare in alcune schermate/dati di esempio dell'interfaccia,
   ma non esiste un motore di trascrizione che lo usi davvero.** Il motore di
   trascrizione reale, unico e predefinito, è Parakeet TDT.
+- **L'export verso Notion non è mai stato provato contro un account vero.** La logica —
+  scelta del database, mappatura dei campi, creazione delle colonne — è coperta da test
+  con le chiamate HTTP simulate, ma nessuno l'ha ancora vista funzionare su Notion. Al
+  primo collegamento reale attenzione ai nomi delle opzioni di una colonna `status`: le
+  sue opzioni l'API di Notion non può crearle, e un valore che non corrisponde a nessuna
+  di quelle esistenti viene semplicemente non mandato.
+- **La chiusura ordinata dell'applicazione non è verificata fino in fondo.** Che il core
+  travasi il WAL quando gli si chiede di fermarsi è provato; che il percorso completo
+  (chiusura dal tray → attesa → spegnimento del core) lo faccia sempre, no. Quello che è
+  stato provato, e che vale la pena sapere, è il caso opposto: se l'applicazione **muore
+  di colpo**, Windows porta con sé anche il core prima che possa travasare — per questo
+  il consolidamento periodico durante la registrazione non è un lusso.
 - **La diarizzazione (distinguere le singole voci dentro "gli altri") richiede
   `pyannote.audio` installato a parte** — non è nel pacchetto (l'installer NSIS
   costruito con `npm run dist` lo esclude di proposito: pesa, insieme all'intero
