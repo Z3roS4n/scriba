@@ -122,6 +122,65 @@
   senza che il codice del core sia cambiato — successo davvero durante questo lavoro.
 - **Data:** 2026-07-29
 
+### D-008 — Le colonne di Notion le decide l'utente, non il connettore
+- **Contesto:** il connettore Notion indovinava le colonne confrontando il nome di ogni
+  proprietà del database con una lista di alias (`assegnatario`/`assignee`/`responsabile`…).
+  Una colonna chiamata diversamente veniva saltata in silenzio, e non c'era modo di dire
+  «la scadenza va in *Quando*» né di partire senza un database già adatto.
+- **Opzioni:** A) allungare la lista di alias · B) mappatura esplicita scelta dall'utente ·
+  C) pretendere un database con nomi di colonna fissi, creandolo noi e basta.
+- **Scelta:** B come base, più la creazione guidata (C) come scorciatoia per chi non ha
+  ancora un database. A resta, ma solo come **proposta** già compilata da correggere.
+- **Motivo:** gli alias sono una scommessa sul vocabolario di qualcun altro: perdono
+  sempre, e perdono in silenzio, che è il modo peggiore. Pretendere nomi fissi (C da solo)
+  significa chiedere a chi ha già un database di impegni di rifarlo. Con la mappatura
+  esplicita la scelta è visibile e correggibile; con la creazione guidata chi parte da zero
+  non deve costruire niente a mano.
+- **Conseguenze:** la mappa (`{campo → nome proprietà}`) vive in `export_notion.json` e
+  viene **verificata contro lo schema vero** prima di essere salvata: colonna assente, tipo
+  incompatibile e due campi sulla stessa colonna diventano un errore leggibile invece di un
+  400 di Notion a metà invio. `mappa: null` significa «nessuna scelta fatta»: chi aveva
+  collegato Notion prima continua a funzionare col riconoscimento per nome. Un valore di
+  dominio conosce i suoi sinonimi (`alta`/`Alta`/`High`) così da riusare le opzioni che il
+  database ha già invece di duplicarle, e uno `status` non mandato è meglio di una riga
+  rifiutata: le sue opzioni non si possono creare dall'API. Cambiare database azzera gli id
+  remoti salvati, altrimenti si aggiornerebbero righe nel database vecchio riportando
+  «aggiornati» con quello nuovo vuoto. Prezzo pagato: sei chiamate REST in più (ricerca,
+  schema, creazione) e una schermata a passi al posto di due campi da incollare.
+- **Data:** 2026-07-30
+
+### D-009 — Il WAL si consolida quando i dati diventano definitivi, non quando decide SQLite
+- **Contesto:** una call di due ore è stata persa dal database. Il file principale era
+  fermo allo stato di due giorni prima, tutto il lavoro successivo stava in un `-wal` da
+  4 MB, e quel WAL è finito disallineato dal database («database disk image is
+  malformed»). Della call si è salvato solo l'export Markdown fatto a mano.
+- **Cause trovate:** (a) il consolidamento automatico di SQLite è **passivo** e rinuncia in
+  silenzio se un'altra connessione sta usando il WAL — durante una call è sempre vero, due
+  tracce scrivono un segmento al secondo; (b) allo spegnimento non consolidava nessuno,
+  perché il core veniva **ucciso** (`os._exit` sul guinzaglio dello stdin, `child.kill()`
+  dal lato Electron) e l'uccisione salta l'unico momento in cui SQLite l'avrebbe fatto da
+  sé; (c) in sviluppo il core vero è un **nipote** di Electron — il `python.exe` del venv
+  creato con uv ri-esegue l'interprete di base — quindi `kill()` uccideva lo stub e
+  lasciava il core vivo col database aperto: al build successivo ne partiva un altro sullo
+  stesso file.
+- **Opzioni:** A) alzare `wal_autocheckpoint` · B) un checkpoint periodico a tempo · C)
+  consolidare nei punti in cui il lavoro diventa definitivo, più spegnimento ordinato.
+- **Scelta:** C. A non risolve niente (il problema non è la soglia, è che il checkpoint
+  passivo rinuncia); B mette in sicurezza a caso invece che quando serve.
+- **Conseguenze:** `Store.consolida()` (`wal_checkpoint(TRUNCATE)`, con ritentativi) viene
+  chiamata a fine registrazione, a fine analisi e allo spegnimento. Il core chiede a
+  uvicorn di fermarsi e solo dopo 4 s esce di forza; `Sidecar.stop()` chiude lo stdin,
+  attende 6 s e poi uccide **l'albero** (`taskkill /T`), così chi si ferma per primo è
+  sempre il core. Rete di sicurezza: all'avvio un `quick_check`, e un database illeggibile
+  viene messo da parte con tutto il suo WAL e sostituito dal backup più recente invece di
+  continuare a scriverci dentro (`db/manutenzione.py`); i backup sono `VACUUM INTO` — un
+  file solo, che non può soffrire dello stesso disallineamento — tenuti in rotazione di 5,
+  fatti all'avvio e a fine registrazione. Aggiunto il lucchetto di istanza singola in
+  Electron: due app sulla stessa cartella dati sono due core sullo stesso database.
+- **Prezzo pagato:** qualche centinaio di ms a fine call, una copia del database per call,
+  e fino a 6 s di attesa alla chiusura dell'app.
+- **Data:** 2026-07-30
+
 ## Decisioni aperte
 
 - **OA-1** — Passare a Qwen3.5-9B come LLM di default? Ha IFEval più alto e KV cache più

@@ -170,13 +170,46 @@ export class Sidecar {
     })
   }
 
-  stop(): void {
-    if (!this.child) return
-    // Chiudere stdin e' il segnale concordato: il core lo interpreta come
-    // "l'interfaccia se n'e' andata" e si spegne da solo.
-    this.child.stdin?.end()
-    this.child.kill()
+  /**
+   * Ferma il core, e si assicura che sia fermo davvero.
+   *
+   * Due trappole, entrambe costate dati:
+   *
+   * 1. **Il core non e' sempre il processo figlio.** In sviluppo il
+   *    `python.exe` dentro `core/.venv` creato con uv e' uno stub che
+   *    ri-esegue l'interprete di base: il server vero e' un nipote. `kill()`
+   *    su Windows termina un processo solo, quindi uccideva lo stub e lasciava
+   *    il core vivo, col database aperto. Al build successivo ne partiva un
+   *    altro sullo stesso file. Da qui `taskkill /T`, che prende l'albero.
+   * 2. **Ucciderlo subito gli impedisce di chiudere il database.** Il core
+   *    consolida il WAL durante lo spegnimento (Store.consolida): prima si
+   *    chiude lo stdin, che e' il segnale concordato, e gli si lascia il tempo
+   *    di uscire da solo. La forza e' la rete di sicurezza, non il primo passo.
+   */
+  async stop(attesaMs = 6_000): Promise<void> {
+    const child = this.child
     this.child = null
     this.endpoint = null
+    if (!child) return
+
+    const uscito = new Promise<void>((resolve) => {
+      child.once('exit', () => resolve())
+    })
+    child.stdin?.end()
+
+    const scaduto = await Promise.race([
+      uscito.then(() => false),
+      new Promise<boolean>((r) => setTimeout(() => r(true), attesaMs)),
+    ])
+    if (!scaduto) return
+
+    console.error('[core] non si e\' fermato da solo: termino l\'albero')
+    if (child.pid !== undefined) {
+      if (process.platform === 'win32') {
+        spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true })
+      } else {
+        child.kill('SIGKILL')
+      }
+    }
   }
 }

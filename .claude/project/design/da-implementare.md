@@ -11,7 +11,17 @@
 
 ## Voci
 
-_(nessuna ancora registrata — verranno aggiunte man mano che si analizzano le sezioni)_
+### [DA-01] Dire all'utente che il database è stato messo da parte — nessuna schermata
+- **Design:** non previsto: viene da un guasto, non dal mockup.
+- **Backend attuale:** c'è. All'avvio `db/manutenzione.py` controlla il database e, se non è
+  leggibile, lo mette da parte e ripristina il backup più recente; `GET /health` riporta
+  `db_danneggiato` con il motivo, la cartella di quarantena e il backup ripristinato.
+- **Disposizione:** da implementare. Oggi lo dicono solo i log, e l'utente si ritrova
+  l'elenco delle call tornato indietro senza sapere perché — che è il modo peggiore di
+  scoprirlo.
+- **UI ora:** niente. Serve un avviso persistente (non un toast che passa) con il percorso
+  della cartella di quarantena, apribile nell'esplora risorse.
+- **Priorità:** P1.
 
 <!--
 Template voce:

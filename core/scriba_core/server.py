@@ -29,6 +29,7 @@ from typing import Any
 from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
+from .db import manutenzione
 from .db.store import Store
 from .recorder import Recorder
 from .settings import Settings
@@ -79,7 +80,8 @@ PROVIDERS_INFO: dict[str, dict[str, Any]] = {
         "esce_dal_computer": True,
         "costo_ora_eur": None,
         "minuti_per_ora": 3,
-        "rimedio": "Installa Claude Code (l'eseguibile `claude`) e accedi con il tuo abbonamento.",
+        "rimedio": "Installa Claude Code (l'eseguibile `claude`) e accedi al tuo abbonamento "
+        "con `claude auth login`. Se prima funzionava, la sessione è scaduta: rifai l'accesso.",
     },
     "anthropic": {
         "etichetta": "API Anthropic",
@@ -300,7 +302,7 @@ class Broadcaster:
                 self.disconnect(ws)
 
 
-def _lifespan(broadcaster: Broadcaster, state: dict[str, Any], preload, avvia_rilevatore=None):
+def _lifespan(broadcaster: Broadcaster, state: dict[str, Any], preload, avvia_rilevatore=None, store=None):
     """Aggancia il broadcaster al loop e chiude ciò che resta aperto."""
 
     @asynccontextmanager
@@ -326,6 +328,14 @@ def _lifespan(broadcaster: Broadcaster, state: dict[str, Any], preload, avvia_ri
                 # che tiene occupato il microfono finché non si riavvia il PC.
                 recorder.stop()
 
+            if store is not None:
+                # L'ultima cosa, dopo che il registratore ha finito di scrivere:
+                # è lo spegnimento il momento in cui SQLite consoliderebbe da sé
+                # il WAL, e prima di questa riga non arrivava mai perché il core
+                # veniva ucciso invece di essere fermato.
+                store.consolida()
+                store.close()
+
     return lifespan
 
 
@@ -343,8 +353,18 @@ def create_app(
     """
     app = FastAPI(title="Scriba core", docs_url=None, redoc_url=None)
     broadcaster = Broadcaster()
+
+    # Prima di aprirlo per scriverci: un database che non si legge non si usa.
+    # Continuare a scriverci dentro non lo aggiusta e rende irrecuperabile
+    # quello che ancora si poteva salvare (manutenzione.py).
+    danno = manutenzione.controlla(db_path)
+
     store = Store(db_path)
     settings = Settings(Path(db_path).with_name("settings.json"))
+
+    # Lo stato lasciato dalla volta precedente, prima di toccare qualsiasi cosa:
+    # è il backup che serve se questo avvio va storto.
+    manutenzione.backup(store)
 
     # Il core è appena partito, quindi nessuno sta registrando: è l'unico
     # momento in cui si può dirlo con certezza, ed è qui che si rimettono in
@@ -367,6 +387,9 @@ def create_app(
         "analisi_session_id": None,
         "analisi_fasi": [],
         "analisi_annulla": None,
+        # Non None se all'avvio il database era illeggibile ed è stato messo da
+        # parte: è una cosa che l'utente deve sapere, non solo i log.
+        "db_danneggiato": danno,
     }
 
     # Un'unica istanza per processo, come il resto dello stato: le note
@@ -482,7 +505,7 @@ def create_app(
             # funziona lo stesso avviando a mano.
             log.warning("Rilevamento delle call non avviato: %s", exc)
 
-    app.router.lifespan_context = _lifespan(broadcaster, state, preload, _avvia_rilevatore)
+    app.router.lifespan_context = _lifespan(broadcaster, state, preload, _avvia_rilevatore, store)
 
     # ------------------------------------------------------------------- stato
 
@@ -494,6 +517,9 @@ def create_app(
             "ok": True,
             "modello": state["modello"],
             "in_registrazione": bool(recorder and recorder.is_recording),
+            # Presente solo se all'avvio il database era illeggibile: dice dove
+            # sono finiti i file messi da parte e da quale backup si è ripartiti.
+            "db_danneggiato": state.get("db_danneggiato"),
         }
 
     @app.get("/session/state", dependencies=[Depends(check_token)])
@@ -564,6 +590,12 @@ def create_app(
             gestore_note.ferma()
         except Exception:
             log.exception("Chiusura delle note incrementali non riuscita per la sessione %s", session_id)
+
+        # La registrazione è finita: è il momento in cui la call va messa in
+        # sicurezza. Finché resta solo nel WAL, l'unica copia di quello che è
+        # stato detto è un file che nessuno consolida (vedi Store.consolida).
+        await asyncio.to_thread(store.consolida)
+        await asyncio.to_thread(manutenzione.backup, store)
 
         broadcaster.publish({"type": "session_stopped", "session_id": session_id})
         if session_id is not None:
@@ -690,6 +722,10 @@ def create_app(
                 durata_ms=int((time.time() - inizio) * 1000),
                 finita_at=int(time.time() * 1000),
             )
+            # Un'analisi sono minuti di lavoro e, con un'API, anche dei soldi:
+            # non resta appesa a un WAL che nessuno consolida.
+            await asyncio.to_thread(store.consolida)
+
             broadcaster.publish(
                 {
                     "type": "analisi",
@@ -775,7 +811,8 @@ def create_app(
             raise HTTPException(
                 status_code=412,
                 detail="Il modello di analisi non è raggiungibile. Se usi quello locale, "
-                "avvia llama-server; se usi un'API, controlla la chiave nelle impostazioni.",
+                "avvia llama-server; se usi l'abbonamento Claude, rifai l'accesso con "
+                "`claude auth login`; se usi un'API, controlla la chiave nelle impostazioni.",
             )
 
         _avvia_analisi_task(session_id, provider, provider_conf)
@@ -1084,7 +1121,7 @@ def create_app(
     return app
 
 
-def _exit_when_orphaned() -> None:
+def _exit_when_orphaned(server=None, grazia_s: float = 4.0) -> None:
     """Si spegne quando il processo padre sparisce.
 
     Se l'interfaccia va in crash, questo processo resterebbe vivo tenendo
@@ -1092,6 +1129,16 @@ def _exit_when_orphaned() -> None:
     uso e non si capisce perché. Il canale è lo standard input, che il sistema
     chiude quando il padre muore — funziona anche quando il padre non ha fatto
     in tempo a terminarci.
+
+    Prima si chiede a uvicorn di fermarsi, e solo se non lo fa entro `grazia_s`
+    si esce di forza. Uscire subito era il comportamento precedente, ed è
+    costato dati: `os._exit` salta lo spegnimento dell'applicazione, quindi
+    salta il consolidamento del WAL — cioè l'unico momento in cui quello che una
+    call ha scritto finisce davvero nel database.
+
+    `grazia_s` sta sotto l'attesa di `Sidecar.stop()` di proposito: chi si ferma
+    per primo deve essere il core, così l'uccisione dell'albero dal lato Electron
+    resta l'ultima rete e non la regola.
 
     Va attivata esplicitamente da chi lancia il processo. Attivarla sempre
     sarebbe un disastro: avviato da riga di comando o dai test, lo stdin è
@@ -1107,8 +1154,16 @@ def _exit_when_orphaned() -> None:
                 pass
         except Exception:
             pass
-        # Uscita brutale di proposito: a questo punto non c'è più nessuno a cui
-        # rispondere, e uno spegnimento ordinato potrebbe restare appeso.
+        if server is not None:
+            # Fa uscire `serve()`, che porta con sé lo spegnimento ordinato.
+            server.should_exit = True
+            scadenza = time.time() + grazia_s
+            while time.time() < scadenza:
+                if getattr(server, "started", False) is False:
+                    break
+                time.sleep(0.2)
+        # Rete di sicurezza: a questo punto non c'è più nessuno a cui rispondere,
+        # e uno spegnimento che si è impuntato non deve lasciare un orfano.
         os._exit(0)
 
     threading.Thread(target=watch, name="orphan-watch", daemon=True).start()
@@ -1129,8 +1184,6 @@ def run(
 
     import uvicorn
 
-    if watch_parent:
-        _exit_when_orphaned()
     token = secrets.token_urlsafe(32)
 
     # Si apre il socket qui, così la porta è nota prima dell'avvio e si può
@@ -1153,9 +1206,15 @@ def run(
     app = create_app(db_path=Path(db_path), token=token)
     # `sockets=[...]` e non `fd=`: quest'ultimo in uvicorn passa da
     # `socket.fromfd(..., AF_UNIX)`, che su Windows non esiste.
-    uvicorn.Server(
-        uvicorn.Config(app, log_level="warning", access_log=False)
-    ).run(sockets=[sock])
+    server = uvicorn.Server(uvicorn.Config(app, log_level="warning", access_log=False))
+
+    # Dopo aver costruito il server, non prima: la sorveglianza sul padre deve
+    # potergli chiedere di fermarsi in modo ordinato, che è ciò che consolida il
+    # WAL. Senza il riferimento resterebbe solo l'uscita brutale.
+    if watch_parent:
+        _exit_when_orphaned(server)
+
+    server.run(sockets=[sock])
 
 
 if __name__ == "__main__":  # pragma: no cover

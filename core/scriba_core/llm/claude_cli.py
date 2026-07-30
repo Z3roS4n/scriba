@@ -17,6 +17,12 @@ il modello può fare.
 
 Nota sul costo: `total_cost_usd` nella risposta è sempre valorizzato anche in
 abbonamento. È una stima di quanto sarebbe costato via API, non un addebito.
+
+**L'eseguibile nel PATH non basta.** Un abbonamento scollegato (sessione OAuth
+scaduta) lascia `claude` al suo posto e perfettamente eseguibile: l'analisi
+partiva, e moriva subito dopo con un errore che non diceva cosa fare. Per questo
+`available()` chiede alla CLI stessa se è collegata, e l'errore che ne esce
+riporta la frase di Claude invece della busta JSON grezza.
 """
 
 from __future__ import annotations
@@ -39,6 +45,36 @@ log = logging.getLogger(__name__)
 # rete.
 STRUMENTI_VIETATI = "Bash,Write,Edit,NotebookEdit,Read,Glob,Grep,WebSearch,WebFetch,Task"
 
+# Come si riconosce un guasto di accesso fra i messaggi della CLI. Sono frasi
+# sue, quindi in inglese.
+_SEGNALI_ACCESSO = (
+    "authenticate",
+    "oauth",
+    "not logged in",
+    "unauthorized",
+    "invalid api key",
+    "/login",
+)
+
+RIMEDIO_ACCESSO = (
+    "L'abbonamento Claude non è più collegato: la sessione è scaduta. "
+    "Apri un terminale, lancia `claude auth login`, poi rilancia l'analisi."
+)
+
+
+def _ambiente() -> dict[str, str]:
+    """L'ambiente del processo figlio, senza le credenziali dell'API.
+
+    Se `claude` le trova, le usa: la chiamata finirebbe fatturata sull'API
+    invece che sull'abbonamento, in silenzio. Vale anche per il controllo di
+    `available()`, altrimenti si direbbe «collegato» per merito di una chiave
+    che poi togliamo comunque.
+    """
+    env = os.environ.copy()
+    env.pop("ANTHROPIC_API_KEY", None)
+    env.pop("ANTHROPIC_AUTH_TOKEN", None)
+    return env
+
 
 class ClaudeCliProvider:
     """Parla con Claude attraverso l'eseguibile `claude`."""
@@ -50,7 +86,37 @@ class ClaudeCliProvider:
         self.timeout_s = timeout_s
 
     def available(self) -> bool:
-        return shutil.which("claude") is not None
+        return shutil.which("claude") is not None and self._collegato()
+
+    def _collegato(self) -> bool:
+        """Se l'abbonamento risulta ancora collegato alla CLI.
+
+        Serve a scoprirlo *prima*: l'eseguibile c'è ed è eseguibile anche con la
+        sessione scaduta, quindi senza questo controllo l'analisi parte e muore
+        dopo — e su una call di un'ora si scopre dopo aver aspettato.
+
+        False solo quando la CLI dice di sé che non è collegata. Un controllo che
+        non riesce (una versione senza `auth status`, un timeout) non deve far
+        sembrare rotto un abbonamento che funziona: nel dubbio si prova, e se non
+        va sarà l'errore dell'analisi a dirlo.
+        """
+        try:
+            esito = subprocess.run(
+                ["claude", "auth", "status"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                env=_ambiente(),
+                timeout=20.0,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            stato = json.loads((esito.stdout or "").strip())
+        except (OSError, subprocess.SubprocessError, json.JSONDecodeError):
+            return True
+        if not isinstance(stato, dict):
+            return True
+        return stato.get("loggedIn") is not False
 
     def complete(
         self,
@@ -96,11 +162,7 @@ class ClaudeCliProvider:
         if self.model:
             comando += ["--model", self.model]
 
-        env = os.environ.copy()
-        # Se la trova, la usa: la chiamata finirebbe fatturata sull'API invece
-        # che sull'abbonamento, in silenzio.
-        env.pop("ANTHROPIC_API_KEY", None)
-        env.pop("ANTHROPIC_AUTH_TOKEN", None)
+        env = _ambiente()
 
         try:
             # Si esegue in una cartella vuota: da una cartella di progetto,
@@ -132,17 +194,11 @@ class ClaudeCliProvider:
         except OSError as exc:
             raise LLMError(f"Impossibile eseguire `claude`: {exc}") from exc
 
-        if esito.returncode != 0:
-            dettaglio = (esito.stderr or esito.stdout or "").strip()
-            raise LLMError(f"`claude` è uscito con codice {esito.returncode}: {dettaglio[:300]}")
-
-        try:
-            busta = json.loads(esito.stdout)
-        except json.JSONDecodeError as exc:
-            raise LLMError(f"Risposta di `claude` illeggibile: {esito.stdout[:200]}") from exc
-
-        if busta.get("is_error"):
-            raise LLMError(f"`claude` ha segnalato un errore: {busta.get('result', '')[:300]}")
+        busta = _busta(esito.stdout)
+        if esito.returncode != 0 or (busta is not None and busta.get("is_error")):
+            raise _errore_del_cli(esito, busta)
+        if busta is None:
+            raise LLMError(f"Risposta di `claude` illeggibile: {esito.stdout[:200]}")
 
         testo = (busta.get("result") or "").strip()
         if not testo:
@@ -160,6 +216,40 @@ class ClaudeCliProvider:
             # API, e riportarla farebbe credere di aver speso quella cifra.
             cost_usd=0.0,
         )
+
+
+def _busta(stdout: str | None) -> dict[str, Any] | None:
+    """La busta JSON del CLI, se l'ha scritta."""
+    try:
+        letto = json.loads((stdout or "").strip())
+    except json.JSONDecodeError:
+        return None
+    return letto if isinstance(letto, dict) else None
+
+
+def _errore_del_cli(
+    esito: subprocess.CompletedProcess[str], busta: dict[str, Any] | None
+) -> LLMError:
+    """Il motivo leggibile, non la busta grezza.
+
+    `claude` può uscire con codice diverso da zero e **comunque** aver scritto la
+    sua busta su stdout: il perché sta in `result`. Mostrare il JSON tagliato a
+    300 caratteri lo nasconde — è successo con una sessione OAuth scaduta, che
+    l'utente ha letto come «uscito con codice 1: {"is_error":true,
+    "duration_api_ms":0,…», dove la frase che diceva cosa fare cadeva appena
+    oltre il taglio.
+    """
+    motivo = ""
+    if busta is not None:
+        motivo = str(busta.get("result") or busta.get("error") or "").strip()
+    if not motivo:
+        motivo = (esito.stderr or "").strip() or (esito.stdout or "").strip()
+
+    if any(segnale in motivo.lower() for segnale in _SEGNALI_ACCESSO):
+        return LLMError(f"{RIMEDIO_ACCESSO} (Claude ha detto: {motivo[:200]})")
+    if esito.returncode != 0:
+        return LLMError(f"`claude` è uscito con codice {esito.returncode}: {motivo[:300]}")
+    return LLMError(f"`claude` ha segnalato un errore: {motivo[:300]}")
 
 
 def _modello_usato(busta: dict) -> str:
