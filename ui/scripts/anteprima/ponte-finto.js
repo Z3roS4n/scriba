@@ -175,7 +175,112 @@
     export: { cartella: 'C:\\Users\\utente\\Documenti\\Scriba', formato: 'markdown' },
   }
 
+  // Notion finto: un database con nomi di colonna che combaciano solo in parte
+  // (Owner sta in inglese, «Quando» non è riconoscibile, non c'è nessuna
+  // colonna per la prova) — è il caso che la mappatura deve saper risolvere.
+  const notionCampi = [
+    { id: 'titolo', etichetta: 'Titolo della task', aiuto: 'Va sempre nella proprietà titolo del database: è l’unica che Notion garantisce.', tipi: ['title'], nome_notion: 'Task', consigliato: true, obbligatorio: true },
+    { id: 'descrizione', etichetta: 'Descrizione', aiuto: 'Il dettaglio della task, quando il modello l’ha scritto.', tipi: ['rich_text'], nome_notion: 'Descrizione', consigliato: true, obbligatorio: false },
+    { id: 'assegnatario', etichetta: 'Assegnatario', aiuto: 'Il nome come è stato detto nella call, non un utente di Notion.', tipi: ['rich_text', 'select', 'multi_select'], nome_notion: 'Assegnatario', consigliato: true, obbligatorio: false },
+    { id: 'scadenza', etichetta: 'Scadenza', aiuto: 'La data, quando dalla call si capisce quale sia.', tipi: ['date'], nome_notion: 'Scadenza', consigliato: true, obbligatorio: false },
+    { id: 'priorita', etichetta: 'Priorità', aiuto: 'Bassa, media, alta o critica.', tipi: ['select', 'status', 'rich_text'], nome_notion: 'Priorità', consigliato: true, obbligatorio: false },
+    { id: 'stato', etichetta: 'Fatto', aiuto: 'Segnato quando la task risulta fatta in Scriba.', tipi: ['checkbox', 'select', 'status'], nome_notion: 'Fatto', consigliato: true, obbligatorio: false },
+    { id: 'prova', etichetta: 'Prova', aiuto: 'Le frasi della call da cui viene la task, col minuto. È quello che la rende verificabile.', tipi: ['rich_text'], nome_notion: 'Prova', consigliato: true, obbligatorio: false },
+    { id: 'call', etichetta: 'Call di provenienza', aiuto: 'Il titolo della riunione da cui arriva la task.', tipi: ['rich_text', 'select'], nome_notion: 'Call', consigliato: true, obbligatorio: false },
+    { id: 'data_call', etichetta: 'Data della call', aiuto: 'Quando si è tenuta la riunione.', tipi: ['date'], nome_notion: 'Data della call', consigliato: true, obbligatorio: false },
+    { id: 'link_call', etichetta: 'Link alla pagina della call', aiuto: 'L’indirizzo della pagina che Scriba crea per la call.', tipi: ['url', 'rich_text'], nome_notion: 'Link alla call', consigliato: false, obbligatorio: false },
+    { id: 'confidenza', etichetta: 'Confidenza del modello', aiuto: 'Quanto il modello era sicuro, da 0 a 1.', tipi: ['number', 'rich_text'], nome_notion: 'Confidenza', consigliato: false, obbligatorio: false },
+    { id: 'da_rivedere', etichetta: 'Da rivedere', aiuto: 'Segnato quando Scriba consiglia di controllare la task a mano.', tipi: ['checkbox'], nome_notion: 'Da rivedere', consigliato: false, obbligatorio: false },
+  ]
+
+  const notionDatabase = {
+    'db-1': {
+      titolo: 'Impegni del team',
+      titolo_proprieta: 'Nome',
+      proprieta: [
+        { nome: 'Descrizione', tipo: 'rich_text' },
+        { nome: 'Owner', tipo: 'rich_text' },
+        { nome: 'Scadenza', tipo: 'date' },
+        { nome: 'Quando', tipo: 'date' },
+        { nome: 'Priorità', tipo: 'select' },
+        { nome: 'Stato', tipo: 'status' },
+        { nome: 'Fatto', tipo: 'checkbox' },
+        { nome: 'Riferimento', tipo: 'url' },
+      ],
+      // Quello che il core proporrebbe: «Owner» è un alias noto, «Quando» e
+      // «Riferimento» non dicono niente sul loro contenuto e restano da scegliere.
+      mappa_proposta: { descrizione: 'Descrizione', assegnatario: 'Owner', scadenza: 'Scadenza', priorita: 'Priorità', stato: 'Fatto' },
+    },
+    'db-2': {
+      titolo: 'Roadmap prodotto',
+      titolo_proprieta: 'Titolo',
+      proprieta: [{ nome: 'Trimestre', tipo: 'select' }],
+      mappa_proposta: {},
+    },
+  }
+
+  const notionStato = { collegato: false, database_id: null, database_titolo: null, mappa: {} }
+
+  function notion(path, body) {
+    const dati = body ?? {}
+    if (path === '/export/notion/destinazioni') {
+      if (!dati.token && !notionStato.collegato) {
+        return { ok: false, status: 400, body: { detail: 'Manca il token di Notion: collega l’integrazione dalle impostazioni.' } }
+      }
+      return {
+        ok: true,
+        status: 200,
+        body: {
+          database: Object.entries(notionDatabase).map(([id, d]) => ({ id, titolo: d.titolo })),
+          pagine: [
+            { id: 'pag-1', titolo: 'Spazio di lavoro' },
+            { id: 'pag-2', titolo: 'Progetti 2026' },
+          ],
+        },
+      }
+    }
+    if (path === '/export/notion/schema') {
+      const id = dati.database_id || notionStato.database_id
+      const db = notionDatabase[id]
+      if (!db) return { ok: false, status: 400, body: { detail: 'Il database indicato: Notion non lo trova.' } }
+      return { ok: true, status: 200, body: { database_id: id, ...db } }
+    }
+    if (path === '/export/notion/collega') {
+      const id = dati.database_id || notionStato.database_id
+      Object.assign(notionStato, {
+        collegato: true,
+        database_id: id,
+        database_titolo: dati.database_titolo || notionDatabase[id]?.titolo || null,
+        mappa: dati.mappa ?? notionStato.mappa,
+      })
+      return { ok: true, status: 200, body: { ...notionStato } }
+    }
+    if (path === '/export/notion/database') {
+      const scelti = dati.campi ?? []
+      const mappa = {}
+      for (const campo of notionCampi) {
+        if (!campo.obbligatorio && scelti.includes(campo.id)) mappa[campo.id] = campo.nome_notion
+      }
+      const id = 'db-nuovo'
+      notionDatabase[id] = {
+        titolo: dati.titolo || 'Task da Scriba',
+        titolo_proprieta: 'Task',
+        proprieta: notionCampi.filter((c) => !c.obbligatorio && scelti.includes(c.id)).map((c) => ({ nome: c.nome_notion, tipo: c.tipi[0] })),
+        mappa_proposta: mappa,
+      }
+      Object.assign(notionStato, { collegato: true, database_id: id, database_titolo: notionDatabase[id].titolo, mappa })
+      return { ok: true, status: 200, body: { ...notionStato } }
+    }
+    if (path === '/export/notion/scollega') {
+      Object.assign(notionStato, { collegato: false, database_id: null, database_titolo: null, mappa: {} })
+      return { ok: true, status: 200, body: { ...notionStato } }
+    }
+    return null
+  }
+
   const RISPOSTE = {
+    '/export/notion/stato': notionStato,
+    '/export/notion/campi': notionCampi,
     '/sessions': sessioni,
     '/providers': providers,
     '/settings': impostazioni,
@@ -247,7 +352,7 @@
     endpoint: () => Promise.resolve({ port: 1234 }),
     paths: () => Promise.resolve({ dataDir: 'C:\\finto', screenshotDir: 'C:\\finto\\shots' }),
     get: (p) => ok(risolvi(p)),
-    post: (p) => ok(risolvi(p) ?? {}),
+    post: (p, body) => Promise.resolve(notion(p, body) ?? { ok: true, status: 200, body: risolvi(p) ?? {} }),
     patch: (p, body) => Promise.resolve(rinomina(p, body)),
     screenshot: () => Promise.resolve(),
     mostraFile: () => Promise.resolve(),

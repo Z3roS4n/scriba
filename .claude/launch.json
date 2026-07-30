@@ -7,6 +7,12 @@
       "runtimeArgs": ["run", "dev"],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "anteprima",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "5173", "--directory", "ui"],
+      "port": 5173
     }
   ]
 }

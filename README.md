@@ -83,6 +83,11 @@ priorità), ciascuna con un riferimento verificabile al punto della trascrizione
 viene. Puoi rivedere, correggere ed esportare in Markdown, testo semplice, JSON, verso
 Notion (una pagina per call, una riga per task) o verso un endpoint HTTP generico.
 
+**Notion, col tuo database.** Se hai già un database di impegni, colleghi quello e dici
+tu quale dato di Scriba va in quale colonna — scadenza, assegnatario, priorità, la
+citazione con il minuto: quello che ti serve, dove ti serve. Se non ce l'hai, Scriba te
+lo crea, scegliendo tu quali campi ti interessano e quali no.
+
 **Motore di analisi.** Dalle Impostazioni scegli se usare un modello locale (scaricato
 e fatto girare sulla tua macchina tramite `llama-server`), la CLI di Claude Code se
 hai un abbonamento, oppure le API di Anthropic o OpenAI con una tua chiave.

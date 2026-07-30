@@ -216,11 +216,24 @@ class TestRotta:
         assert r.status_code == 404
 
     def test_stato_notion_di_default_non_collegato(self, client: TestClient) -> None:
-        assert client.get("/export/notion/stato").json() == {"collegato": False, "database_id": None}
+        assert client.get("/export/notion/stato").json() == {
+            "collegato": False,
+            "database_id": None,
+            "database_titolo": None,
+            "mappa": {},
+        }
 
     def test_collega_e_scollega_notion(self, client: TestClient) -> None:
-        r = client.post("/export/notion/collega", json={"token": "segreto", "database_id": "db1"})
-        assert r.json() == {"collegato": True, "database_id": "db1"}
+        r = client.post(
+            "/export/notion/collega",
+            json={"token": "segreto", "database_id": "db1", "database_titolo": "Impegni"},
+        )
+        assert r.json() == {
+            "collegato": True,
+            "database_id": "db1",
+            "database_titolo": "Impegni",
+            "mappa": {},
+        }
         # Il token non torna mai indietro verso l'interfaccia.
         assert "segreto" not in r.text
 
@@ -228,7 +241,22 @@ class TestRotta:
         assert r2.json()["collegato"] is True
 
         r3 = client.post("/export/notion/scollega")
-        assert r3.json() == {"collegato": False, "database_id": None}
+        assert r3.json()["collegato"] is False
+
+    def test_i_campi_mappabili_arrivano_dal_core(self, client: TestClient) -> None:
+        # L'interfaccia non ridefinisce l'elenco: lo chiede qui.
+        campi = client.get("/export/notion/campi").json()
+        titolo = [c for c in campi if c["obbligatorio"]]
+        assert len(titolo) == 1 and titolo[0]["id"] == "titolo"
+        assert {"prova", "scadenza", "priorita"} <= {c["id"] for c in campi}
+
+    def test_una_mappatura_sbagliata_torna_400_col_motivo(
+        self, client: TestClient, notion_finto: FakeNotion
+    ) -> None:
+        client.post("/export/notion/collega", json={"token": "segreto", "database_id": "db1"})
+        r = client.post("/export/notion/collega", json={"mappa": {"scadenza": "Fatto"}})
+        assert r.status_code == 400
+        assert "Scadenza" in r.json()["detail"]
 
     def test_un_token_vuoto_non_cancella_quello_salvato(self, client: TestClient, store: Store) -> None:
         # Stesso comportamento di llm.api_key in settings.py: l'interfaccia non
@@ -295,15 +323,48 @@ class _FakeResp:
             raise httpx.HTTPStatusError("errore finto", request=None, response=None)  # type: ignore[arg-type]
 
 
+def _titolo_notion(testo: str) -> list[dict[str, Any]]:
+    return [{"type": "text", "text": {"content": testo}, "plain_text": testo}]
+
+
 class FakeNotion:
     """Database e pagine in memoria, con lo stesso contratto REST di Notion
-    per le sole operazioni che `notion.py` usa."""
+    per le sole operazioni che `notion.py` usa.
+
+    `db1` è volutamente povero (solo titolo e una spunta): serve ai test di
+    idempotenza e a quelli del ripiego per nome. `db2` ha lo schema che si
+    incontra davvero — nomi in parte in inglese, due colonne data, uno `status`
+    con opzioni proprie — ed è lì che si verifica la mappatura.
+    """
 
     def __init__(self) -> None:
-        self.databases = {
-            "db1": {"properties": {"Nome": {"type": "title"}, "Fatto": {"type": "checkbox"}}}
+        self.databases: dict[str, dict[str, Any]] = {
+            "db1": {
+                "title": _titolo_notion("Impegni"),
+                "properties": {"Nome": {"type": "title"}, "Fatto": {"type": "checkbox"}},
+            },
+            "db2": {
+                "title": _titolo_notion("Impegni del team"),
+                "properties": {
+                    "Nome": {"type": "title"},
+                    "Descrizione": {"type": "rich_text"},
+                    "Owner": {"type": "rich_text"},
+                    "Scadenza": {"type": "date"},
+                    "Quando": {"type": "date"},
+                    "Priorità": {"type": "select", "select": {"options": [{"name": "Alta"}]}},
+                    "Stato": {
+                        "type": "status",
+                        "status": {"options": [{"name": "Not started"}, {"name": "Done"}]},
+                    },
+                    "Prova": {"type": "rich_text"},
+                    "Riferimento": {"type": "url"},
+                    "Confidenza": {"type": "number"},
+                    "Da rivedere": {"type": "checkbox"},
+                },
+            },
         }
         self.pages: dict[str, dict[str, Any]] = {}
+        self.creati: list[dict[str, Any]] = []
         self._contatore = 0
 
     def _nuovo_id(self, prefisso: str) -> str:
@@ -313,6 +374,8 @@ class FakeNotion:
     def get(self, url: str, *, headers=None, params=None, timeout=None) -> _FakeResp:
         if "/databases/" in url:
             db_id = url.rsplit("/", 1)[-1]
+            if db_id not in self.databases:
+                return _FakeResp(404, {})
             return _FakeResp(200, self.databases[db_id])
         if url.endswith("/children"):
             page_id = url.split("/blocks/")[1].split("/children")[0]
@@ -326,7 +389,42 @@ class FakeNotion:
             figli = [self._nuovo_id("blocco") for _ in json.get("children", [])]
             self.pages[pid] = {"properties": json["properties"], "children": figli}
             return _FakeResp(200, {"id": pid})
+        if url.endswith("/search"):
+            return _FakeResp(200, {"results": self._ricerca(json), "has_more": False})
+        if url.endswith("/databases"):
+            did = self._nuovo_id("db")
+            self.databases[did] = {
+                "title": json["title"],
+                "properties": {
+                    nome: {"type": next(iter(forma))} for nome, forma in json["properties"].items()
+                },
+            }
+            self.creati.append({"id": did, "parent": json["parent"], "properties": json["properties"]})
+            return _FakeResp(200, {"id": did})
         raise AssertionError(f"POST non atteso: {url}")
+
+    def _ricerca(self, corpo: dict[str, Any]) -> list[dict[str, Any]]:
+        if corpo["filter"]["value"] == "database":
+            return [
+                {"object": "database", "id": did, "title": db["title"]}
+                for did, db in self.databases.items()
+            ]
+        return [
+            {
+                "object": "page",
+                "id": "pag-1",
+                "parent": {"type": "workspace"},
+                "properties": {"Name": {"type": "title", "title": _titolo_notion("Progetti")}},
+            },
+            {
+                # Una riga di un database: è una pagina per l'API, ma non un
+                # posto dove qualcuno vorrebbe farsi creare un database.
+                "object": "page",
+                "id": "riga-1",
+                "parent": {"type": "database_id", "database_id": "db1"},
+                "properties": {"Nome": {"type": "title", "title": _titolo_notion("Una task")}},
+            },
+        ]
 
     def patch(self, url: str, *, headers=None, json=None, timeout=None) -> _FakeResp:
         if "/pages/" in url and not url.endswith("/children"):
@@ -417,4 +515,182 @@ class TestNotion:
         percorso = notion._percorso_stato(store)
         percorso.parent.mkdir(parents=True, exist_ok=True)
         percorso.write_text("{ non e' json", encoding="utf-8")
-        assert notion.stato(store) == {"collegato": False, "database_id": None}
+        assert notion.stato(store)["collegato"] is False
+
+    def test_un_collegamento_senza_mappa_riconosce_le_colonne_dal_nome(
+        self, store: Store, session_id: int, notion_finto: FakeNotion
+    ) -> None:
+        # Chi aveva collegato Notion prima che la mappatura esistesse non deve
+        # ritrovarsi le colonne vuote: si continua a riconoscerle dal nome.
+        notion.collega(store, token="segreto", database_id="db1")
+        assert notion.leggi_config(store)["mappa"] is None
+
+        notion.invia(session_id, store, {})
+        riga = next(p for p in notion_finto.pages.values() if "Fatto" in p["properties"])
+        assert riga["properties"]["Fatto"] == {"checkbox": False}
+
+
+# ---------------------------------------------------------- mappatura e schema
+
+
+class TestMappaturaNotion:
+    def test_la_mappatura_decide_in_quale_colonna_va_ogni_campo(
+        self, store: Store, session_id: int, notion_finto: FakeNotion
+    ) -> None:
+        notion.collega(
+            store,
+            token="segreto",
+            database_id="db2",
+            mappa={
+                "descrizione": "Descrizione",
+                "assegnatario": "Owner",
+                "scadenza": "Scadenza",
+                "priorita": "Priorità",
+                "stato": "Stato",
+                "prova": "Prova",
+                "data_call": "Quando",
+                "link_call": "Riferimento",
+                "confidenza": "Confidenza",
+                "da_rivedere": "Da rivedere",
+            },
+        )
+        notion.invia(session_id, store, {})
+
+        proprieta = next(p["properties"] for p in notion_finto.pages.values() if "Owner" in p["properties"])
+        assert proprieta["Owner"]["rich_text"][0]["text"]["content"] == "Marco"
+        assert proprieta["Scadenza"]["date"]["start"] == "2026-08-14"
+        assert proprieta["Quando"]["date"]["start"] == notion._data_iso(1_785_000_000_000)
+        assert proprieta["Confidenza"]["number"] == 0.85
+        assert proprieta["Da rivedere"]["checkbox"] is False
+        assert proprieta["Riferimento"]["url"].startswith("https://notion.so/")
+        # Il minuto della prova arriva anche nella colonna, non solo nel corpo
+        # della pagina: è quello che rende la riga verificabile da una vista.
+        assert "[05:00]" in proprieta["Prova"]["rich_text"][0]["text"]["content"]
+
+    def test_le_opzioni_di_un_elenco_si_riusano_invece_di_duplicarle(
+        self, store: Store, session_id: int, notion_finto: FakeNotion
+    ) -> None:
+        notion.collega(
+            store, token="segreto", database_id="db2", mappa={"priorita": "Priorità", "stato": "Stato"}
+        )
+        notion.invia(session_id, store, {})
+
+        proprieta = next(p["properties"] for p in notion_finto.pages.values() if "Priorità" in p["properties"])
+        # «alta» in Scriba, «Alta» in quel database: si usa l'opzione che c'è.
+        assert proprieta["Priorità"]["select"]["name"] == "Alta"
+        # Le opzioni di uno `status` non si possono creare dall'API, quindi la
+        # task ancora da fare prende quella che il database ha già.
+        assert proprieta["Stato"]["status"]["name"] == "Not started"
+
+    def test_un_campo_lasciato_fuori_non_arriva_a_notion(
+        self, store: Store, session_id: int, notion_finto: FakeNotion
+    ) -> None:
+        notion.collega(store, token="segreto", database_id="db2", mappa={"scadenza": "Scadenza"})
+        notion.invia(session_id, store, {})
+
+        proprieta = next(p["properties"] for p in notion_finto.pages.values() if "Scadenza" in p["properties"])
+        assert "Descrizione" not in proprieta and "Owner" not in proprieta
+
+    def test_la_pagina_della_call_prende_la_data_della_riunione(
+        self, store: Store, session_id: int, notion_finto: FakeNotion
+    ) -> None:
+        notion.collega(store, token="segreto", database_id="db2", mappa={"data_call": "Quando"})
+        notion.invia(session_id, store, {})
+        assert all("Quando" in p["properties"] for p in notion_finto.pages.values())
+
+    def test_una_colonna_del_tipo_sbagliato_non_si_salva(
+        self, store: Store, notion_finto: FakeNotion
+    ) -> None:
+        with pytest.raises(notion.NotionError, match="Scadenza"):
+            notion.collega(store, token="segreto", database_id="db2", mappa={"scadenza": "Owner"})
+        # Niente è stato salvato: una mappa rifiutata non lascia mezzo stato.
+        assert notion.leggi_config(store)["database_id"] == ""
+
+    def test_una_colonna_inesistente_non_si_salva(self, store: Store, notion_finto: FakeNotion) -> None:
+        with pytest.raises(notion.NotionError, match="Inventata"):
+            notion.collega(store, token="segreto", database_id="db2", mappa={"prova": "Inventata"})
+
+    def test_due_campi_nella_stessa_colonna_non_si_salvano(
+        self, store: Store, notion_finto: FakeNotion
+    ) -> None:
+        # Si sovrascriverebbero a vicenda, e chi guarda il database vedrebbe
+        # solo l'ultimo arrivato senza capire perché.
+        with pytest.raises(notion.NotionError):
+            notion.collega(
+                store,
+                token="segreto",
+                database_id="db2",
+                mappa={"scadenza": "Scadenza", "data_call": "Scadenza"},
+            )
+
+    def test_lo_schema_propone_le_colonne_che_combaciano(
+        self, store: Store, notion_finto: FakeNotion
+    ) -> None:
+        notion.collega(store, token="segreto", database_id="db2")
+        schema = notion.schema_per_mappatura(store)
+
+        assert schema["titolo"] == "Impegni del team"
+        assert schema["titolo_proprieta"] == "Nome"
+        # La proprietà titolo non si sceglie, quindi non entra nell'elenco.
+        assert "Nome" not in [p["nome"] for p in schema["proprieta"]]
+
+        proposta = schema["mappa_proposta"]
+        assert proposta["assegnatario"] == "Owner"
+        assert proposta["scadenza"] == "Scadenza"
+        assert proposta["stato"] == "Stato"
+        # «Quando» e «Riferimento» non dicono niente sul loro contenuto: quelli
+        # li mappa l'utente, non li indovina Scriba.
+        assert "data_call" not in proposta and "link_call" not in proposta
+
+    def test_le_destinazioni_escludono_le_righe_dei_database(
+        self, store: Store, notion_finto: FakeNotion
+    ) -> None:
+        notion.collega(store, token="segreto", database_id="db1")
+        destinazioni = notion.elenca_destinazioni(store)
+
+        assert {d["id"] for d in destinazioni["database"]} == {"db1", "db2"}
+        assert [p["titolo"] for p in destinazioni["pagine"]] == ["Progetti"]
+
+    def test_crea_un_database_con_le_sole_colonne_scelte(
+        self, store: Store, session_id: int, notion_finto: FakeNotion
+    ) -> None:
+        esito = notion.crea_database(
+            store, token="segreto", pagina_id="pag-1", titolo="Task da Scriba", campi=["scadenza", "stato"]
+        )
+        assert esito["collegato"] is True
+        assert esito["database_titolo"] == "Task da Scriba"
+        # La mappa non si indovina: le colonne le abbiamo fatte noi.
+        assert esito["mappa"] == {"scadenza": "Scadenza", "stato": "Fatto"}
+
+        creato = notion_finto.creati[0]
+        assert creato["parent"] == {"type": "page_id", "page_id": "pag-1"}
+        assert set(creato["properties"]) == {"Task", "Scadenza", "Fatto"}
+        assert creato["properties"]["Task"] == {"title": {}}
+
+        notion.invia(session_id, store, {})
+        proprieta = next(p["properties"] for p in notion_finto.pages.values() if "Scadenza" in p["properties"])
+        assert proprieta["Scadenza"]["date"]["start"] == "2026-08-14"
+
+    def test_un_database_creato_con_una_priorita_nasce_con_le_sue_opzioni(
+        self, store: Store, notion_finto: FakeNotion
+    ) -> None:
+        notion.crea_database(store, token="segreto", pagina_id="pag-1", titolo="T", campi=["priorita"])
+        opzioni = notion_finto.creati[0]["properties"]["Priorità"]["select"]["options"]
+        assert [o["name"] for o in opzioni] == ["Bassa", "Media", "Alta", "Critica"]
+
+    def test_cambiare_database_dimentica_gli_id_remoti(
+        self, store: Store, session_id: int, notion_finto: FakeNotion
+    ) -> None:
+        notion.collega(store, token="segreto", database_id="db1")
+        notion.invia(session_id, store, {})
+        assert store.conn.execute("SELECT export_status FROM tasks").fetchone()["export_status"] == "synced"
+
+        notion.collega(store, database_id="db2")
+        riga = store.conn.execute("SELECT export_status, export_ref, export_target FROM tasks").fetchone()
+        assert (riga["export_status"], riga["export_ref"], riga["export_target"]) == ("none", None, None)
+        assert notion.leggi_config(store)["pagine"] == {}
+
+        # Le righe nascono nel database nuovo, invece di aggiornare quelle
+        # rimaste nel vecchio riportando «aggiornati».
+        esito = notion.invia(session_id, store, {})
+        assert (esito["creati"], esito["aggiornati"]) == (1, 0)
