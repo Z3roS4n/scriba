@@ -68,6 +68,26 @@ Connettori: `export/notion.py`, `export/http_generico.py`, entrambi con
 def invia(session_id: int, store, config: dict) -> dict   # {"url": "...", "creati": 3}
 ```
 
+### Notion: la configurazione è più di un token
+
+Oltre a `invia`, `export/notion.py` espone la scelta del database e la mappatura
+dei campi (scheda completa in `.claude/integrations/notion.md`):
+
+```python
+def campi_disponibili() -> list[dict]                       # il catalogo: è qui la definizione
+def elenca_destinazioni(store, token: str = "") -> dict     # {"database": [...], "pagine": [...]}
+def schema_per_mappatura(store, *, token="", database_id="") -> dict
+def collega(store, *, token="", database_id="", database_titolo="", mappa=None) -> dict
+def crea_database(store, *, token="", pagina_id, titolo, campi: list[str]) -> dict
+def stato(store) -> dict     # {"collegato", "database_id", "database_titolo", "mappa"}
+```
+
+`mappa` è `{id del campo → nome della proprietà Notion}`; `None` significa
+«nessuna scelta fatta» e fa ricadere l'invio sul riconoscimento per nome
+(`proponi_mappa`), che è quello che facevano i collegamenti più vecchi. Una
+mappa passata a `collega` viene verificata contro lo schema vero del database
+prima di essere salvata: se non torna, `NotionError` e niente viene scritto.
+
 ---
 
 ## Forme condivise con l'interfaccia

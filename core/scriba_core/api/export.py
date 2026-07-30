@@ -19,8 +19,12 @@ from ..export import esporta
 from ..export.http_generico import HttpGenericoError
 from ..export.http_generico import invia as invia_http
 from ..export.notion import NotionError
+from ..export.notion import campi_disponibili as notion_campi
 from ..export.notion import collega as notion_collega
+from ..export.notion import crea_database as notion_crea_database
+from ..export.notion import elenca_destinazioni as notion_destinazioni
 from ..export.notion import invia as invia_notion
+from ..export.notion import schema_per_mappatura as notion_schema
 from ..export.notion import scollega as notion_scollega
 from ..export.notion import stato as notion_stato
 
@@ -36,6 +40,25 @@ class NotionCollegaRequest(BaseModel):
     # dato che l'interfaccia non rimanda mai indietro il token già salvato.
     token: str = ""
     database_id: str = ""
+    database_titolo: str = ""
+    # None = non cambiare la mappatura; {} = non mandare nessun campo opzionale.
+    mappa: dict[str, str] | None = None
+
+
+class NotionTokenRequest(BaseModel):
+    token: str = ""
+
+
+class NotionSchemaRequest(BaseModel):
+    token: str = ""
+    database_id: str = ""
+
+
+class NotionDatabaseRequest(BaseModel):
+    token: str = ""
+    pagina_id: str
+    titolo: str = ""
+    campi: list[str] = []
 
 
 class HttpGenericoRequest(BaseModel):
@@ -63,11 +86,53 @@ def crea_router(ctx: Contesto) -> APIRouter:
     async def notion_stato_rotta() -> dict[str, Any]:
         return await asyncio.to_thread(notion_stato, ctx.store)
 
+    @router.get("/export/notion/campi")
+    async def notion_campi_rotta() -> list[dict[str, Any]]:
+        return notion_campi()
+
+    @router.post("/export/notion/destinazioni")
+    async def notion_destinazioni_rotta(req: NotionTokenRequest) -> dict[str, Any]:
+        try:
+            return await asyncio.to_thread(notion_destinazioni, ctx.store, req.token)
+        except NotionError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @router.post("/export/notion/schema")
+    async def notion_schema_rotta(req: NotionSchemaRequest) -> dict[str, Any]:
+        try:
+            return await asyncio.to_thread(
+                notion_schema, ctx.store, token=req.token, database_id=req.database_id
+            )
+        except NotionError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @router.post("/export/notion/database")
+    async def notion_crea_database_rotta(req: NotionDatabaseRequest) -> dict[str, Any]:
+        try:
+            return await asyncio.to_thread(
+                notion_crea_database,
+                ctx.store,
+                token=req.token,
+                pagina_id=req.pagina_id,
+                titolo=req.titolo,
+                campi=req.campi,
+            )
+        except NotionError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @router.post("/export/notion/collega")
     async def notion_collega_rotta(req: NotionCollegaRequest) -> dict[str, Any]:
-        return await asyncio.to_thread(
-            notion_collega, ctx.store, token=req.token, database_id=req.database_id
-        )
+        try:
+            return await asyncio.to_thread(
+                notion_collega,
+                ctx.store,
+                token=req.token,
+                database_id=req.database_id,
+                database_titolo=req.database_titolo,
+                mappa=req.mappa,
+            )
+        except NotionError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @router.post("/export/notion/scollega")
     async def notion_scollega_rotta() -> dict[str, Any]:

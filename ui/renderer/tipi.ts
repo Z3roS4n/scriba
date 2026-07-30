@@ -276,6 +276,53 @@ export interface Impostazioni {
   }
 }
 
+// -------------------------------------------------------------------- notion
+
+/** Un dato che Scriba sa di una task, e i tipi di proprietà Notion che lo reggono. */
+export interface CampoNotion {
+  id: string
+  etichetta: string
+  aiuto: string
+  tipi: string[]
+  /** Come si chiamerà la colonna, se il database lo crea Scriba. */
+  nome_notion: string
+  consigliato: boolean
+  /** Il titolo: non si mappa, va sempre nella proprietà titolo del database. */
+  obbligatorio: boolean
+}
+
+export interface StatoNotion {
+  collegato: boolean
+  database_id: string | null
+  database_titolo: string | null
+  /** id del campo → nome della proprietà Notion. Vuota = ancora da scegliere. */
+  mappa: Record<string, string>
+}
+
+export interface DestinazioneNotion {
+  id: string
+  titolo: string
+}
+
+/** Cosa l'integrazione può vedere: database da adattare, pagine dove crearne uno. */
+export interface DestinazioniNotion {
+  database: DestinazioneNotion[]
+  pagine: DestinazioneNotion[]
+}
+
+export interface ProprietaNotion {
+  nome: string
+  tipo: string
+}
+
+export interface SchemaNotion {
+  database_id: string
+  titolo: string
+  titolo_proprieta: string
+  proprieta: ProprietaNotion[]
+  mappa_proposta: Record<string, string>
+}
+
 // -------------------------------------------------------------------- eventi
 
 /** Eventi che il core spinge sul websocket, girati alle finestre dal main. */

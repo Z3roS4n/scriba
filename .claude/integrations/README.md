@@ -8,7 +8,7 @@
 
 | Integrazione | Tipo | Stato | Scheda |
 |---|---|---|---|
-| <servizio> | API / webhook | 🔜 pianificata | [_template.md](_template.md) |
+| Notion | API REST (uscita) | ✅ integrata, non ancora provata su un account vero | [notion.md](notion.md) |
 
 ## Webhook in entrata (endpoint esposti dalla nostra app)
 

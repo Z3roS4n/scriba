@@ -55,3 +55,24 @@ lunghe e interrompibili, non come un pulsante che gira.
 Durante la call conta la leggibilità periferica e il non dare fastidio; dopo la call
 conta la densità di informazione. L'overlay serve il primo caso, la finestra principale
 il secondo, e non vanno progettati con lo stesso criterio.
+
+## D-UI-06 — Un modale più largo, solo per le tabelle etichetta + controllo
+
+Il modale del design è 480px. La mappatura di Notion è una tabella di dodici righe
+«nome del campo + selettore»: a 480px l'etichetta e il selettore si accavallano, e
+accorciare i testi renderebbe la schermata più stretta ma meno comprensibile — che è
+il contrario di quello che serve mentre si decide dove finiscono i propri dati.
+
+`Modal` accetta quindi una `larghezza` facoltativa (560px per la mappatura). Non è un
+permesso generale: per tutto il resto vale 480px, e allargare un modale per far stare
+più roba dentro è il segnale che quella roba andava in una schermata.
+
+## D-UI-07 — Il collegamento a un servizio esterno è una schermata a passi
+
+Notion chiedeva due campi da incollare a mano (token e id del database) in mezzo a una
+riga di impostazioni. Un id sbagliato e un'integrazione non condivisa danno lo stesso
+errore, quindi chi lo incollava non aveva modo di capire cosa fosse andato storto.
+
+Ora è un modale a passi: token → quale database (elenco di quelli visibili) o creane uno
+→ cosa va in quale colonna. Vale come convenzione per i prossimi connettori: l'utente
+sceglie da un elenco di cose che esistono, non digita un identificativo.

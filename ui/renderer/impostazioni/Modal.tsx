@@ -11,7 +11,19 @@
 
 import type { ReactNode } from 'react'
 
-export function Modal({ children, onChiudi }: { children: ReactNode; onChiudi: () => void }) {
+export function Modal({
+  children,
+  onChiudi,
+  larghezza,
+}: {
+  children: ReactNode
+  onChiudi: () => void
+  /**
+   * Oltre i 480px del design, per le sole tabelle a due colonne (etichetta più
+   * controllo) che a quella larghezza si accavallano — vedi D-UI-06.
+   */
+  larghezza?: number
+}) {
   return (
     <div
       style={{
@@ -25,7 +37,11 @@ export function Modal({ children, onChiudi }: { children: ReactNode; onChiudi: (
       }}
       onClick={onChiudi}
     >
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal"
+        style={larghezza ? { width: larghezza } : undefined}
+        onClick={(e) => e.stopPropagation()}
+      >
         {children}
       </div>
     </div>
