@@ -19,6 +19,23 @@ const PROJECT_ROOT = resolve(app.getAppPath(), '..')
 const DATA_DIR = join(app.getPath('userData'), 'data')
 const SCREENSHOT_DIR = join(DATA_DIR, 'screenshots')
 /**
+ * L'icona dell'applicazione, dove sta sia in sviluppo che pacchettizzata.
+ *
+ * Lo stesso percorso relativo funziona in entrambi i casi perche' `PROJECT_ROOT`
+ * risale di uno da `app.getAppPath()`: in sviluppo finisce sulla radice del
+ * repository, pacchettizzato su `resources/`, dove electron-builder copia la
+ * cartella `assets` (vedi extraResources in electron-builder.yml).
+ *
+ * L'eseguibile ha la sua icona incisa dentro da electron-builder; questa serve
+ * alle finestre e all'area di notifica, che la caricano da file a runtime.
+ */
+const ICONA = join(PROJECT_ROOT, 'assets', 'scriba.ico')
+/** Quadrato 16x16 disegnato a runtime: ripiego se `ICONA` non si carica. */
+const ICONA_RIPIEGO =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAWklEQVR42mNkYPhfz0AEYBxVSF' +
+  'ChpqbmPxCDaSA0MDAwMDIwMDAwMjAwMDIwMDAyMDAwMTAwMDMwMDCxMDAwsTIwMLEzMDCxMzAwcTAwMHEyMDBxMTAwcTMw' +
+  'AABAAP//AwDPzB4hHVAAAAAASUVORK5CYII='
+/**
  * Candidate per lo screenshot, in ordine di preferenza.
  *
  * Ripiego per quando le impostazioni non ne indicano una valida: Ctrl+Shift+S
@@ -37,7 +54,7 @@ const sidecar = new Sidecar(PROJECT_ROOT, join(DATA_DIR, 'scriba.sqlite'))
 
 const cartellaRisorse = __dirname.replace(/[\\/]main$/, '')
 const overlay = new Overlay(cartellaRisorse, join(DATA_DIR, 'overlay.json'))
-const impostazioni = new Impostazioni(cartellaRisorse)
+const impostazioni = new Impostazioni(cartellaRisorse, ICONA)
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -65,6 +82,7 @@ function createWindow(): BrowserWindow {
     frame: false,
     backgroundColor: '#141416',
     title: 'Scriba',
+    icon: ICONA,
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
       // Il renderer non deve poter toccare il filesystem ne' avviare processi:
@@ -104,13 +122,17 @@ function showWindow(): void {
 }
 
 function createTray(): void {
-  // Icona minimale disegnata a runtime: evita di trascinarsi dietro un asset
-  // binario finche' non c'e' un'identita' visiva decisa.
-  const icon = nativeImage.createFromDataURL(
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAWklEQVR42mNkYPhfz0AEYBxVSF' +
-      'ChpqbmPxCDaSA0MDAwMDIwMDAwMjAwMDIwMDAyMDAwMTAwMDMwMDCxMDAwsTIwMLEzMDCxMzAwcTAwMHEyMDBxMTAwcTMw' +
-      'AABAAP//AwDPzB4hHVAAAAAASUVORK5CYII=',
-  )
+  // Il .ico contiene gia' un'immagine da 16 pixel disegnata a quella misura
+  // (scripts/genera-icona.ps1): Windows sceglie quella invece di rimpicciolire
+  // la grande, ed e' la differenza fra un'icona pulita e una sfocata proprio
+  // nel posto dove Scriba passa la maggior parte del suo tempo.
+  //
+  // Se il file mancasse si ripiega sul quadrato disegnato a runtime che c'era
+  // prima. Non e' eleganza: un'icona vuota nell'area di notifica e' invisibile,
+  // e con la finestra che si nasconde invece di chiudersi quella e' l'unica
+  // strada per riaprire Scriba. Meglio brutta che irraggiungibile.
+  const daFile = nativeImage.createFromPath(ICONA)
+  const icon = daFile.isEmpty() ? nativeImage.createFromDataURL(ICONA_RIPIEGO) : daFile
   tray = new Tray(icon)
   tray.setToolTip('Scriba')
   tray.setContextMenu(

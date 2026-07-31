@@ -36,6 +36,14 @@ extraResources:
   # `resources/`, che e' dove electron-builder copia questa cartella.
   - from: ../dist/core/scriba_core
     to: core-dist/scriba_core
+  # L'icona serve anche a runtime, non solo all'eseguibile: la finestra e
+  # l'area di notifica se la caricano da un file. Stessa risalita di
+  # core-dist — da `app.getAppPath()` pacchettizzato si arriva in
+  # `resources/`, quindi `resources/assets/scriba.ico`. In sviluppo lo
+  # stesso percorso relativo cade sulla cartella `assets/` del repository:
+  # una riga sola in `main/index.ts` copre tutti e due i casi.
+  - from: ../assets
+    to: assets
 
 win:
   target:
@@ -48,7 +56,18 @@ win:
   # prima apertura — e' un compromesso accettato, non un difetto da
   # "aggiustare" con un certificato self-signed (che non toglie l'avviso e
   # aggiunge solo un altro segreto da gestire).
-  signAndEditExecutable: false
+  #
+  # Quella scelta pero' NON si esprime con `signAndEditExecutable: false`, che
+  # e' quello che c'era scritto qui prima. Quell'opzione non spegne solo la
+  # firma: spegne l'intero passaggio che riscrive l'eseguibile, e quel
+  # passaggio e' anche l'unico che ci mette dentro icona, nome e versione.
+  # Con `false` l'exe restava con l'icona di Electron e senza identita' in
+  # Gestione attivita' — il `icon:` qui sopra veniva ignorato.
+  #
+  # Con `true` (il predefinito) electron-builder scrive icona e metadati, e
+  # firma soltanto se trova un certificato configurato. Non essendocene
+  # nessuno, non firma: la decisione di partenza resta intatta.
+  signAndEditExecutable: true
 
 nsis:
   oneClick: false

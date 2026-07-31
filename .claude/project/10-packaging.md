@@ -224,11 +224,47 @@ implicito).
 ## Nessuna firma del codice
 
 Decisione di progetto presa all'inizio (progetto personale, open source):
-`win.signAndEditExecutable: false` in `electron-builder.yml`. Windows mostra
+nessun certificato configurato in `electron-builder.yml`. Windows mostra
 l'avviso di SmartScreen alla prima apertura dell'installer — atteso, non un
 difetto. Verificato con `Get-AuthenticodeSignature` sull'installer prodotto:
 `NotSigned` sia per `Scriba Setup <versione>.exe` sia per `Scriba.exe` dentro
 `win-unpacked/`.
+
+**Come NON si esprime questa decisione:** con `win.signAndEditExecutable:
+false`, che è quello che c'era scritto fino alla issue dell'icona. Quel flag
+non spegne solo la firma, spegne l'intero passaggio che riscrive
+l'eseguibile — lo stesso che ci incide dentro icona, nome prodotto, versione
+e autore. Con `false` l'`.exe` restava con l'icona di Electron e senza
+identità in Gestione attività, e il campo `win.icon` poco sopra veniva
+ignorato in silenzio.
+
+Ora sta a `true` (il predefinito). electron-builder scrive icona e metadati, e
+firma **solo** se trova un certificato: non essendocene nessuno, non firma. La
+decisione di partenza è intatta, il pacchetto ha la sua faccia.
+
+## Icona
+
+`assets/scriba.ico` contiene sette misure (16, 24, 32, 48, 64, 128, 256), non
+una sola: Windows sceglie quella giusta invece di rimpicciolire la più grande,
+e sotto i 32 pixel — area di notifica, barra delle applicazioni — la differenza
+si vede. Si rigenera da `assets/scriba.png` con
+`powershell -ExecutionPolicy Bypass -File scripts/genera-icona.ps1`, a mano
+quando il logo cambia: il `.ico` prodotto sta nel repository, così chi
+costruisce l'installer non deve rigenerarlo.
+
+L'icona serve in due posti diversi, e sono due meccanismi distinti:
+
+| Dove | Da cosa arriva |
+|---|---|
+| `.exe` (Esplora risorse, Gestione attività, barra) | `win.icon` inciso da electron-builder |
+| Finestre e area di notifica | file letto a runtime, via `extraResources` |
+
+Il secondo passa da `ICONA` in `main/index.ts`, che è
+`join(PROJECT_ROOT, 'assets', 'scriba.ico')`. Lo stesso percorso vale in
+sviluppo e nel pacchetto perché `PROJECT_ROOT` risale di uno da
+`app.getAppPath()`: in sviluppo cade sulla radice del repository,
+pacchettizzato su `resources/`, dove `extraResources` copia `assets/`. Stesso
+trucco di `core-dist`.
 
 ## Cosa resta da fare
 
@@ -239,12 +275,10 @@ difetto. Verificato con `Get-AuthenticodeSignature` sull'installer prodotto:
   "Registra" dall'interfaccia installata: fuori dal perimetro di un task di
   packaging, ma vale la pena rifarlo una volta a mano prima di distribuire
   l'installer a qualcun altro.
-- **Icona generica nella tray**: `main/index.ts` (fuori dal mio perimetro)
-  disegna un'icona minimale a runtime invece di caricarne una vera — non
-  legato al packaging, ma si nota di più in un pacchetto "finito".
-- **`author` mancante in `ui/package.json`**: electron-builder lo segnala
-  come warning non bloccante in ogni build. Aggiungerlo è una riga, ma tocca
-  un campo di metadata condiviso: lasciato a chi possiede quel file per
-  intero.
+- **Verificare l'icona sul pacchetto vero**, non solo in sviluppo: che
+  `Scriba.exe` la mostri in Esplora risorse e in Gestione attività, e che la
+  finestra e l'area di notifica la carichino da `resources/assets/`. È il
+  punto in cui questa catena può rompersi in silenzio, perché in sviluppo
+  `assets/` c'è comunque.
 - Nessuno step di CI costruisce questo pacchetto automaticamente: per ora è
   un comando da lanciare a mano (`npm run dist`).
