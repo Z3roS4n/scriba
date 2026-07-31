@@ -29,6 +29,7 @@ from typing import Any
 from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
+from .api import traduci_stato_sessione as _traduci_stato_sessione
 from .db import manutenzione
 from .db.store import Store
 from .recorder import Recorder
@@ -103,28 +104,10 @@ PROVIDERS_INFO: dict[str, dict[str, Any]] = {
     },
 }
 
-# Traduce lo stato grezzo del database in quello che l'elenco delle call
-# mostra. 'ready' e 'transcribing' diventano entrambi "registrata": il secondo
-# non viene mai persistito nella pratica attuale, ma trattarlo come il primo
-# invece di sollevare un caso non gestito costa niente ed è più robusto.
-_STATO_SESSIONE: dict[str, str] = {
-    "recording": "recording",
-    "analyzed": "analyzed",
-    "error": "failed",
-}
-
-
-def _traduci_stato_sessione(stato_grezzo: str, *, in_analisi: bool) -> str:
-    """Un valore di StatoSessione ('recording'|'recorded'|'analyzing'|'analyzed'|'failed').
-
-    `in_analisi` viene da fuori perché il database non sa che un'analisi è in
-    corso: quell'informazione vive solo nello stato del processo, non in una
-    colonna. Ha la precedenza su tutto il resto: anche una call segnata come
-    "analyzed" da un giro precedente sta, in questo momento, rianalizzando.
-    """
-    if in_analisi:
-        return "analyzing"
-    return _STATO_SESSIONE.get(stato_grezzo, "recorded")
+# La traduzione dello stato grezzo in quello che l'interfaccia mostra vive in
+# `api/__init__.py` (importata in cima): la usano in due — qui per l'elenco
+# delle call, in `api/clienti.py` per l'archivio — e la stessa call non deve
+# risultare in due stati diversi a seconda della schermata da cui la si guarda.
 
 
 # ------------------------------------------------------ Markdown dell'analisi
@@ -1022,11 +1005,13 @@ def create_app(
         rows = store.conn.execute(
             """
             SELECT s.id, s.titolo, s.piattaforma, s.started_at, s.ended_at,
-                   s.durata_ms, s.stato, s.lingua,
+                   s.durata_ms, s.stato, s.lingua, s.client_id,
+                   c.nome AS cliente,
                    COUNT(CASE WHEN t.stato <> 'rejected' THEN 1 END) AS n_task,
                    COUNT(CASE WHEN t.stato <> 'rejected' AND t.needs_review = 1
                               THEN 1 END) AS n_da_confermare
               FROM sessions s
+              LEFT JOIN clients c ON c.id = s.client_id
               LEFT JOIN tasks t ON t.session_id = s.id
              GROUP BY s.id
              ORDER BY s.started_at DESC
@@ -1129,6 +1114,7 @@ def create_app(
     # più spesso del resto e non c'è motivo di farli abitare nella stessa
     # funzione della registrazione.
     from .api import Contesto
+    from .api import clienti as api_clienti
     from .api import export as api_export
     from .api import modelli as api_modelli
     from .api import note as api_note
@@ -1142,6 +1128,7 @@ def create_app(
         state=state,
     )
     fabbriche_router = [
+        api_clienti.crea_router,
         api_export.crea_router,
         api_modelli.crea_router,
         api_note.crea_router,

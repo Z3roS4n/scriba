@@ -482,3 +482,36 @@ a:hover { color:var(--link-hover); }
 .alert--inline { flex-direction:row; align-items:flex-start; gap:11px; background:var(--red-soft3); }
 .alert--inline::before { content:""; width:4px; align-self:stretch; border-radius:2px; background:var(--red-bar); flex:none; }
 .level { font-family:var(--mono); font-size:var(--fs-label); color:var(--fg6); }
+
+/* ---------------------------------------------------------------- archivio */
+/* A tutta finestra come la rassegna, e riusa la sua barra (.review__bar): sono
+   due modalita' che sostituiscono l'interfaccia normale, e una barra diversa
+   per ciascuna le farebbe sembrare due applicazioni. */
+.arch { flex:1; overflow-y:auto; padding:var(--sp-6) var(--sp-7) var(--sp-7); min-height:0; }
+.arch__search { flex:1; min-width:180px; max-width:420px; height:28px; padding:0 11px; border-radius:var(--r-2); border:1px solid var(--line2); background:var(--btn); color:var(--fg1); font-size:var(--fs-md); font-family:inherit; }
+.arch__search::placeholder { color:var(--fg7); }
+.arch__filter { height:28px; padding:0 var(--sp-3); border-radius:var(--r-2); border:1px solid var(--line2); background:var(--btn); color:var(--fg2); font-size:var(--fs-md); font-family:inherit; max-width:190px; }
+.arch__group { display:flex; align-items:baseline; gap:var(--sp-3); margin:var(--sp-6) 0 var(--sp-3); font-size:var(--fs-md); font-weight:600; letter-spacing:.02em; text-transform:uppercase; color:var(--fg5); }
+.arch__group:first-child { margin-top:0; }
+.arch__row { display:flex; align-items:center; gap:var(--sp-4); padding:9px var(--sp-4); border-radius:var(--r-2); border-bottom:1px solid var(--line-soft); }
+.arch__row:hover { background:var(--sel); }
+/* Il pulsante e' la riga: cliccare ovunque apre la call, tranne che sul
+   selettore del cliente, che e' l'unico comando distinto. */
+.arch__open { flex:1; display:flex; flex-direction:column; gap:3px; align-items:flex-start; padding:0; border:0; background:none; text-align:left; cursor:pointer; min-width:0; font-family:inherit; color:inherit; }
+.arch__title { font-size:var(--fs-base); font-weight:500; line-height:1.35; text-wrap:pretty; }
+.arch__meta { display:flex; align-items:center; gap:5px; flex-wrap:wrap; font-family:var(--mono); font-size:var(--fs-mono); color:var(--fg6); }
+.arch__cliente { flex:none; width:190px; height:26px; padding:0 var(--sp-2); border-radius:var(--r-2); border:1px solid var(--line2); background:var(--btn); color:var(--fg3); font-size:var(--fs-md); font-family:inherit; }
+.arch__empty { padding:var(--sp-7) 0; font-size:var(--fs-md); line-height:1.6; color:var(--fg5); text-wrap:pretty; }
+/* Un `.btn` che ricorda di essere premuto. Il progetto ha gia' `.segment` per
+   scegliere fra alternative; questo e' un interruttore singolo, che li' non
+   c'era. */
+.btn.is-on { background:var(--pri-soft-bg); border-color:var(--pri-bd); color:var(--pri-fg); font-weight:600; }
+
+/* ------------------------------------------------------- elenco dei clienti */
+.cli { display:flex; flex-direction:column; }
+.cli__row { display:flex; align-items:center; gap:var(--sp-3); padding:9px var(--sp-2); border-bottom:1px solid var(--line-soft); }
+/* Un cliente archiviato resta leggibile ma smette di chiedere attenzione: e'
+   il senso stesso dell'archiviarlo. */
+.cli__row.is-off { opacity:.55; }
+.cli__nome { font-size:var(--fs-base); font-weight:500; }
+.cli__meta { flex:1; display:flex; align-items:center; gap:5px; font-family:var(--mono); font-size:var(--fs-mono); color:var(--fg6); }

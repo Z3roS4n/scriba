@@ -34,6 +34,30 @@ export interface Sessione {
   /** Quante task ha prodotto l'analisi, e quante aspettano ancora una conferma. */
   n_task: number
   n_da_confermare: number
+  /** null = call non attribuita a nessun cliente. */
+  client_id?: number | null
+  /** Il nome del cliente, gia' risolto dal core: la UI non deve incrociarlo da se'. */
+  cliente?: string | null
+}
+
+/** Un cliente, con quanto lavoro gli e' gia' attribuito. */
+export interface Cliente {
+  id: number
+  uuid: string
+  nome: string
+  note: string | null
+  archiviato: number
+  created_at: number
+  /** Quante call gli sono attribuite, e quando e' stata l'ultima. */
+  n_call: number
+  ultima_call: number | null
+}
+
+/** L'esito di un import: si mostra all'utente, perche' "fatto" non basta. */
+export interface EsitoImport {
+  creati: number
+  gia_presenti: number
+  scartati: number
 }
 
 export type Traccia = 'mic' | 'loopback'

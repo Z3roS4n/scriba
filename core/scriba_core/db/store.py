@@ -44,6 +44,24 @@ CREATE TABLE IF NOT EXISTS analysis_meta (
 """
 
 
+def _frase_fts(testo: str) -> str:
+    """Trasforma quello che si è digitato in una query FTS5 che non può fallire.
+
+    Il testo di una casella di ricerca è testo, non una sintassi: se ci finisce
+    dentro un `"`, un `*` o la parola `AND`, FTS5 lo interpreta come operatore e
+    solleva un errore di sintassi invece di non trovare niente. Ogni parola si
+    cita quindi come stringa letterale — fra virgolette, con le virgolette
+    interne raddoppiate — e le parole restano in AND fra loro, che è quello che
+    uno si aspetta scrivendo due parole.
+    """
+    return " ".join('"' + parola.replace('"', '""') + '"' for parola in testo.split())
+
+
+def _come_like(testo: str) -> str:
+    """Neutralizza i caratteri jolly di LIKE, che nel testo cercato sono letterali."""
+    return testo.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 @dataclass(frozen=True)
 class Segment:
     """Un pezzo di trascrizione, provvisorio o definitivo."""
@@ -159,6 +177,7 @@ class Store:
         conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
         conn.executescript(_SCHEMA_EXTRA)
         self._migra_colonna_diarizzata_at(conn)
+        self._migra_colonna_cliente(conn)
         row = conn.execute("SELECT MAX(version) AS v FROM schema_version").fetchone()
         if row is None or row["v"] is None:
             conn.execute("INSERT INTO schema_version(version) VALUES (?)", (SCHEMA_VERSION,))
@@ -182,6 +201,174 @@ class Store:
         colonne = {r["name"] for r in conn.execute("PRAGMA table_info(sessions)")}
         if "diarizzata_at" not in colonne:
             conn.execute("ALTER TABLE sessions ADD COLUMN diarizzata_at INTEGER")
+
+    @staticmethod
+    def _migra_colonna_cliente(conn: sqlite3.Connection) -> None:
+        """Aggiunge `sessions.client_id` ai database creati prima dei clienti.
+
+        Come `diarizzata_at`: `CREATE TABLE IF NOT EXISTS` in schema.sql non
+        aggiunge colonne a una tabella che c'è già.
+
+        SQLite non permette di dichiarare una chiave esterna in un `ADD
+        COLUMN`, quindi qui è una colonna e basta: `ON DELETE SET NULL` non
+        c'è, e a tenere pulito il riferimento ci pensa `elimina_cliente`, che
+        azzera le call di quel cliente nella stessa transazione. Sui database
+        nuovi il vincolo c'è (schema.sql), su quelli vecchi no: il codice non
+        deve poter distinguere i due casi, e infatti non li distingue.
+        """
+        colonne = {r["name"] for r in conn.execute("PRAGMA table_info(sessions)")}
+        if "client_id" not in colonne:
+            conn.execute("ALTER TABLE sessions ADD COLUMN client_id INTEGER")
+
+    # ---------------------------------------------------------------- clienti
+
+    @staticmethod
+    def nome_cliente_normalizzato(nome: str) -> str:
+        """La forma con cui due nomi si confrontano: spazi normalizzati, minuscolo.
+
+        `casefold` e non `lower`: serve a confrontare, non a mostrare, e su
+        alfabeti diversi dal nostro `lower` non basta.
+        """
+        return " ".join(nome.split()).casefold()
+
+    def clienti(self, *, includi_archiviati: bool = False) -> list[sqlite3.Row]:
+        """I clienti, col numero di call di ciascuno.
+
+        Il conteggio in una query sola invece che una per cliente: l'elenco si
+        ricarica ogni volta che si apre l'archivio.
+        """
+        dove = "" if includi_archiviati else "WHERE c.archiviato = 0"
+        return list(
+            self.conn.execute(
+                f"""
+                SELECT c.id, c.uuid, c.nome, c.note, c.archiviato, c.created_at,
+                       COUNT(s.id) AS n_call,
+                       MAX(s.started_at) AS ultima_call
+                  FROM clients c
+                  LEFT JOIN sessions s ON s.client_id = c.id
+                  {dove}
+                 GROUP BY c.id
+                 ORDER BY c.nome COLLATE NOCASE
+                """
+            )
+        )
+
+    def crea_cliente(self, nome: str, *, note: str | None = None) -> int | None:
+        """Crea un cliente e ne restituisce l'id.
+
+        Se ne esiste già uno con lo stesso nome — a meno di maiuscole e spazi —
+        restituisce quello, senza toccarlo: importare due volte lo stesso
+        elenco non deve produrre doppioni, e un secondo import non deve
+        sovrascrivere le note scritte a mano nel frattempo.
+
+        `None` se il nome è vuoto.
+        """
+        nome = " ".join(nome.split())
+        if not nome:
+            return None
+        norm = self.nome_cliente_normalizzato(nome)
+        with self.tx() as conn:
+            esistente = conn.execute(
+                "SELECT id FROM clients WHERE nome_norm = ?", (norm,)
+            ).fetchone()
+            if esistente is not None:
+                return int(esistente["id"])
+            cur = conn.execute(
+                "INSERT INTO clients (uuid, nome, nome_norm, note) VALUES (?, ?, ?, ?)",
+                (str(uuid.uuid4()), nome, norm, note),
+            )
+            return int(cur.lastrowid)
+
+    def aggiorna_cliente(
+        self,
+        client_id: int,
+        *,
+        nome: str | None = None,
+        note: str | None = None,
+        archiviato: bool | None = None,
+    ) -> bool:
+        """Modifica un cliente. `None` significa "non toccare questo campo"."""
+        campi: list[str] = []
+        valori: list[object] = []
+        if nome is not None:
+            pulito = " ".join(nome.split())
+            if not pulito:
+                return False
+            campi += ["nome = ?", "nome_norm = ?"]
+            valori += [pulito, self.nome_cliente_normalizzato(pulito)]
+        if note is not None:
+            campi.append("note = ?")
+            valori.append(note)
+        if archiviato is not None:
+            campi.append("archiviato = ?")
+            valori.append(1 if archiviato else 0)
+        if not campi:
+            return False
+
+        with self.tx() as conn:
+            try:
+                cur = conn.execute(
+                    f"UPDATE clients SET {', '.join(campi)} WHERE id = ?", (*valori, client_id)
+                )
+            except sqlite3.IntegrityError:
+                # Rinominato con un nome già di un altro cliente. Fonderli è una
+                # decisione, non un effetto collaterale di una rinomina: qui si
+                # rifiuta e basta.
+                return False
+            return cur.rowcount > 0
+
+    def elimina_cliente(self, client_id: int) -> bool:
+        """Elimina un cliente e stacca le sue call, che restano.
+
+        Le call si azzerano esplicitamente invece di affidarsi a `ON DELETE SET
+        NULL`: su un database creato prima dei clienti la colonna arriva da un
+        `ALTER TABLE`, e SQLite non permette di dichiararci una chiave esterna.
+        Farlo qui è l'unico modo perché il comportamento sia lo stesso sui
+        database nuovi e su quelli vecchi.
+        """
+        with self.tx() as conn:
+            conn.execute("UPDATE sessions SET client_id = NULL WHERE client_id = ?", (client_id,))
+            cur = conn.execute("DELETE FROM clients WHERE id = ?", (client_id,))
+            return cur.rowcount > 0
+
+    def assegna_cliente(self, session_id: int, client_id: int | None) -> bool:
+        """Attribuisce una call a un cliente. `None` la lascia senza."""
+        with self.tx() as conn:
+            if client_id is not None:
+                esiste = conn.execute(
+                    "SELECT 1 FROM clients WHERE id = ?", (client_id,)
+                ).fetchone()
+                if esiste is None:
+                    return False
+            cur = conn.execute(
+                "UPDATE sessions SET client_id = ? WHERE id = ?", (client_id, session_id)
+            )
+            return cur.rowcount > 0
+
+    def importa_clienti(self, voci: list[tuple[str, str | None]]) -> dict[str, int]:
+        """Aggiunge un elenco di clienti, saltando quelli che ci sono già.
+
+        Restituisce quanti ne ha creati, quanti erano già presenti e quante
+        righe ha scartato perché senza nome. Il chiamante lo mostra all'utente:
+        un import che dice solo "fatto" lascia il dubbio su cosa sia entrato.
+        """
+        esito = {"creati": 0, "gia_presenti": 0, "scartati": 0}
+        for nome, note in voci:
+            if not nome or not nome.strip():
+                esito["scartati"] += 1
+                continue
+            norm = self.nome_cliente_normalizzato(nome)
+            gia = self.conn.execute(
+                "SELECT 1 FROM clients WHERE nome_norm = ?", (norm,)
+            ).fetchone()
+            if gia is not None:
+                esito["gia_presenti"] += 1
+                continue
+            if self.crea_cliente(nome, note=note) is not None:
+                esito["creati"] += 1
+            else:
+                esito["scartati"] += 1
+        return esito
 
     # --------------------------------------------------------------- sessioni
 
@@ -293,6 +480,78 @@ class Store:
         return self.conn.execute(
             "SELECT * FROM sessions WHERE id = ?", (session_id,)
         ).fetchone()
+
+    def cerca_call(
+        self,
+        *,
+        testo: str | None = None,
+        client_id: int | None = None,
+        senza_cliente: bool = False,
+        da_ms: int | None = None,
+        a_ms: int | None = None,
+        stati: tuple[str, ...] | None = None,
+        limit: int = 200,
+    ) -> list[sqlite3.Row]:
+        """L'archivio: le call che rispondono ai filtri, dalla più recente.
+
+        `testo` cerca sia nel titolo che dentro la trascrizione, usando l'indice
+        full-text che c'era già e che finora nessuna schermata interrogava.
+
+        Un parametro a `None` non filtra. `senza_cliente` è separato da
+        `client_id` perché "tutte" e "quelle senza cliente" sono due domande
+        diverse, e un solo campo non può dirle entrambe.
+        """
+        dove = ["1 = 1"]
+        valori: list[object] = []
+
+        if testo and testo.strip():
+            dove.append(
+                """(s.titolo LIKE ? ESCAPE '\\'
+                    OR s.id IN (SELECT ts.session_id
+                                  FROM segments_fts f
+                                  JOIN transcript_segments ts ON ts.id = f.rowid
+                                 WHERE segments_fts MATCH ?))"""
+            )
+            valori.append(f"%{_come_like(testo.strip())}%")
+            valori.append(_frase_fts(testo))
+        if senza_cliente:
+            dove.append("s.client_id IS NULL")
+        elif client_id is not None:
+            dove.append("s.client_id = ?")
+            valori.append(client_id)
+        if da_ms is not None:
+            dove.append("s.started_at >= ?")
+            valori.append(da_ms)
+        if a_ms is not None:
+            dove.append("s.started_at <= ?")
+            valori.append(a_ms)
+        if stati:
+            # Uno stato mostrato può nascerne da più d'uno nel database
+            # ("registrata" sta per `ready` e `transcribing`): il filtro prende
+            # una tupla, non un valore solo.
+            dove.append(f"s.stato IN ({', '.join('?' * len(stati))})")
+            valori.extend(stati)
+
+        return list(
+            self.conn.execute(
+                f"""
+                SELECT s.id, s.titolo, s.piattaforma, s.started_at, s.ended_at,
+                       s.durata_ms, s.stato, s.lingua, s.client_id,
+                       c.nome AS cliente,
+                       COUNT(CASE WHEN t.stato <> 'rejected' THEN 1 END) AS n_task,
+                       COUNT(CASE WHEN t.stato <> 'rejected' AND t.needs_review = 1
+                                  THEN 1 END) AS n_da_confermare
+                  FROM sessions s
+                  LEFT JOIN clients c ON c.id = s.client_id
+                  LEFT JOIN tasks t ON t.session_id = s.id
+                 WHERE {' AND '.join(dove)}
+                 GROUP BY s.id
+                 ORDER BY s.started_at DESC
+                 LIMIT ?
+                """,
+                (*valori, limit),
+            )
+        )
 
     # ------------------------------------------------------------ trascrizione
 
