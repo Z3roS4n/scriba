@@ -17,6 +17,7 @@ import { PannelloAnalisi } from './Analisi'
 import { PannelloProve } from './Prove'
 import { Rassegna } from './Rassegna'
 import { AvvisoCall, Barra, ModaleConsenso } from './Dialoghi'
+import { useSchermi } from './schermi'
 import { scorciatoiaLeggibile, type DbDanneggiato, type EventoCore, type Scatto, type Segmento, type Sessione, type Task } from './tipi'
 
 interface Avviso {
@@ -44,6 +45,7 @@ function App() {
   // qualcos'altro.
   const [dbDanneggiato, setDbDanneggiato] = useState<DbDanneggiato | null>(null)
   const [esportando, setEsportando] = useState(false)
+  const schermi = useSchermi()
   const [callRilevata, setCallRilevata] = useState<{
     pid: number
     nome: string
@@ -458,7 +460,8 @@ function App() {
           trascorsi={trascorsi}
           sessioneVista={sessioneVista}
           esportando={esportando}
-          onScreenshot={() => window.scriba.screenshot()}
+          schermi={schermi}
+          onScreenshot={(idSchermo) => window.scriba.screenshot(idSchermo)}
           onEsporta={esporta}
           onRegistra={apriDialogoRegistra}
           onFerma={ferma}

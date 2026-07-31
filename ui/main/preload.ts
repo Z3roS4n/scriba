@@ -15,6 +15,15 @@ import { contextBridge, ipcRenderer } from 'electron'
 
 type Risposta<T = unknown> = { ok: boolean; status: number; body: T }
 
+/** Uno schermo su cui si puo' catturare. Rispecchia `Schermo` in main/index.ts. */
+type Schermo = {
+  id: string
+  etichetta: string
+  larghezza: number
+  altezza: number
+  principale: boolean
+}
+
 const api = {
   /** Stato del core: presente solo dopo che si e' avviato. Senza token, di proposito. */
   endpoint: (): Promise<{ port: number } | null> => ipcRenderer.invoke('core:endpoint'),
@@ -39,7 +48,12 @@ const api = {
       body: JSON.stringify(body ?? {}),
     }),
 
-  screenshot: (): Promise<void> => ipcRenderer.invoke('screenshot:capture'),
+  /** Senza id cattura lo schermo principale, come fa la scorciatoia globale. */
+  screenshot: (idSchermo?: string): Promise<void> =>
+    ipcRenderer.invoke('screenshot:capture', idSchermo),
+
+  /** Gli schermi collegati adesso. Cambia mentre l'app gira: vedi 'schermi:cambiati'. */
+  schermi: (): Promise<Schermo[]> => ipcRenderer.invoke('schermi:elenco'),
 
   /** Apre la cartella di un file prodotto dall'app, con il file selezionato. */
   mostraFile: (percorso: string): Promise<void> => ipcRenderer.invoke('file:mostra', percorso),
@@ -88,6 +102,7 @@ const api = {
       'screenshot:saved',
       'screenshot:ignorato',
       'scorciatoie:stato',
+      'schermi:cambiati',
     ]
     if (!consentiti.includes(canale)) {
       throw new Error(`Canale non consentito: ${canale}`)
