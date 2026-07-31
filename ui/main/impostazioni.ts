@@ -15,7 +15,11 @@ const ALTEZZA = 720
 export class Impostazioni {
   private finestra: BrowserWindow | null = null
 
-  constructor(private readonly cartellaRisorse: string) {}
+  constructor(
+    private readonly cartellaRisorse: string,
+    /** Percorso del .ico: senza, Windows le darebbe quella di Electron. */
+    private readonly icona: string,
+  ) {}
 
   /** Apre la finestra, o la porta davanti se e' gia' aperta. */
   apri(): void {
@@ -36,6 +40,7 @@ export class Impostazioni {
       frame: false,
       backgroundColor: '#141416',
       title: 'Impostazioni',
+      icon: this.icona,
       webPreferences: {
         preload: join(this.cartellaRisorse, 'main', 'preload.js'),
         contextIsolation: true,
