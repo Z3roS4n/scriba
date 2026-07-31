@@ -7,6 +7,7 @@
  * index.tsx, perche' non tocca nessuno stato che la finestra principale debba conoscere.
  */
 
+import type { Schermo } from './scriba'
 import { tempo } from './tipi'
 
 /** Rispecchia lo stato dell'evento `modello` del core: non serve un tipo condiviso per due file. */
@@ -19,7 +20,10 @@ export function Topbar(props: {
   trascorsi: number
   sessioneVista: number | null
   esportando: boolean
-  onScreenshot: () => void
+  /** Gli schermi collegati. Vuoto finche' il processo principale non risponde. */
+  schermi: Schermo[]
+  /** Senza id: schermo principale. */
+  onScreenshot: (idSchermo?: string) => void
   onEsporta: () => void
   onRegistra: () => void
   onFerma: () => void
@@ -31,6 +35,7 @@ export function Topbar(props: {
     trascorsi,
     sessioneVista,
     esportando,
+    schermi,
     onScreenshot,
     onEsporta,
     onRegistra,
@@ -66,13 +71,31 @@ export function Topbar(props: {
       <div className="topbar__spacer" />
 
       <div className="toolbar">
-        <button
-          className={`btn ${!registrando ? 'is-disabled' : ''}`}
-          disabled={!registrando}
-          onClick={onScreenshot}
-        >
-          Screenshot
-        </button>
+        {/* Con un solo schermo resta il pulsante di sempre: dividerlo in uno
+            per schermo quando lo schermo e' uno aggiungerebbe una scelta che
+            non esiste. Con piu' di uno, uno per ciascuno — durante una call
+            non c'e' tempo per aprire un menu e cercare quello giusto. */}
+        {schermi.length <= 1 ? (
+          <button
+            className={`btn ${!registrando ? 'is-disabled' : ''}`}
+            disabled={!registrando}
+            onClick={() => onScreenshot()}
+          >
+            Screenshot
+          </button>
+        ) : (
+          schermi.map((s, i) => (
+            <button
+              key={s.id}
+              className={`btn ${!registrando ? 'is-disabled' : ''}`}
+              disabled={!registrando}
+              title={`${s.etichetta} — ${s.larghezza}×${s.altezza}${s.principale ? ' (principale)' : ''}`}
+              onClick={() => onScreenshot(s.id)}
+            >
+              Schermo {i + 1}
+            </button>
+          ))
+        )}
 
         <button className="btn" disabled={esportaDisabilitato} onClick={onEsporta}>
           {esportando ? 'Esporto…' : 'Esporta'}

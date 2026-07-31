@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
+import { useSchermi } from './schermi'
 import type { Impostazioni, Traccia } from './tipi'
 import { scorciatoiaLeggibile, tempo } from './tipi'
 
@@ -51,6 +52,7 @@ function App() {
   const [registrando, setRegistrando] = useState(false)
   const [trascorsi, setTrascorsi] = useState(0)
   const [ridotto, setRidotto] = useState(false)
+  const schermi = useSchermi()
   const [scattoRecente, setScattoRecente] = useState(false)
   const [scorciatoie, setScorciatoie] = useState<{ overlay: string | null; screenshot: string | null }>({
     overlay: null,
@@ -130,7 +132,7 @@ function App() {
     return () => clearInterval(timer)
   }, [registrando])
 
-  const scatta = () => window.scriba.screenshot()
+  const scatta = (idSchermo?: string) => window.scriba.screenshot(idSchermo)
   const ferma = () => window.scriba.post('/session/stop')
   // Dall'overlay non si salta il consenso: si apre la finestra grande, dove la
   // conferma c'è. Registrare altre persone non è un gesto da un clic dentro una
@@ -171,7 +173,10 @@ function App() {
         {registrando ? (
           ridotto ? (
             <>
-              <button className="ovbtn ovbtn--icon" aria-label="Scatta" onClick={scatta}>
+              {/* Nella striscia ridotta resta un pulsante solo, sul principale:
+                  sono 420 px, e riempirli di numeri toglierebbe spazio proprio
+                  alla trascrizione, che è il motivo per cui la striscia esiste. */}
+              <button className="ovbtn ovbtn--icon" aria-label="Scatta" onClick={() => scatta()}>
                 ◎
               </button>
               <button className="ovbtn ovbtn--icon" aria-label="Ferma" onClick={ferma}>
@@ -186,9 +191,24 @@ function App() {
             </>
           ) : (
             <>
-              <button className="ovbtn" onClick={scatta}>
-                Scatta
-              </button>
+              {/* Qui lo spazio c'è: con più schermi si scatta quello giusto
+                  senza uscire dalla call per cercare una finestra. */}
+              {schermi.length <= 1 ? (
+                <button className="ovbtn" onClick={() => scatta()}>
+                  Scatta
+                </button>
+              ) : (
+                schermi.map((s, i) => (
+                  <button
+                    key={s.id}
+                    className="ovbtn"
+                    title={`${s.etichetta} — ${s.larghezza}×${s.altezza}${s.principale ? ' (principale)' : ''}`}
+                    onClick={() => scatta(s.id)}
+                  >
+                    Scatta {i + 1}
+                  </button>
+                ))
+              )}
               <button className="ovbtn ovbtn--stop" onClick={ferma}>
                 Ferma
               </button>

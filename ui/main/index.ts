@@ -103,6 +103,37 @@ function showWindow(): void {
   mainWindow.focus()
 }
 
+/**
+ * La voce «Screenshot» del menu: una sola con un solo schermo, un sottomenu con
+ * piu' di uno.
+ *
+ * Con un monitor solo un sottomenu da una voce sarebbe un clic in piu' per
+ * niente, ed e' il caso di quasi tutti: il menu cambia forma solo quando c'e'
+ * davvero qualcosa da scegliere.
+ */
+function voceScreenshot(): Electron.MenuItemConstructorOptions[] {
+  const combo = scorciatoiaScreenshot?.replace('CommandOrControl', 'Ctrl')
+  const schermi = elencaSchermi()
+
+  if (schermi.length <= 1) {
+    return [{ label: combo ? `Screenshot (${combo})` : 'Screenshot', click: () => captureScreenshot() }]
+  }
+
+  return [
+    {
+      label: 'Screenshot',
+      submenu: schermi.map((s) => ({
+        // La scorciatoia si scrive solo accanto al principale perche' e' quello
+        // che cattura davvero: scriverla su tutti prometterebbe il falso.
+        label:
+          `${s.etichetta} — ${s.larghezza}×${s.altezza}` +
+          (s.principale ? (combo ? ` (principale, ${combo})` : ' (principale)') : ''),
+        click: () => captureScreenshot(s.id),
+      })),
+    },
+  ]
+}
+
 function createTray(): void {
   // Icona minimale disegnata a runtime: evita di trascinarsi dietro un asset
   // binario finche' non c'e' un'identita' visiva decisa.
@@ -121,12 +152,7 @@ function createTray(): void {
         click: () => overlay.alterna(),
       },
       { type: 'separator' },
-      {
-        label: scorciatoiaScreenshot
-          ? `Screenshot (${scorciatoiaScreenshot.replace('CommandOrControl', 'Ctrl')})`
-          : 'Screenshot',
-        click: captureScreenshot,
-      },
+      ...voceScreenshot(),
       { type: 'separator' },
       {
         label: 'Esci',
@@ -175,24 +201,82 @@ function dentroCartella(percorso: string, base: string): boolean {
   return risolto === baseRisolta || risolto.startsWith(baseRisolta + sep)
 }
 
+/** Uno schermo su cui si puo' catturare, come lo vede l'interfaccia. */
+type Schermo = {
+  /** `Display.id` in forma di stringa: e' cosi' che lo riporta desktopCapturer. */
+  id: string
+  etichetta: string
+  larghezza: number
+  altezza: number
+  principale: boolean
+}
+
 /**
- * Cattura lo schermo e lo aggancia all'istante corrente della call.
+ * Gli schermi collegati adesso, in ordine.
+ *
+ * L'etichetta la costruiamo noi. Windows riempie `Display.label` in modo
+ * inservibile — spesso vuoto, spesso `\\.\DISPLAY1` — e su un pulsante ci serve
+ * qualcosa che una persona possa collegare a quello che ha davanti.
+ */
+function elencaSchermi(): Schermo[] {
+  const idPrincipale = screen.getPrimaryDisplay().id
+  return screen.getAllDisplays().map((d, i) => ({
+    id: String(d.id),
+    etichetta: `Schermo ${i + 1}`,
+    larghezza: Math.round(d.size.width * d.scaleFactor),
+    altezza: Math.round(d.size.height * d.scaleFactor),
+    principale: d.id === idPrincipale,
+  }))
+}
+
+/**
+ * Cattura uno schermo e lo aggancia all'istante corrente della call.
  *
  * L'istante non lo calcola questo processo: lo decide il core, che possiede la
  * timeline della trascrizione. Due orologi diversi darebbero uno scarto che non
  * si nota finche' non si prova a saltare all'audio da uno screenshot.
+ *
+ * Senza `idSchermo` si cattura il principale, che e' anche quello che fa la
+ * scorciatoia globale: da tastiera non si puo' scegliere, e cambiare schermo da
+ * sotto i piedi a chi preme sempre lo stesso tasto sarebbe peggio del limite.
  */
-async function captureScreenshot(): Promise<void> {
+async function captureScreenshot(idSchermo?: string): Promise<void> {
   try {
-    const { width, height } = screen.getPrimaryDisplay().size
+    const schermi = screen.getAllDisplays()
+    const scelto = schermi.find((d) => String(d.id) === idSchermo) ?? screen.getPrimaryDisplay()
+
+    // Pixel veri, non unita' logiche. Su uno schermo scalato al 150% `size` e'
+    // gia' diviso per la scala: chiedere quella misura darebbe una cattura a un
+    // terzo di risoluzione in meno, e il testo dentro — che poi passa per l'OCR
+    // e finisce nell'analisi — diventa quello che si legge peggio.
+    const larghezza = Math.round(scelto.size.width * scelto.scaleFactor)
+    const altezza = Math.round(scelto.size.height * scelto.scaleFactor)
+
     const sources = await desktopCapturer.getSources({
       types: ['screen'],
-      thumbnailSize: { width, height },
+      thumbnailSize: { width: larghezza, height: altezza },
     })
     if (sources.length === 0) return
 
+    // `display_id` e' l'unico appiglio affidabile. La posizione nell'elenco non
+    // lo e': misurato su due monitor, `getSources()` li restituisce in ordine
+    // inverso rispetto a `getAllDisplays()` — chi si fidasse dell'indice
+    // catturerebbe l'altro schermo, senza accorgersene.
+    //
+    // Se `display_id` mancasse (non succede su Windows con Electron 39, ma non
+    // e' garantito da contratto) si ripiega sul primo, che e' quello che questa
+    // funzione ha sempre catturato: non e' la scelta chiesta, e per questo lo si
+    // scrive nel log invece di far finta di niente.
+    const perId = sources.find((s) => s.display_id === String(scelto.id))
+    if (!perId) {
+      console.warn(
+        `[screenshot] Nessuna sorgente per lo schermo ${scelto.id}: catturo la prima disponibile.`,
+      )
+    }
+    const sorgente = perId ?? sources[0]
+
     mkdirSync(SCREENSHOT_DIR, { recursive: true })
-    const image = sources[0].thumbnail
+    const image = sorgente.thumbnail
     const filename = `shot-${Date.now()}.png`
     const path = join(SCREENSHOT_DIR, filename)
     writeFileSync(path, image.toPNG())
@@ -320,6 +404,28 @@ async function provaScorciatoia(combinazione: string): Promise<boolean> {
   return riuscita
 }
 
+/**
+ * Tiene allineato l'elenco degli schermi a quelli davvero collegati.
+ *
+ * Un monitor si attacca e si stacca a meta' giornata, e in call succede piu'
+ * che altrove: ci si collega alla dock, si aggiunge un proiettore. Senza questo,
+ * i pulsanti resterebbero quelli di quando l'app e' partita, e uno di loro
+ * catturerebbe uno schermo che non c'e' piu'.
+ *
+ * Si registra dopo `app.whenReady()`: il modulo `screen` prima non e' pronto.
+ */
+function sorvegliaSchermi(): void {
+  const aggiorna = () => {
+    if (tray) createTray()
+    trasmettiATutte('schermi:cambiati', elencaSchermi())
+  }
+  screen.on('display-added', aggiorna)
+  screen.on('display-removed', aggiorna)
+  // Cambia anche la risoluzione o la scalatura, non solo il numero: la misura
+  // finisce sull'etichetta del pulsante e nella richiesta di cattura.
+  screen.on('display-metrics-changed', aggiorna)
+}
+
 function registerIpc(): void {
   // Volutamente senza token: al renderer basta sapere se il core e' su.
   ipcMain.handle('core:endpoint', () => (sidecar.address ? { port: sidecar.address.port } : null))
@@ -341,7 +447,12 @@ function registerIpc(): void {
     }
   })
 
-  ipcMain.handle('screenshot:capture', captureScreenshot)
+  // Con una funzione passata nuda il primo argomento sarebbe l'evento IPC, non
+  // l'id dello schermo: finche' captureScreenshot non prendeva argomenti non si
+  // notava, adesso si.
+  ipcMain.handle('screenshot:capture', (_event, idSchermo?: string) => captureScreenshot(idSchermo))
+
+  ipcMain.handle('schermi:elenco', () => elencaSchermi())
 
   ipcMain.handle('file:mostra', (_event, percorso: string) => {
     // Solo dentro la cartella dati dell'app: il renderer non deve poter far
@@ -444,6 +555,7 @@ app.whenReady().then(async () => {
   registerIpc()
   mainWindow = createWindow()
   createTray()
+  sorvegliaSchermi()
 
   try {
     const endpoint = await sidecar.start()
