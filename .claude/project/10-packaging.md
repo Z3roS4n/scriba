@@ -266,6 +266,45 @@ sviluppo e nel pacchetto perché `PROJECT_ROOT` risale di uno da
 pacchettizzato su `resources/`, dove `extraResources` copia `assets/`. Stesso
 trucco di `core-dist`.
 
+## Grafica dell'installer
+
+Sta in `ui/build-resources/`, che è quello che `directories.buildResources`
+indica. electron-builder li prende **per convenzione dal nome**: non serve
+dichiararli, basta che si chiamino così e siano della misura giusta.
+
+| File | Misura | Dove si vede |
+|---|---|---|
+| `installerHeader.bmp` | 150×57 | barra in alto di ogni pagina |
+| `installerSidebar.bmp` | 164×314 | pagine di benvenuto e di fine |
+| `uninstallerSidebar.bmp` | 164×314 | le stesse, disinstallando |
+| `installerIcon.ico` / `uninstallerIcon.ico` | — | i due eseguibili |
+| `license.txt` | — | pagina della licenza (copia di `LICENSE`) |
+
+Si rigenera tutto con
+`powershell -ExecutionPolicy Bypass -File scripts/genera-grafica-installer.ps1`,
+a mano quando cambia il logo. I colori non sono scelti a occhio: sono
+campionati da `assets/scriba.png` (punto `#F0605F`, disco `#171A21`).
+
+Tre vincoli che lo script rispetta e che è facile violare rifacendo la grafica
+a mano:
+
+1. **I BMP a 24 bit.** NSIS non legge il canale alfa: un BMP a 32 bit si vede
+   con lo sfondo nero o sporco.
+2. **L'intestazione chiara.** La barra in alto di MUI2 è bianca di sistema e
+   quel colore non si cambia. Una grafica scura lì dentro diventa un rettangolo
+   nero incollato sul bianco. Il pannello laterale invece occupa tutto il
+   riquadro, e lì il tema scuro del prodotto ci sta.
+3. **Antialiasing in scala di grigi, non ClearType.** ClearType usa i
+   sottopixel dello schermo e lascia frange colorate *dentro il file*:
+   invisibili a dimensione naturale, evidenti appena NSIS scala il bitmap su
+   uno schermo ad alta densità.
+
+**Verificato**: l'icona estratta da `Scriba Setup <versione>.exe` è quella di
+Scriba, e `builder-debug.yml` mostra `MUI_PAGE_LICENSE` con il percorso di
+`build-resources/license.txt`. **Non verificato**: che i tre BMP si vedano
+davvero nelle pagine. NSIS li impacchetta nel blocco compresso, quindi non si
+leggono dal file prodotto; l'unico modo è aprire l'installer e guardarlo.
+
 ## Cosa resta da fare
 
 - **Non testato**: registrazione audio vera end-to-end (mic + loopback) dal
