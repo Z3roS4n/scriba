@@ -24,7 +24,42 @@ type Schermo = {
   principale: boolean
 }
 
+/**
+ * Il tema salvato, letto prima che la pagina esista.
+ *
+ * Sincrono di proposito, ed e' l'unica cosa sincrona di questo ponte: passare
+ * da `GET /settings` significherebbe aspettare che il core sia partito, e nel
+ * frattempo la finestra sarebbe gia' visibile con il tema sbagliato. Il
+ * processo principale lo legge da `settings.json`, che sta su disco e non
+ * dipende da nessun processo.
+ */
+const temaIniziale: string = ipcRenderer.sendSync('tema:iniziale')
+
+// Applicato qui e non nel bundle React: la CSP delle pagine vieta gli script
+// inline (`script-src 'self'`), quindi non si puo' mettere una riga nel
+// `<head>`, e il preload e' l'unico posto che gira prima del documento. Le
+// finestre nascono comunque con `show: false`, quindi anche arrivando tardi
+// non ci sarebbe un lampo: questo serve a non farlo dipendere da quel dettaglio.
+{
+  const applica = () => document.documentElement?.setAttribute(
+    'data-theme',
+    temaIniziale === 'chiaro' ||
+      (temaIniziale === 'sistema' &&
+        window.matchMedia('(prefers-color-scheme: light)').matches)
+      ? 'light'
+      : 'dark',
+  )
+  if (document.documentElement) applica()
+  else document.addEventListener('DOMContentLoaded', applica, { once: true })
+}
+
 const api = {
+  /** Il tema salvato ('sistema' | 'chiaro' | 'scuro'), gia' disponibile all'avvio. */
+  temaIniziale,
+
+  /** Dice a tutte le finestre che il tema e' cambiato. Le altre lo applicano. */
+  annunciaTema: (tema: string): Promise<void> => ipcRenderer.invoke('tema:annuncia', tema),
+
   /** Stato del core: presente solo dopo che si e' avviato. Senza token, di proposito. */
   endpoint: (): Promise<{ port: number } | null> => ipcRenderer.invoke('core:endpoint'),
 
@@ -103,6 +138,7 @@ const api = {
       'screenshot:ignorato',
       'scorciatoie:stato',
       'schermi:cambiati',
+      'tema:cambiato',
     ]
     if (!consentiti.includes(canale)) {
       throw new Error(`Canale non consentito: ${canale}`)

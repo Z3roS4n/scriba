@@ -7,8 +7,8 @@
  * finestre e si inoltrano comandi.
  */
 
-import { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, ipcMain, Menu, nativeImage, screen, shell, Tray } from 'electron'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, ipcMain, Menu, nativeImage, nativeTheme, screen, shell, Tray } from 'electron'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
 
 import { Impostazioni } from './impostazioni'
@@ -54,7 +54,7 @@ const sidecar = new Sidecar(PROJECT_ROOT, join(DATA_DIR, 'scriba.sqlite'))
 
 const cartellaRisorse = __dirname.replace(/[\\/]main$/, '')
 const overlay = new Overlay(cartellaRisorse, join(DATA_DIR, 'overlay.json'))
-const impostazioni = new Impostazioni(cartellaRisorse, ICONA)
+const impostazioni = new Impostazioni(cartellaRisorse, ICONA, () => coloreDiFondo())
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -70,6 +70,35 @@ let scorciatoiaScreenshot: string | null = null
  */
 let cartellaExportScelta: string | null = null
 
+/**
+ * Il tema salvato, letto dal disco.
+ *
+ * Da `settings.json` e non dal core: serve prima che una finestra esista, e il
+ * core a quel punto non e' ancora partito. E' anche l'unico posto in cui questo
+ * processo legge le impostazioni per conto suo — vale la pena, perche' il
+ * colore di fondo va deciso al momento della creazione della finestra, non
+ * dopo.
+ */
+function temaSalvato(): string {
+  try {
+    const dati = JSON.parse(readFileSync(join(DATA_DIR, 'settings.json'), 'utf-8'))
+    const tema = dati?.interfaccia?.tema
+    return tema === 'chiaro' || tema === 'sistema' ? tema : 'scuro'
+  } catch {
+    // Prima installazione, o file illeggibile: lo stesso predefinito del core.
+    return 'scuro'
+  }
+}
+
+/** Il colore che Windows dipinge prima che la pagina esista. */
+function coloreDiFondo(tema: string = temaSalvato()): string {
+  const chiaro =
+    tema === 'chiaro' || (tema === 'sistema' && !nativeTheme.shouldUseDarkColors)
+  // Gli stessi due valori di `--win` in tokens.css: se divergono, l'apertura
+  // di ogni finestra comincia con un lampo del colore sbagliato.
+  return chiaro ? '#FFFFFF' : '#141416'
+}
+
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 1180,
@@ -80,7 +109,7 @@ function createWindow(): BrowserWindow {
     // Senza cornice: la barra del titolo la disegna il renderer, perche'
     // quella di Windows ignora il tema scuro.
     frame: false,
-    backgroundColor: '#141416',
+    backgroundColor: coloreDiFondo(),
     title: 'Scriba',
     icon: ICONA,
     webPreferences: {
@@ -475,6 +504,25 @@ function registerIpc(): void {
   ipcMain.handle('screenshot:capture', (_event, idSchermo?: string) => captureScreenshot(idSchermo))
 
   ipcMain.handle('schermi:elenco', () => elencaSchermi())
+
+  // Sincrono: il preload lo chiede prima che la pagina esista, e una promessa
+  // li' non servirebbe a niente perche' non c'e' ancora niente da dipingere.
+  ipcMain.on('tema:iniziale', (evento) => {
+    evento.returnValue = temaSalvato()
+  })
+
+  ipcMain.handle('tema:annuncia', (_evento, tema: string) => {
+    // Le tre finestre sono tre processi: chi cambia il tema nelle impostazioni
+    // non cambia la principale ne' l'overlay. Vederne due di colori diversi
+    // sarebbe peggio che non poterlo cambiare affatto.
+    trasmettiATutte('tema:cambiato', tema)
+    const colore = coloreDiFondo(tema)
+    for (const win of BrowserWindow.getAllWindows()) {
+      // Vale per la prossima apertura, non per adesso: quello che si vede ora
+      // lo dipinge la pagina, che ha gia' ricevuto l'evento qui sopra.
+      if (!win.isDestroyed()) win.setBackgroundColor(colore)
+    }
+  })
 
   ipcMain.handle('file:mostra', (_event, percorso: string) => {
     // Solo dentro la cartella dati dell'app: il renderer non deve poter far

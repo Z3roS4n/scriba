@@ -36,6 +36,16 @@ export interface ScribaApi {
    */
   patch<T>(path: string, body?: unknown): Promise<RispostaCore<T>>
 
+  /**
+   * Il tema salvato, disponibile prima che il core sia partito.
+   *
+   * Un valore, non una funzione: il preload lo legge in modo sincrono e lo
+   * applica al documento prima che la pagina esista. Vedi renderer/tema.ts.
+   */
+  temaIniziale: string
+  /** Dice a tutte le finestre che il tema è cambiato: sono processi separati. */
+  annunciaTema(tema: string): Promise<void>
+
   /** Senza id cattura lo schermo principale, come fa la scorciatoia globale. */
   screenshot(idSchermo?: string): Promise<void>
   /**

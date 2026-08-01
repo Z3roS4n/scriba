@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import { useSchermi } from './schermi'
+import { useTema } from './tema'
 import type { Impostazioni, Traccia } from './tipi'
 import { scorciatoiaLeggibile, tempo } from './tipi'
 
@@ -53,6 +54,14 @@ function App() {
   const [trascorsi, setTrascorsi] = useState(0)
   const [ridotto, setRidotto] = useState(false)
   const schermi = useSchermi()
+  // Il tema si applica anche qui, ma **il vetro dell'overlay resta scuro in
+  // entrambi**: le sue regole in app.css non usano nessun token di colore, solo
+  // misure. Non e' una dimenticanza. Questa striscia sta sopra la finestra di
+  // una riunione, spesso a schermo intero e spesso scura: un rettangolo bianco
+  // li' sopra e' un abbaglio, e per leggerne due righe con la coda dell'occhio
+  // serve il contrario. Il tema serve comunque, perche' `data-theme` resti
+  // coerente se un giorno qualcosa qui dentro usasse i colori del prodotto.
+  useTema()
   const [scattoRecente, setScattoRecente] = useState(false)
   const [scorciatoie, setScorciatoie] = useState<{ overlay: string | null; screenshot: string | null }>({
     overlay: null,

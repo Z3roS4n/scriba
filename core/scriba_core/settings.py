@@ -36,6 +36,14 @@ PREDEFINITE: dict[str, Any] = {
     # finestra, e non tutti la vogliono accesa per ogni call.
     "note_incrementali": False,
     "interfaccia": {
+        # 'scuro' | 'chiaro' | 'sistema'.
+        #
+        # Scuro come predefinito, non "come il sistema": Scriba è sempre stato
+        # scuro, e far cambiare aspetto da sola a un'applicazione già
+        # installata, perché qualcun altro ha deciso il default, è una
+        # sorpresa che nessuno ha chiesto. Chi vuole seguire il sistema lo
+        # sceglie, ed è una scelta sola.
+        "tema": "scuro",
         # Scorciatoie globali: funzionano anche quando Scriba non ha il fuoco,
         # che è il punto — durante una call il fuoco ce l'ha la riunione.
         "scorciatoia_overlay": "Alt+R",

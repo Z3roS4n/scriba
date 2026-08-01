@@ -19,6 +19,8 @@ export class Impostazioni {
     private readonly cartellaRisorse: string,
     /** Percorso del .ico: senza, Windows le darebbe quella di Electron. */
     private readonly icona: string,
+    /** Il colore di fondo del tema corrente, deciso da chi possiede le impostazioni. */
+    private readonly coloreDiFondo: () => string,
   ) {}
 
   /** Apre la finestra, o la porta davanti se e' gia' aperta. */
@@ -38,7 +40,7 @@ export class Impostazioni {
       resizable: false,
       show: false,
       frame: false,
-      backgroundColor: '#141416',
+      backgroundColor: this.coloreDiFondo(),
       title: 'Impostazioni',
       icon: this.icona,
       webPreferences: {
