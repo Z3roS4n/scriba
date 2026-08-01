@@ -352,6 +352,35 @@ def _lifespan(broadcaster: Broadcaster, state: dict[str, Any], preload, avvia_ri
     return lifespan
 
 
+async def _sincronizza_se_richiesto(session_id: int, store: Store, broadcaster) -> None:
+    """Manda la call al database remoto, se ce n'è uno e se è stato chiesto.
+
+    Non solleva mai: l'analisi è finita e i suoi risultati sono già al sicuro
+    nel database locale. Un server remoto irraggiungibile è un contrattempo da
+    riferire, non un motivo per far risultare fallita un'analisi riuscita — e
+    la call resta comunque nell'elenco di quelle da rimandare.
+    """
+    from .export import sql as db_remoto
+
+    try:
+        config = await asyncio.to_thread(db_remoto.leggi_config, store)
+        if not (config.get("automatico") and config.get("schema") and config.get("tabelle")):
+            return
+        esito = await asyncio.to_thread(db_remoto.invia, session_id, store)
+    except Exception as exc:
+        log.warning("Sincronizzazione remota della sessione %s non riuscita: %s", session_id, exc)
+        broadcaster.publish(
+            {"type": "database_remoto", "stato": "errore",
+             "session_id": session_id, "dettaglio": str(exc)}
+        )
+        return
+
+    broadcaster.publish(
+        {"type": "database_remoto", "stato": "fatto",
+         "session_id": session_id, "righe": esito["righe"]}
+    )
+
+
 def create_app(
     *,
     db_path: Path,
@@ -752,6 +781,8 @@ def create_app(
                 }
             )
 
+            await _sincronizza_se_richiesto(session_id, store, broadcaster)
+
         # Si risponde subito e si lavora dopo. Tenere aperta una richiesta HTTP
         # per mezz'ora non funziona: il client la chiude molto prima, e chi
         # aspettava quella risposta per sapere che il lavoro era finito resta ad
@@ -1143,6 +1174,7 @@ def create_app(
     # funzione della registrazione.
     from .api import Contesto
     from .api import clienti as api_clienti
+    from .api import database_remoto as api_database_remoto
     from .api import export as api_export
     from .api import modelli as api_modelli
     from .api import note as api_note
@@ -1157,6 +1189,7 @@ def create_app(
     )
     fabbriche_router = [
         api_clienti.crea_router,
+        api_database_remoto.crea_router,
         api_export.crea_router,
         api_modelli.crea_router,
         api_note.crea_router,

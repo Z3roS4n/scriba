@@ -53,6 +53,72 @@ export interface Cliente {
   ultima_call: number | null
 }
 
+// ------------------------------------------------------------ database remoto
+
+/** Un campo che Scriba sa mandare, e in quali colonne remote può finire. */
+export interface CampoModello {
+  chiave: string
+  etichetta: string
+  tipo: string
+  descrizione: string
+  /** Serve a riconoscere una riga gia' inviata: senza, si duplica. */
+  chiave_naturale: boolean
+  /** Popolato solo da /database-remoto/colonne: le colonne compatibili. */
+  ammesse: string[]
+}
+
+export interface TabellaModello {
+  chiave: string
+  etichetta: string
+  descrizione: string
+  predefinita: boolean
+  /** Puo' essere grande (la trascrizione): si dice prima di farla scegliere. */
+  voluminosa: boolean
+  chiave_naturale: string[]
+  campi: Omit<CampoModello, 'ammesse'>[]
+}
+
+export interface ServerRemoto {
+  host: string
+  porta: number
+  database: string
+  utente: string
+  password_presente: boolean
+  sslmode: string | null
+  modalita_dedotta: string
+}
+
+export interface StatoDatabaseRemoto {
+  collegato: boolean
+  modalita: string | null
+  schema: string | null
+  prefisso: string | null
+  automatico: boolean
+  tabelle: Record<string, { nome: string; campi: string[] }>
+  /** La cifratura di Windows non ha risposto: va detto, non nascosto. */
+  segreto_in_chiaro: boolean
+  server: ServerRemoto | null
+}
+
+export interface DatiRemoti {
+  ok: boolean
+  versione: string
+  schemi: string[]
+  modalita: string
+  server: ServerRemoto
+}
+
+export interface ColonneRemote {
+  colonne: Array<{ nome: string; tipo: string; obbligatoria: boolean }>
+  campi: CampoModello[]
+}
+
+/** Un pezzo di DDL, mostrato prima di essere eseguito. */
+export interface PezzoDdl {
+  tabella: string
+  sql: string
+}
+
 /** Un processo con una sessione microfono aperta, e cosa il rilevamento ne ha fatto. */
 export interface ProcessoVisto {
   pid: number
