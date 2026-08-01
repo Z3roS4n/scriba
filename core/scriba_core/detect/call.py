@@ -127,6 +127,27 @@ class RilevatoreCall:
         self.ultima_lettura: dict | None = None
         self._sonda = None
 
+        # --- diagnostica
+        #
+        # Il rilevamento decide in silenzio, e quando non propone una riunione
+        # non c'e' modo di sapere quale delle sue condizioni non e' stata
+        # soddisfatta: e' un processo escluso, un microfono senza segnale, un
+        # audio che non risulta in riproduzione, o l'attesa di conferma non
+        # ancora scaduta. Da fuori sono indistinguibili, e senza distinguerle
+        # un difetto si puo' solo indovinare.
+        #
+        # Qui si tiene l'esito dell'ultimo giro, processo per processo, con il
+        # perche'. Costa una lista di poche voci riscritta ogni due secondi.
+        self.ultima_diagnosi: list[dict] = []
+        # Chi riproduceva audio all'ultimo giro. Tenuto qui e non letto da
+        # `ultima_lettura`: quello lo riempie il ciclo che parla con la sonda,
+        # e la diagnosi deve dire cosa ha visto *chi decide*, altrimenti i due
+        # possono raccontare due momenti diversi.
+        self._ultimi_riproducono: list[int] = []
+        self._ultima_lettura_at: float | None = None
+        self._ripartenze = 0
+        self._ultimo_motivo: str | None = None
+
     def start(self) -> None:
         if self._thread is not None:
             return
@@ -209,6 +230,12 @@ class RilevatoreCall:
             if durata >= self.RIPRESA_RIUSCITA_S:
                 self._cadute = 0
             self._cadute += 1
+            # `_cadute` si azzera quando la sonda ha retto: conta le ripartenze
+            # *ravvicinate*, che è quello su cui si decide di rinunciare. Per
+            # capire se una giornata è andata male serve invece il totale, che
+            # non si azzera mai.
+            self._ripartenze += 1
+            self._ultimo_motivo = motivo
 
             log.info("Sonda audio ripartita dopo %.0fs (%s).", durata, motivo)
             if self._cadute >= self.CADUTE_CONSECUTIVE_MAX:
@@ -268,12 +295,26 @@ class RilevatoreCall:
 
     def _giro(self, lettura: dict) -> None:
         adesso = time.monotonic()
+        self._ultima_lettura_at = adesso
         riproducono = set(lettura.get("riproducono", []))
+        self._ultimi_riproducono = sorted(riproducono)
 
+        diagnosi: list[dict] = []
         candidati: dict[int, str] = {}
         for voce in lettura.get("microfono", []):
             pid, nome = voce["pid"], voce.get("nome")
+            picco = voce.get("picco", -1.0)
+            riga: dict = {
+                "pid": pid,
+                "processo": nome,
+                "picco": picco,
+                "riproduce": pid in riproducono,
+            }
+            diagnosi.append(riga)
+
             if nome in IGNORATE:
+                riga["esito"] = "escluso"
+                riga["perche"] = "è nell'elenco dei processi da ignorare"
                 continue
 
             # Il microfono sta davvero registrando? Le sessioni di cattura non
@@ -281,17 +322,30 @@ class RilevatoreCall:
             # un programma che ha usato il microfono un'ora fa e adesso fa
             # uscire audio viene scambiato per una riunione. È successo davvero,
             # con un browser che riproduceva un video.
-            picco = voce.get("picco", -1.0)
             if picco > 0.0:
                 self._con_segnale.add(pid)
             elif picco == 0.0 and pid not in self._con_segnale:
                 # Un istante di silenzio assoluto capita anche registrando: si
                 # esclude solo chi non ha mai dato segnale da quando lo si
                 # osserva.
+                riga["esito"] = "escluso"
+                riga["perche"] = (
+                    "ha una sessione microfono aperta ma non ha mai dato segnale: "
+                    "sembra una sessione vecchia, non una registrazione in corso"
+                )
                 continue
 
-            if pid in riproducono or self._figlio_riproduce(pid, riproducono):
+            if pid in riproducono:
                 candidati[pid] = nome
+            elif self._figlio_riproduce(pid, riproducono):
+                riga["riproduce_un_figlio"] = True
+                candidati[pid] = nome
+            else:
+                riga["esito"] = "in attesa"
+                riga["perche"] = (
+                    "usa il microfono ma non risulta riprodurre audio, né lui né un suo "
+                    "processo figlio: in una riunione qualcuno parla"
+                )
 
         # Chi ha smesso torna disponibile per la volta successiva: finita una
         # riunione, la prossima con la stessa applicazione va segnalata.
@@ -303,13 +357,23 @@ class RilevatoreCall:
                 del self._visto_da[pid]
                 self._gia_segnalati.discard(pid)
 
+        per_pid = {r["pid"]: r for r in diagnosi}
         for pid, nome in candidati.items():
             self._visto_da.setdefault(pid, adesso)
+            riga = per_pid[pid]
             if pid in self._gia_segnalati:
+                riga["esito"] = "già proposta"
+                riga["perche"] = "la proposta è già stata fatta per questa riunione"
                 continue
-            if adesso - self._visto_da[pid] < self.conferma_s:
+            atteso = adesso - self._visto_da[pid]
+            if atteso < self.conferma_s:
+                riga["esito"] = "in conferma"
+                riga["perche"] = "sembra una riunione: si aspetta che la situazione regga"
+                riga["mancano_s"] = round(self.conferma_s - atteso, 1)
                 continue
 
+            riga["esito"] = "riunione"
+            riga["perche"] = "microfono in uso e audio in riproduzione da abbastanza tempo"
             self._gia_segnalati.add(pid)
             self.on_call(
                 Call(
@@ -319,6 +383,41 @@ class RilevatoreCall:
                     dal_ms=int(self._visto_da[pid] * 1000),
                 )
             )
+
+        self.ultima_diagnosi = diagnosi
+
+    def diagnostica(self) -> dict:
+        """Cosa sta vedendo il rilevamento, adesso.
+
+        Serve a rispondere alla domanda «perché non mi ha proposto di
+        registrare» guardando, invece che indovinando fra cinque ipotesi tutte
+        plausibili. Legge lo stato dell'ultimo giro: non interroga le API audio
+        e non avvia una seconda sonda, che è la cosa da non fare — due processi
+        che leggono insieme quelle interfacce COM si disturbano, e uno dei due
+        muore.
+        """
+        viva = self._sonda is not None and self._sonda.poll() is None
+        eta = None
+        if self._ultima_lettura_at is not None:
+            eta = round(time.monotonic() - self._ultima_lettura_at, 1)
+
+        return {
+            "in_ascolto": self._thread is not None and self._thread.is_alive(),
+            "conferma_s": self.conferma_s,
+            "intervallo_s": self.intervallo_s,
+            "sonda": {
+                "viva": viva,
+                "ripartenze": self._ripartenze,
+                "rinunciato": self._cadute >= self.CADUTE_CONSECUTIVE_MAX,
+                "ultimo_motivo": self._ultimo_motivo,
+                "ultima_lettura_fa_s": eta,
+            },
+            # Chi stava riproducendo audio: non è candidato a niente di per sé,
+            # ma è quello che spiega un "riproduce un figlio" — l'audio esce da
+            # un pid diverso da quello che tiene il microfono.
+            "riproducono": list(self._ultimi_riproducono),
+            "processi": self.ultima_diagnosi,
+        }
 
     @staticmethod
     def _figlio_riproduce(pid: int, riproducono: set[int]) -> bool:

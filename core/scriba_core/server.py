@@ -1086,6 +1086,34 @@ def create_app(
             rilevatore.dimentica(pid)
         return {"ok": True}
 
+    @app.get("/rilevamento/diagnostica", dependencies=[Depends(check_token)])
+    async def rilevamento_diagnostica() -> dict[str, Any]:
+        """Cosa sta vedendo il rilevamento in questo momento.
+
+        Esiste perché «non mi ha proposto di registrare» ha almeno cinque cause
+        possibili, tutte plausibili e nessuna distinguibile dall'esterno: la
+        sonda non parte, il processo è nell'elenco degli esclusi, il microfono
+        non dà segnale, l'audio non risulta in riproduzione, l'attesa di
+        conferma non è ancora scaduta. Mostrarle è la differenza fra leggere un
+        difetto e indovinarlo.
+        """
+        rilevatore = state.get("rilevatore")
+        if rilevatore is None:
+            # Spento nelle impostazioni, oppure mai avviato. Va detto: una
+            # schermata vuota qui si legge come "non vedo nessuna riunione",
+            # che è una risposta diversa e sbagliata.
+            attivo = bool((settings.tutto().get("rilevamento") or {}).get("attivo"))
+            return {
+                "in_ascolto": False,
+                "spento": not attivo,
+                "conferma_s": None,
+                "intervallo_s": None,
+                "sonda": None,
+                "riproducono": [],
+                "processi": [],
+            }
+        return {"spento": False, **rilevatore.diagnostica()}
+
     @app.get("/search", dependencies=[Depends(check_token)])
     async def search(q: str, limit: int = 50) -> list[dict[str, Any]]:
         return [dict(r) for r in store.search(q, limit=limit)]

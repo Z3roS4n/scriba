@@ -53,6 +53,41 @@ export interface Cliente {
   ultima_call: number | null
 }
 
+/** Un processo con una sessione microfono aperta, e cosa il rilevamento ne ha fatto. */
+export interface ProcessoVisto {
+  pid: number
+  processo: string
+  /** Il picco riferito dalla sonda: 0 = sessione aperta ma silenziosa. */
+  picco: number
+  riproduce: boolean
+  /** L'audio esce da un suo figlio: il caso di una riunione nel browser. */
+  riproduce_un_figlio?: boolean
+  /** 'escluso' | 'in attesa' | 'in conferma' | 'riunione' | 'già proposta'. */
+  esito?: string
+  perche?: string
+  /** Quanto manca alla conferma, se e' in conferma. */
+  mancano_s?: number
+}
+
+export interface DiagnosticaRilevamento {
+  /** true = spento nelle impostazioni. Diverso da "non vedo niente". */
+  spento: boolean
+  in_ascolto: boolean
+  conferma_s: number | null
+  intervallo_s: number | null
+  sonda: {
+    viva: boolean
+    ripartenze: number
+    /** Ha smesso di riprovare: nessuna riunione verra' piu' proposta. */
+    rinunciato: boolean
+    ultimo_motivo: string | null
+    ultima_lettura_fa_s: number | null
+  } | null
+  /** I processi che riproducono audio, per numero: spiegano i "figlio". */
+  riproducono: number[]
+  processi: ProcessoVisto[]
+}
+
 /** L'esito di un import: si mostra all'utente, perche' "fatto" non basta. */
 export interface EsitoImport {
   creati: number

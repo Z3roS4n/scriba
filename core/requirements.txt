@@ -31,3 +31,9 @@ winsdk==1.0.0b10
 # senza scrivere codice per ogni singolo programma.
 pycaw==20251023
 comtypes==1.4.16
+# L'albero dei processi: in una riunione nel browser il microfono lo tiene un
+# processo e l'audio esce da un altro, e senza questa non si collegano i due.
+# Arrivava già di rimbalzo da un'altra dipendenza, il che significa che sarebbe
+# potuta sparire con un aggiornamento altrui — portandosi via il rilevamento
+# delle call nel browser senza un errore, solo smettendo di funzionare.
+psutil==7.2.2
