@@ -76,6 +76,28 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: Scriba
+
+  # La grafica sta in `build-resources/` (vedi directories.buildResources) e
+  # electron-builder la prende per convenzione dai nomi dei file: bastano
+  # installerHeader.bmp, installerSidebar.bmp, uninstallerSidebar.bmp e le due
+  # icone. Si rigenera con scripts/genera-grafica-installer.ps1, che spiega
+  # anche perche' i BMP sono a 24 bit e perche' l'intestazione e' chiara mentre
+  # il pannello laterale e' scuro.
+  #
+  # Le due icone si dichiarano lo stesso, per non dipendere solo dalla
+  # convenzione: sono quello che si vede prima di tutto il resto, cioe' sul
+  # file scaricato — e questo installer non e' firmato, quindi arriva dopo
+  # l'avviso di SmartScreen, nel momento in cui uno si sta chiedendo se
+  # fidarsi.
+  installerIcon: build-resources/installerIcon.ico
+  uninstallerIcon: build-resources/uninstallerIcon.ico
+  # L'icona nell'angolo dell'intestazione, accanto al titolo di ogni pagina.
+  installerHeaderIcon: build-resources/installerIcon.ico
+
+  # La licenza si mostra: e' MIT, si legge in un minuto, e dice a chi installa
+  # che cosa gli si sta dando. Il file lo prepara lo script della grafica
+  # copiando LICENSE, cosi' non ne esistono due versioni che divergono.
+  license: build-resources/license.txt
   # I dati dell'utente (registrazioni, database, screenshot, impostazioni)
   # stanno in app.getPath('userData'), fuori dalla cartella di installazione:
   # un disinstallatore che cancella quest'ultima non li tocca. Questa opzione
