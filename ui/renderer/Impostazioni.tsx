@@ -14,8 +14,9 @@
 
 import { useCallback, useEffect, useState } from 'react'
 
-import type { Disco, Dispositivi, Impostazioni as ImpostazioniT, Modello, Provider, Sessione, VoceDati } from './tipi'
+import type { Cliente, Disco, Dispositivi, Impostazioni as ImpostazioniT, Modello, Provider, Sessione, VoceDati } from './tipi'
 import { SezioneAnalisi } from './impostazioni/Analisi'
+import { SezioneClienti } from './impostazioni/Clienti'
 import { SezioneDati } from './impostazioni/Dati'
 import { SezioneExport } from './impostazioni/Export'
 import { SezioneModelli } from './impostazioni/Modelli'
@@ -31,6 +32,7 @@ type Sezione =
   | 'rilevamento'
   | 'scorciatoie'
   | 'analisi'
+  | 'clienti'
   | 'dati'
   | 'export'
 
@@ -41,6 +43,7 @@ const NAV: { id: Sezione; etichetta: string }[] = [
   { id: 'rilevamento', etichetta: 'Rilevamento call' },
   { id: 'scorciatoie', etichetta: 'Scorciatoie' },
   { id: 'analisi', etichetta: 'Analisi' },
+  { id: 'clienti', etichetta: 'Clienti' },
   { id: 'dati', etichetta: 'Dati e privacy' },
   { id: 'export', etichetta: 'Export' },
 ]
@@ -66,7 +69,15 @@ export function Impostazioni() {
   const [disco, setDisco] = useState<Disco | null>(null)
   const [modelli, setModelli] = useState<Modello[]>([])
   const [dati, setDati] = useState<VoceDati[]>([])
+  // Archiviati compresi: questa è la schermata da cui si ripristinano, quindi
+  // è l'unico posto in cui devono restare visibili.
+  const [clienti, setClienti] = useState<Cliente[]>([])
   const [errore, setErrore] = useState<string | null>(null)
+
+  const caricaClienti = useCallback(async () => {
+    const r = await window.scriba.get<Cliente[]>('/clienti?includi_archiviati=true')
+    if (r.ok) setClienti(r.body)
+  }, [])
 
   const carica = useCallback(async () => {
     // Tutto in una volta: è una finestra di impostazioni, non lo schermo
@@ -86,7 +97,8 @@ export function Impostazioni() {
     if (disc.ok) setDisco(disc.body)
     if (mod.ok) setModelli(mod.body)
     if (dt.ok) setDati(dt.body)
-  }, [])
+    caricaClienti()
+  }, [caricaClienti])
 
   useEffect(() => {
     carica()
@@ -277,6 +289,9 @@ export function Impostazioni() {
             {sezione === 'rilevamento' && <SezioneRilevamento impostazioni={impostazioni} onCambia={salva} />}
             {sezione === 'scorciatoie' && <SezioneScorciatoie impostazioni={impostazioni} onCambia={salva} />}
             {sezione === 'analisi' && <SezioneAnalisi impostazioni={impostazioni} onCambia={salva} />}
+            {sezione === 'clienti' && (
+              <SezioneClienti clienti={clienti} onRicarica={caricaClienti} />
+            )}
             {sezione === 'dati' && (
               <SezioneDati
                 voci={dati}

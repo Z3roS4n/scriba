@@ -11,6 +11,32 @@
 PRAGMA foreign_keys = ON;
 PRAGMA journal_mode = WAL;
 
+-- ----------------------------------------------------------------- clienti --
+
+-- Per chi lavora su commessa la domanda vera non è "cos'ho fatto ieri" ma
+-- "cosa ci siamo detti con questo cliente negli ultimi tre mesi". Senza una
+-- tabella, quella domanda si risponde solo rileggendo i titoli a occhio.
+--
+-- Una tabella e non un campo di testo su `sessions`: rinominare un cliente
+-- deve valere per tutte le sue call insieme, e un testo libero diventa in
+-- fretta tre grafie diverse della stessa azienda.
+--
+-- Dichiarata prima di `sessions` perché quella la referenzia.
+CREATE TABLE IF NOT EXISTS clients (
+  id         INTEGER PRIMARY KEY,
+  uuid       TEXT    NOT NULL UNIQUE,   -- id stabile per export e sync
+  nome       TEXT    NOT NULL,
+  -- Il nome ridotto a una forma confrontabile: minuscolo, spazi normalizzati.
+  -- È qui che si decide se due righe di un CSV importato sono lo stesso
+  -- cliente, e va deciso una volta sola invece che a ogni confronto.
+  nome_norm  TEXT    NOT NULL UNIQUE,
+  note       TEXT,
+  -- Archiviato invece che eliminato: un cliente con cui non si lavora più
+  -- sparisce dagli elenchi ma le sue call restano attribuite a qualcuno.
+  archiviato INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+
 -- ---------------------------------------------------------------- sessioni --
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -33,6 +59,12 @@ CREATE TABLE IF NOT EXISTS sessions (
   -- l'utente ha confermato di averli avvisati, e quando.
   consenso_confermato_at INTEGER,
   note_utente       TEXT,
+  -- Su un database creato prima dei clienti questa colonna arriva da un
+  -- ALTER TABLE, che in SQLite non può portarsi dietro la chiave esterna: lì
+  -- resta un intero e basta. Perché la differenza non si veda da nessuna
+  -- parte, a ripulire i riferimenti di un cliente eliminato pensa
+  -- `Store.elimina_cliente`, non il vincolo.
+  client_id         INTEGER REFERENCES clients(id) ON DELETE SET NULL,
   created_at        INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
 );
 

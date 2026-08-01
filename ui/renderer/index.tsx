@@ -17,8 +17,9 @@ import { PannelloAnalisi } from './Analisi'
 import { PannelloProve } from './Prove'
 import { Rassegna } from './Rassegna'
 import { AvvisoCall, Barra, ModaleConsenso } from './Dialoghi'
+import { Archivio } from './Archivio'
 import { useSchermi } from './schermi'
-import { scorciatoiaLeggibile, type DbDanneggiato, type EventoCore, type Scatto, type Segmento, type Sessione, type Task } from './tipi'
+import { scorciatoiaLeggibile, type Cliente, type DbDanneggiato, type EventoCore, type Scatto, type Segmento, type Sessione, type Task } from './tipi'
 
 interface Avviso {
   testo: string
@@ -65,6 +66,14 @@ function App() {
   // saperne nulla.
   const [rassegnaIndice, setRassegnaIndice] = useState<number | null>(null)
 
+  // L'archivio sostituisce l'interfaccia con la stessa regola della rassegna:
+  // mentre si cerca nello storico non si sta guardando una call in particolare.
+  const [archivioAperto, setArchivioAperto] = useState(false)
+  const [clienti, setClienti] = useState<Cliente[]>([])
+
+  /** Rassegna e archivio prendono la finestra intera: hanno la loro barra. */
+  const aTuttaFinestra = rassegnaIndice !== null || archivioAperto
+
   const [scorciatoiaOverlay, setScorciatoiaOverlay] = useState<string | null>(null)
   const [larghezza, setLarghezza] = useState(window.innerWidth)
 
@@ -99,6 +108,21 @@ function App() {
     const r = await window.scriba.get<Sessione[]>('/sessions')
     if (r.ok) setSessioni(r.body)
   }, [])
+
+  const caricaClienti = useCallback(async () => {
+    const r = await window.scriba.get<Cliente[]>('/clienti')
+    if (r.ok) setClienti(r.body)
+  }, [])
+
+  // I clienti si creano dalla finestra delle impostazioni, che e' un altro
+  // processo: quando ne nasce uno, questa finestra non lo sa. Rileggerli
+  // all'apertura dell'archivio e' il momento esatto in cui la differenza si
+  // vedrebbe — senza, si aggiunge un cliente e nel menu non c'e' finche' non si
+  // riavvia l'applicazione, che e' esattamente il difetto gia' visto col
+  // modello locale.
+  useEffect(() => {
+    if (archivioAperto) caricaClienti()
+  }, [archivioAperto, caricaClienti])
 
   const caricaSegmenti = useCallback(async (id: number) => {
     const r = await window.scriba.get<Segmento[]>(`/sessions/${id}/segments`)
@@ -195,6 +219,7 @@ function App() {
       window.scriba.on('core:pronto', () => {
         setCorePronto(true)
         caricaSessioni()
+        caricaClienti()
       }),
 
       window.scriba.on('core:event', (ev: EventoCore) => {
@@ -301,6 +326,7 @@ function App() {
       if (!e) return
       setCorePronto(true)
       caricaSessioni()
+      caricaClienti()
       const r = await window.scriba.get<{
         modello: StatoModello
         db_danneggiato: DbDanneggiato | null
@@ -312,7 +338,7 @@ function App() {
     })
 
     return () => off.forEach((f) => f())
-  }, [caricaSessioni, mostraAvviso])
+  }, [caricaSessioni, caricaClienti, mostraAvviso])
 
   // La prima volta che l'elenco arriva senza niente aperto si mostra la call
   // piu' recente — o quella in corso, se la pagina si e' caricata (o
@@ -451,8 +477,9 @@ function App() {
     <div className="win">
       {/* display:contents, non un ternario: se si smontasse qui la topbar non
           perderebbe stato che conti, ma tenerla nello stesso schema di visibilita'
-          del corpo (sotto) rende esplicito che la rassegna sostituisce tutto. */}
-      <div style={{ display: rassegnaIndice === null ? 'contents' : 'none' }}>
+          del corpo (sotto) rende esplicito che rassegna e archivio sostituiscono
+          tutto. */}
+      <div style={{ display: aTuttaFinestra ? 'none' : 'contents' }}>
         <Topbar
           corePronto={corePronto}
           modello={modello}
@@ -462,6 +489,7 @@ function App() {
           esportando={esportando}
           schermi={schermi}
           onScreenshot={(idSchermo) => window.scriba.screenshot(idSchermo)}
+          onArchivio={() => setArchivioAperto(true)}
           onEsporta={esporta}
           onRegistra={apriDialogoRegistra}
           onFerma={ferma}
@@ -492,7 +520,7 @@ function App() {
       {/* Anche qui display:none e non uno smontaggio: e' quello che permette al
           pannello analisi di ritrovare da solo la task su cui si era fermato
           quando si torna dalla rassegna (comportamento.md, "Rassegna task"). */}
-      <div className="win__body" style={{ display: rassegnaIndice === null ? 'flex' : 'none' }}>
+      <div className="win__body" style={{ display: aTuttaFinestra ? 'none' : 'flex' }}>
         {mostraCalls ? (
           nascondiCalls ? (
             // Riaperto a mano su una finestra ancora stretta: resta un modo
@@ -581,6 +609,23 @@ function App() {
           segmenti={segmenti}
           indiceIniziale={rassegnaIndice}
           onEsci={() => setRassegnaIndice(null)}
+        />
+      )}
+
+      {archivioAperto && (
+        <Archivio
+          clienti={clienti}
+          onApri={(id) => {
+            apriSessione(id)
+            setArchivioAperto(false)
+          }}
+          onEsci={() => setArchivioAperto(false)}
+          onClientiCambiati={() => {
+            caricaClienti()
+            // Non solo i conteggi dei clienti: il cliente compare anche
+            // nell'elenco laterale, che va rifatto perche' resti d'accordo.
+            caricaSessioni()
+          }}
         />
       )}
 

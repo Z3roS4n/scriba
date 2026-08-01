@@ -24,6 +24,7 @@ export function Topbar(props: {
   schermi: Schermo[]
   /** Senza id: schermo principale. */
   onScreenshot: (idSchermo?: string) => void
+  onArchivio: () => void
   onEsporta: () => void
   onRegistra: () => void
   onFerma: () => void
@@ -37,6 +38,7 @@ export function Topbar(props: {
     esportando,
     schermi,
     onScreenshot,
+    onArchivio,
     onEsporta,
     onRegistra,
     onFerma,
@@ -99,6 +101,13 @@ export function Topbar(props: {
 
         <button className="btn" disabled={esportaDisabilitato} onClick={onEsporta}>
           {esportando ? 'Esporto…' : 'Esporta'}
+        </button>
+
+        {/* Non disabilitato quando non c'e' nessuna call: l'archivio spiega da
+            solo di essere vuoto, ed e' anche da li' che si gestiscono i
+            clienti prima di avere qualcosa da attribuirgli. */}
+        <button className="btn" onClick={onArchivio}>
+          Archivio
         </button>
 
         <button
