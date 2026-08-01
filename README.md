@@ -83,6 +83,12 @@ priorità), ciascuna con un riferimento verificabile al punto della trascrizione
 viene. Puoi rivedere, correggere ed esportare in Markdown, testo semplice, JSON, verso
 Notion (una pagina per call, una riga per task) o verso un endpoint HTTP generico.
 
+**Un database tuo, se lo vuoi.** Le call vivono in uno SQLite su questo computer, e
+quel computer si rompe. Dalle Impostazioni si collega un PostgreSQL qualunque —
+Supabase o altro — scegliendo lo schema, quali dati mandare e se le tabelle le deve
+creare Scriba o mapparle su quelle che hai già. Risincronizzare non duplica niente:
+ogni riga si riconosce dal suo identificativo. Vedi anche «Cosa esce dal computer».
+
 **Notion, col tuo database.** Se hai già un database di impegni, colleghi quello e dici
 tu quale dato di Scriba va in quale colonna — scadenza, assegnatario, priorità, la
 citazione con il minuto: quello che ti serve, dove ti serve. Se non ce l'hai, Scriba te
@@ -108,6 +114,12 @@ Questo è il punto su cui vale la pena essere espliciti, non vago.
   testo estratto via OCR dagli screenshot, se ne hai presi.
 - L'export verso Notion o verso un endpoint HTTP è un'azione esplicita tua: scriba non
   manda niente altrove di sua iniziativa.
+- **Se colleghi un database PostgreSQL remoto, i dati che scegli escono da questo
+  computer** — e se fra quelli includi la trascrizione, esce tutto quello che è stato
+  detto nelle tue call. Non è acceso di default: va collegato a mano dalle
+  Impostazioni, e lì si sceglie tabella per tabella cosa mandare. L'indirizzo di
+  connessione contiene una password, e per questo viene cifrato con la chiave del tuo
+  account Windows invece di stare in chiaro accanto al database.
 
 ## Cosa succede se qualcosa va storto
 
@@ -187,6 +199,15 @@ Onestamente, non solo quello che manca ma anche quello che non è mai stato veri
   primo collegamento reale attenzione ai nomi delle opzioni di una colonna `status`: le
   sue opzioni l'API di Notion non può crearle, e un valore che non corrisponde a nessuna
   di quelle esistenti viene semplicemente non mandato.
+- **Il database remoto non è mai stato provato contro un server vero.** La logica —
+  lettura dell'indirizzo, creazione delle tabelle, mappatura, sincronizzazione — è
+  coperta da test, e ce ne sono altri, già scritti, che girano contro un PostgreSQL
+  reale appena ne trovano uno (`SCRIBA_PG_URL`, o Docker in esecuzione: se ne creano
+  uno usa-e-getta da soli). Finché quelli non sono stati eseguiti almeno una volta,
+  questa integrazione va considerata non verificata. Attenzione in particolare al
+  pooler di Supabase in modalità transazione: gli statement preparati vanno spenti, e
+  Scriba lo fa da sé riconoscendo la porta 6543 — se ti colleghi al pooler
+  dichiarando «diretta», il secondo invio fallisce.
 - **La chiusura ordinata dell'applicazione non è verificata fino in fondo.** Che il core
   travasi il WAL quando gli si chiede di fermarsi è provato; che il percorso completo
   (chiusura dal tray → attesa → spegnimento del core) lo faccia sempre, no. Quello che è

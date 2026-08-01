@@ -31,6 +31,21 @@ SCHEMA_VERSION = 1
 # una call già analizzata con successo deve continuare a mostrare quel
 # risultato anche se un "Rianalizza" successivo fallisce.
 _SCHEMA_EXTRA = """
+-- Esito dell'ultima sincronizzazione verso il database remoto, per call.
+--
+-- Una tabella sua e non le colonne `export_*` di `tasks`: quelle ne reggono
+-- una destinazione sola, e oggi se le prende Notion. Scrivendoci dentro anche
+-- il database remoto, esportare verso uno dei due azzererebbe il riferimento
+-- dell'altro — e la volta dopo le task verrebbero create di nuovo, in
+-- silenzio, dentro il sistema di lavoro di qualcuno.
+CREATE TABLE IF NOT EXISTS sync_remoto (
+  session_id INTEGER PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
+  at         INTEGER NOT NULL,
+  esito      TEXT    NOT NULL CHECK (esito IN ('ok', 'errore')),
+  errore     TEXT,
+  righe      INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS analysis_meta (
   session_id          INTEGER PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
   provider            TEXT,
@@ -178,6 +193,7 @@ class Store:
         conn.executescript(_SCHEMA_EXTRA)
         self._migra_colonna_diarizzata_at(conn)
         self._migra_colonna_cliente(conn)
+        self._migra_uuid_task(conn)
         row = conn.execute("SELECT MAX(version) AS v FROM schema_version").fetchone()
         if row is None or row["v"] is None:
             conn.execute("INSERT INTO schema_version(version) VALUES (?)", (SCHEMA_VERSION,))
@@ -219,6 +235,41 @@ class Store:
         colonne = {r["name"] for r in conn.execute("PRAGMA table_info(sessions)")}
         if "client_id" not in colonne:
             conn.execute("ALTER TABLE sessions ADD COLUMN client_id INTEGER")
+
+    @staticmethod
+    def _migra_uuid_task(conn: sqlite3.Connection) -> None:
+        """Dà a ogni task un id stabile, indipendente dal database locale.
+
+        `tasks.id` è un contatore di questo file: sincronizzare su un database
+        remoto con quello significherebbe che due installazioni di Scriba si
+        sovrascrivono le task a vicenda, e che ricostruire il database locale
+        (è già successo) rimescola tutti i riferimenti. L'uuid invece è la
+        stessa task per sempre e ovunque.
+
+        Tutto qui e niente in schema.sql, di proposito: `CREATE TABLE IF NOT
+        EXISTS` non aggiunge colonne a una tabella esistente, quindi
+        dichiararla là darebbe due forme diverse — una sui database nuovi, una
+        su quelli vecchi — e l'indice unico fallirebbe all'avvio sui secondi,
+        perché schema.sql gira prima delle migrazioni. Facendo tutto qui, i due
+        mondi restano identici.
+        """
+        colonne = {r["name"] for r in conn.execute("PRAGMA table_info(tasks)")}
+        if "uuid" not in colonne:
+            conn.execute("ALTER TABLE tasks ADD COLUMN uuid TEXT")
+
+        # Le task che c'erano già ne ricevono uno adesso. Uno per riga: un
+        # valore solo per tutte violerebbe l'unicità, e un uuid condiviso non
+        # identifica niente.
+        da_riempire = [r["id"] for r in conn.execute("SELECT id FROM tasks WHERE uuid IS NULL")]
+        for task_id in da_riempire:
+            conn.execute("UPDATE tasks SET uuid = ? WHERE id = ?", (str(uuid.uuid4()), task_id))
+
+        # Parziale: le righe con uuid NULL non esistono più dopo il riempimento
+        # qui sopra, ma l'indice resta valido anche se un giorno ne comparisse
+        # una, invece di far fallire l'avvio.
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_tasks_uuid ON tasks(uuid) WHERE uuid IS NOT NULL"
+        )
 
     # ---------------------------------------------------------------- clienti
 
@@ -826,11 +877,14 @@ class Store:
             cur = conn.execute(
                 """
                 INSERT INTO tasks
-                  (session_id, titolo, descrizione, assignee_text, due_date, due_raw,
+                  (uuid, session_id, titolo, descrizione, assignee_text, due_date, due_raw,
                    priorita, confidence, needs_review, review_reason, ai_output_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
+                    # Assegnato alla nascita, non al primo export: una task deve
+                    # avere lo stesso id ovunque fin da subito.
+                    str(uuid.uuid4()),
                     session_id,
                     titolo,
                     descrizione,

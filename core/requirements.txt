@@ -24,6 +24,12 @@ uvicorn[standard]==0.51.0
 # Chiamate ai motori di analisi via API e ai connettori di export.
 httpx==0.28.1
 
+# --- database remoto (opzionale a runtime: serve solo se lo colleghi)
+# `binary` porta con sé libpq: nessun compilatore e nessun PostgreSQL da
+# installare sulla macchina, che è il punto — chi usa Scriba vuole collegarsi a
+# un database, non costruire un client.
+psycopg[binary]==3.2.10
+
 # --- solo Windows
 # OCR di sistema per leggere il testo negli screenshot.
 winsdk==1.0.0b10

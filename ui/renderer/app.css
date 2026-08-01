@@ -529,3 +529,7 @@ a:hover { color:var(--link-hover); }
 .vis__segnale, .vis__perche { grid-column:1 / -1; font-size:var(--fs-mono); font-family:var(--mono); color:var(--fg6); line-height:1.5; }
 .vis__perche { font-family:inherit; font-size:var(--fs-md); color:var(--fg4); text-wrap:pretty; }
 .vis__nota { margin:0; font-size:var(--fs-md); line-height:1.6; color:var(--fg5); text-wrap:pretty; }
+
+/* Il DDL, da leggere prima di eseguirlo: monospazio e scorrevole, perche' e'
+   codice che sta per girare sul database di qualcuno. */
+.ddl { margin:0; padding:11px var(--sp-4); border-radius:var(--r-3); background:var(--card); border:1px solid var(--line); font-family:var(--mono); font-size:var(--fs-mono); line-height:1.55; color:var(--fg3); white-space:pre; overflow-x:auto; max-height:280px; overflow-y:auto; }

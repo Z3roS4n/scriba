@@ -45,6 +45,14 @@ hidden_imports = [
     # PyInstaller possa trovare da sola. Senza questa riga la sonda di
     # rilevamento chiamate manca dall'eseguibile pacchettizzato.
     "scriba_core.detect.probe",
+    # Il driver PostgreSQL del database remoto. `psycopg` sceglie la sua
+    # implementazione a runtime, provando a importare `psycopg_binary` dentro
+    # un try/except: un import condizionale che l'analisi statica non segue.
+    # Senza questa riga il pacchetto contiene psycopg ma non libpq, e il
+    # collegamento fallisce solo sulla macchina di chi lo installa — cioe' nel
+    # posto peggiore in cui scoprirlo.
+    "psycopg_binary",
+    "psycopg.pq",
 ]
 
 datas = [

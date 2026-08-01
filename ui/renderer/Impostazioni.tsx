@@ -17,6 +17,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Cliente, Disco, Dispositivi, Impostazioni as ImpostazioniT, Modello, Provider, Sessione, VoceDati } from './tipi'
 import { SezioneAnalisi } from './impostazioni/Analisi'
 import { SezioneClienti } from './impostazioni/Clienti'
+import { SezioneDatabaseRemoto } from './impostazioni/DatabaseRemoto'
 import { SezioneDati } from './impostazioni/Dati'
 import { SezioneExport } from './impostazioni/Export'
 import { SezioneModelli } from './impostazioni/Modelli'
@@ -33,6 +34,7 @@ type Sezione =
   | 'scorciatoie'
   | 'analisi'
   | 'clienti'
+  | 'database'
   | 'dati'
   | 'export'
 
@@ -44,6 +46,7 @@ const NAV: { id: Sezione; etichetta: string }[] = [
   { id: 'scorciatoie', etichetta: 'Scorciatoie' },
   { id: 'analisi', etichetta: 'Analisi' },
   { id: 'clienti', etichetta: 'Clienti' },
+  { id: 'database', etichetta: 'Database remoto' },
   { id: 'dati', etichetta: 'Dati e privacy' },
   { id: 'export', etichetta: 'Export' },
 ]
@@ -289,6 +292,7 @@ export function Impostazioni() {
             {sezione === 'rilevamento' && <SezioneRilevamento impostazioni={impostazioni} onCambia={salva} />}
             {sezione === 'scorciatoie' && <SezioneScorciatoie impostazioni={impostazioni} onCambia={salva} />}
             {sezione === 'analisi' && <SezioneAnalisi impostazioni={impostazioni} onCambia={salva} />}
+            {sezione === 'database' && <SezioneDatabaseRemoto />}
             {sezione === 'clienti' && (
               <SezioneClienti clienti={clienti} onRicarica={caricaClienti} />
             )}
