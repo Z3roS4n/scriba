@@ -414,6 +414,8 @@ export interface Impostazioni {
     righe_overlay: number
     opacita_overlay: number
     overlay_ridotto?: boolean
+    /** 'scuro' | 'chiaro' | 'sistema'. Vedi renderer/tema.ts. */
+    tema?: string
   }
   rilevamento: {
     attivo: boolean

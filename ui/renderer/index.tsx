@@ -19,6 +19,7 @@ import { Rassegna } from './Rassegna'
 import { AvvisoCall, Barra, ModaleConsenso } from './Dialoghi'
 import { Archivio } from './Archivio'
 import { useSchermi } from './schermi'
+import { useTema } from './tema'
 import { scorciatoiaLeggibile, type Cliente, type DbDanneggiato, type EventoCore, type Scatto, type Segmento, type Sessione, type Task } from './tipi'
 
 interface Avviso {
@@ -47,6 +48,7 @@ function App() {
   const [dbDanneggiato, setDbDanneggiato] = useState<DbDanneggiato | null>(null)
   const [esportando, setEsportando] = useState(false)
   const schermi = useSchermi()
+  useTema()
   const [callRilevata, setCallRilevata] = useState<{
     pid: number
     nome: string

@@ -16,6 +16,8 @@ import { useCallback, useEffect, useState } from 'react'
 
 import type { Cliente, Disco, Dispositivi, Impostazioni as ImpostazioniT, Modello, Provider, Sessione, VoceDati } from './tipi'
 import { SezioneAnalisi } from './impostazioni/Analisi'
+import { SezioneAspetto } from './impostazioni/Aspetto'
+import { useTema } from './tema'
 import { SezioneClienti } from './impostazioni/Clienti'
 import { SezioneDatabaseRemoto } from './impostazioni/DatabaseRemoto'
 import { SezioneDati } from './impostazioni/Dati'
@@ -32,6 +34,7 @@ type Sezione =
   | 'trascrizione'
   | 'rilevamento'
   | 'scorciatoie'
+  | 'aspetto'
   | 'analisi'
   | 'clienti'
   | 'database'
@@ -44,6 +47,7 @@ const NAV: { id: Sezione; etichetta: string }[] = [
   { id: 'trascrizione', etichetta: 'Trascrizione' },
   { id: 'rilevamento', etichetta: 'Rilevamento call' },
   { id: 'scorciatoie', etichetta: 'Scorciatoie' },
+  { id: 'aspetto', etichetta: 'Aspetto' },
   { id: 'analisi', etichetta: 'Analisi' },
   { id: 'clienti', etichetta: 'Clienti' },
   { id: 'database', etichetta: 'Database remoto' },
@@ -76,6 +80,7 @@ export function Impostazioni() {
   // è l'unico posto in cui devono restare visibili.
   const [clienti, setClienti] = useState<Cliente[]>([])
   const [errore, setErrore] = useState<string | null>(null)
+  useTema()
 
   const caricaClienti = useCallback(async () => {
     const r = await window.scriba.get<Cliente[]>('/clienti?includi_archiviati=true')
@@ -291,6 +296,7 @@ export function Impostazioni() {
             )}
             {sezione === 'rilevamento' && <SezioneRilevamento impostazioni={impostazioni} onCambia={salva} />}
             {sezione === 'scorciatoie' && <SezioneScorciatoie impostazioni={impostazioni} onCambia={salva} />}
+            {sezione === 'aspetto' && <SezioneAspetto impostazioni={impostazioni} onCambia={salva} />}
             {sezione === 'analisi' && <SezioneAnalisi impostazioni={impostazioni} onCambia={salva} />}
             {sezione === 'database' && <SezioneDatabaseRemoto />}
             {sezione === 'clienti' && (
