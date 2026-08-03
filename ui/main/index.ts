@@ -59,6 +59,8 @@ const impostazioni = new Impostazioni(cartellaRisorse, ICONA, () => coloreDiFond
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let quitting = false
+/** Se il core sta registrando: decide l'icona nell'area di notifica. */
+let registrazioneInCorso = false
 let scorciatoiaOverlay: string | null = null
 let scorciatoiaScreenshot: string | null = null
 /**
@@ -181,39 +183,88 @@ function voceScreenshot(): Electron.MenuItemConstructorOptions[] {
   ]
 }
 
+/**
+ * L'icona giusta per l'area di notifica, adesso.
+ *
+ * Non e' il logo rimpicciolito, ed e' voluto: a 16 pixel il disco scuro del
+ * logo spariva nel fondo di una barra scura e restava solo il punto rosso —
+ * irriconoscibile, e per convenzione «sto registrando», mostrato pero' sempre.
+ *
+ * Qui sono quattro icone su due assi: il colore dell'inchiostro segue la barra
+ * (non il tema di Scriba: la barra puo' essere scura con l'app chiara), e
+ * l'anello si riempie di rosso solo mentre si registra davvero. Un anello vuoto
+ * e' un pulsante di registrazione non premuto; col punto dentro, premuto.
+ */
+function iconaTray(): string {
+  const barra = nativeTheme.shouldUseDarkColors ? 'scura' : 'chiara'
+  const stato = registrazioneInCorso ? 'registra' : 'riposo'
+  return join(PROJECT_ROOT, 'assets', 'tray', `tray-${stato}-${barra}.ico`)
+}
+
+/** Rimette icona e suggerimento in pari con quello che sta succedendo. */
+function aggiornaIconaTray(inRegistrazione = registrazioneInCorso): void {
+  registrazioneInCorso = inRegistrazione
+  if (!tray || tray.isDestroyed()) return
+
+  const immagine = nativeImage.createFromPath(iconaTray())
+  if (!immagine.isEmpty()) tray.setImage(immagine)
+  tray.setToolTip(inRegistrazione ? 'Scriba — registrazione in corso' : 'Scriba')
+}
+
+/** Il menu dell'area di notifica. Si ricostruisce quando cambiano le voci. */
+function menuTray(): Menu {
+  return Menu.buildFromTemplate([
+    { label: 'Apri Scriba', click: showWindow },
+    {
+      label: `Trascrizione sovrapposta (${(scorciatoiaOverlay ?? 'Alt+R').replace('CommandOrControl', 'Ctrl')})`,
+      click: () => overlay.alterna(),
+    },
+    { type: 'separator' },
+    ...voceScreenshot(),
+    { type: 'separator' },
+    {
+      label: 'Esci',
+      click: () => {
+        quitting = true
+        app.quit()
+      },
+    },
+  ])
+}
+
+/**
+ * Rifa' solo il menu, lasciando in pace l'icona.
+ *
+ * Prima queste due cose erano la stessa: cambiare una scorciatoia rifaceva
+ * `createTray()` da capo, che faceva `new Tray(...)` **senza distruggere il
+ * precedente**. Il vecchio restava vivo finche' il garbage collector non se ne
+ * accorgeva, e la sua icona restava nell'area di notifica insieme a quella
+ * nuova. All'avvio succedeva sempre — createTray, poi registraScorciatoie che
+ * la richiamava — quindi ogni lancio lasciava **due icone**.
+ */
+function aggiornaMenuTray(): void {
+  if (!tray || tray.isDestroyed()) return
+  tray.setContextMenu(menuTray())
+}
+
 function createTray(): void {
-  // Il .ico contiene gia' un'immagine da 16 pixel disegnata a quella misura
-  // (scripts/genera-icona.ps1): Windows sceglie quella invece di rimpicciolire
-  // la grande, ed e' la differenza fra un'icona pulita e una sfocata proprio
-  // nel posto dove Scriba passa la maggior parte del suo tempo.
+  // Un solo oggetto Tray per volta. `new Tray()` non sostituisce il precedente:
+  // ne aggiunge un altro, e ogni icona che resta e' un'icona che non risponde
+  // piu' a niente.
+  if (tray && !tray.isDestroyed()) tray.destroy()
+
+  // L'icona e' disegnata per l'area di notifica, non e' il logo rimpicciolito:
+  // vedi `iconaTray()` e scripts/genera-icona-tray.ps1.
   //
   // Se il file mancasse si ripiega sul quadrato disegnato a runtime che c'era
   // prima. Non e' eleganza: un'icona vuota nell'area di notifica e' invisibile,
   // e con la finestra che si nasconde invece di chiudersi quella e' l'unica
   // strada per riaprire Scriba. Meglio brutta che irraggiungibile.
-  const daFile = nativeImage.createFromPath(ICONA)
+  const daFile = nativeImage.createFromPath(iconaTray())
   const icon = daFile.isEmpty() ? nativeImage.createFromDataURL(ICONA_RIPIEGO) : daFile
   tray = new Tray(icon)
-  tray.setToolTip('Scriba')
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      { label: 'Apri Scriba', click: showWindow },
-      {
-        label: `Trascrizione sovrapposta (${(scorciatoiaOverlay ?? 'Alt+R').replace('CommandOrControl', 'Ctrl')})`,
-        click: () => overlay.alterna(),
-      },
-      { type: 'separator' },
-      ...voceScreenshot(),
-      { type: 'separator' },
-      {
-        label: 'Esci',
-        click: () => {
-          quitting = true
-          app.quit()
-        },
-      },
-    ]),
-  )
+  tray.setToolTip(registrazioneInCorso ? 'Scriba — registrazione in corso' : 'Scriba')
+  tray.setContextMenu(menuTray())
   tray.on('double-click', showWindow)
 }
 
@@ -370,6 +421,8 @@ function connectEvents(): void {
   socket.addEventListener('message', (event) => {
     try {
       const evento = JSON.parse(String(event.data))
+      if (evento?.type === 'session_started') aggiornaIconaTray(true)
+      else if (evento?.type === 'session_stopped') aggiornaIconaTray(false)
       trasmettiATutte('core:event', evento)
     } catch (error) {
       console.error('[core] evento illeggibile', error)
@@ -433,7 +486,7 @@ async function registraScorciatoie(): Promise<{ overlay: string | null; screensh
   // Il testo che le mostra (menu della tray, campo nelle impostazioni) deve
   // restare vero.
   trasmettiATutte('scorciatoie:stato', stato)
-  if (tray) createTray()
+  aggiornaMenuTray()
   return stato
 }
 
@@ -467,7 +520,7 @@ async function provaScorciatoia(combinazione: string): Promise<boolean> {
  */
 function sorvegliaSchermi(): void {
   const aggiorna = () => {
-    if (tray) createTray()
+    aggiornaMenuTray()
     trasmettiATutte('schermi:cambiati', elencaSchermi())
   }
   screen.on('display-added', aggiorna)
@@ -475,6 +528,17 @@ function sorvegliaSchermi(): void {
   // Cambia anche la risoluzione o la scalatura, non solo il numero: la misura
   // finisce sull'etichetta del pulsante e nella richiesta di cattura.
   screen.on('display-metrics-changed', aggiorna)
+}
+
+/**
+ * Segue il tema della barra delle applicazioni, non quello di Scriba.
+ *
+ * Sono due cose diverse: si puo' tenere Windows scuro e Scriba chiara, o il
+ * contrario. Quello che conta per un'icona e' il fondo su cui viene disegnata.
+ * Windows lo cambia anche da solo, al tramonto, se glielo si e' chiesto.
+ */
+function sorvegliaTemaDiSistema(): void {
+  nativeTheme.on('updated', () => aggiornaIconaTray())
 }
 
 function registerIpc(): void {
@@ -638,6 +702,7 @@ app.whenReady().then(async () => {
   mainWindow = createWindow()
   createTray()
   sorvegliaSchermi()
+  sorvegliaTemaDiSistema()
 
   try {
     const endpoint = await sidecar.start()
