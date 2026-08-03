@@ -533,3 +533,14 @@ a:hover { color:var(--link-hover); }
 /* Il DDL, da leggere prima di eseguirlo: monospazio e scorrevole, perche' e'
    codice che sta per girare sul database di qualcuno. */
 .ddl { margin:0; padding:11px var(--sp-4); border-radius:var(--r-3); background:var(--card); border:1px solid var(--line); font-family:var(--mono); font-size:var(--fs-mono); line-height:1.55; color:var(--fg3); white-space:pre; overflow-x:auto; max-height:280px; overflow-y:auto; }
+
+/* ------------------------------------------- export per un modello linguistico */
+.ia { display:flex; align-items:center; gap:var(--sp-4); flex-wrap:wrap; margin:0 var(--sp-7); padding:11px var(--sp-4); border-radius:var(--r-3); background:var(--card); border:1px solid var(--line); }
+.ia__testo { flex:1; min-width:220px; display:flex; flex-direction:column; gap:3px; }
+.ia__testo b { font-size:var(--fs-base); font-weight:600; }
+.ia__testo span { font-size:var(--fs-md); line-height:1.5; color:var(--fg4); text-wrap:pretty; }
+.ia__voce { font-size:var(--fs-md); color:var(--fg3); }
+/* Il peso e' il numero su cui si decide se includere la trascrizione: si legge
+   come un numero, in monospazio, non come una parola in mezzo a una frase. */
+.ia__peso { font-family:var(--mono); font-size:var(--fs-mono); color:var(--fg5); }
+.ia__esito { font-size:var(--fs-md); color:var(--fg4); }

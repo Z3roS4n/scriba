@@ -66,7 +66,9 @@ sessioni e modelli, ed è l'unica che il ponte del renderer sa mandare
 ### Export e database remoto
 | Metodo | Path | Scopo |
 |---|---|---|
-| POST | `/sessions/{id}/export` | markdown · testo · json |
+| POST | `/sessions/{id}/export` | markdown · testo · json · contesto |
+| POST | `/export/contesto/anteprima` | quanto peserebbe in token. Non scrive niente |
+| POST | `/export/contesto` | il documento per un modello, anche di N call insieme |
 | GET/POST | `/export/notion/*` | stato, destinazioni, schema, creazione, collegamento |
 | POST | `/sessions/{id}/export/notion` · `/export/http` | invio |
 | GET | `/database-remoto/stato` · `/modello` | collegamento, e cosa si può mandare |

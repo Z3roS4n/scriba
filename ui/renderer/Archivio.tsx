@@ -54,6 +54,100 @@ function etichettaStato(stato: StatoSessione): string {
   }
 }
 
+/** «12.400 token» invece di «12400 token»: si legge a colpo d'occhio. */
+function conPunti(n: number): string {
+  return n.toLocaleString('it-IT')
+}
+
+/**
+ * Esporta le call filtrate in un documento per un modello.
+ *
+ * Il peso si mostra **prima**: il contesto di un modello è finito, e scoprire
+ * che il documento non ci sta quando è già stato incollato da qualche parte è
+ * tardi. Per lo stesso motivo la trascrizione integrale è una spunta e non il
+ * comportamento predefinito — su una call di due ore vale da sola più di tutto
+ * il resto messo insieme.
+ */
+function PannelloIa({ call }: { call: Sessione[] }) {
+  const [conTrascrizione, setConTrascrizione] = useState(false)
+  const [peso, setPeso] = useState<{ token_stimati: number; call: number } | null>(null)
+  const [esito, setEsito] = useState<string | null>(null)
+  const [percorso, setPercorso] = useState<string | null>(null)
+  const [occupato, setOccupato] = useState(false)
+
+  const ids = useMemo(() => call.map((c) => c.id), [call])
+
+  useEffect(() => {
+    setEsito(null)
+    setPercorso(null)
+    if (ids.length === 0) return
+    let vivo = true
+    window.scriba
+      .post<{ token_stimati: number; call: number }>('/export/contesto/anteprima', {
+        session_ids: ids,
+        con_trascrizione: conTrascrizione,
+      })
+      .then((r) => {
+        if (vivo && r.ok) setPeso(r.body)
+      })
+    return () => {
+      vivo = false
+    }
+  }, [ids, conTrascrizione])
+
+  const esporta = async () => {
+    setOccupato(true)
+    setEsito(null)
+    const r = await window.scriba.post<{ percorso: string; token_stimati: number }>(
+      '/export/contesto',
+      { session_ids: ids, con_trascrizione: conTrascrizione },
+    )
+    setOccupato(false)
+    if (!r.ok) {
+      setEsito('Export non riuscito.')
+      return
+    }
+    setPercorso(r.body.percorso)
+    setEsito(`Scritto: ${conPunti(r.body.token_stimati)} token stimati.`)
+  }
+
+  return (
+    <div className="ia">
+      <div className="ia__testo">
+        <b>
+          {call.length} {call.length === 1 ? 'call' : 'call'} in un documento solo
+        </b>
+        <span>
+          Ogni citazione accanto a ciò che sostiene, e detto chiaro quali impegni una fonte non
+          ce l'hanno. Da incollare in un modello.
+        </span>
+      </div>
+
+      <button
+        className={`checkbox ${conTrascrizione ? 'is-on' : ''}`}
+        onClick={() => setConTrascrizione((v) => !v)}
+        aria-label="Includi la trascrizione integrale"
+      >
+        {conTrascrizione ? '✓' : ''}
+      </button>
+      <span className="ia__voce">Trascrizione integrale</span>
+
+      {peso && <span className="ia__peso">~{conPunti(peso.token_stimati)} token</span>}
+
+      <button className="btn btn--rec" disabled={occupato || ids.length === 0} onClick={esporta}>
+        {occupato ? 'Scrivo…' : 'Esporta'}
+      </button>
+
+      {esito && <span className="ia__esito">{esito}</span>}
+      {percorso && (
+        <button className="btn btn--sm" onClick={() => window.scriba.mostraFile(percorso)}>
+          Mostra
+        </button>
+      )}
+    </div>
+  )
+}
+
 export function Archivio(props: {
   clienti: Cliente[]
   onApri: (id: number) => void
@@ -70,6 +164,7 @@ export function Archivio(props: {
   const [raggruppa, setRaggruppa] = useState(false)
   const [call, setCall] = useState<Sessione[]>([])
   const [caricando, setCaricando] = useState(true)
+  const [perIa, setPerIa] = useState(false)
 
   // La ricerca parte quando si smette di scrivere, non a ogni tasto: una query
   // full-text per lettera su tutto lo storico e' lavoro buttato, e i risultati
@@ -187,10 +282,22 @@ export function Archivio(props: {
           Per cliente
         </button>
         <div className="topbar__spacer" />
+        {/* L'archivio e' il posto in cui una selezione di call esiste gia': i
+            filtri l'hanno appena fatta. Rifarla altrove sarebbe rifare i
+            filtri. */}
+        <button
+          className={`btn ${perIa ? 'is-on' : ''}`}
+          disabled={call.length === 0}
+          onClick={() => setPerIa((v) => !v)}
+        >
+          Per l'IA
+        </button>
         <button className="btn" onClick={onEsci}>
           Chiudi
         </button>
       </div>
+
+      {perIa && <PannelloIa call={call} />}
 
       <div className="arch">
         {caricando && call.length === 0 ? (
