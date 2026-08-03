@@ -249,6 +249,27 @@
   schermo intero e spesso scura: un rettangolo bianco lì è un abbaglio.
 - **Data:** 2026-08-02
 
+### D-013 — L'export per un modello dichiara quello che non ha una fonte
+- **Contesto:** serviva poter dare analisi e task a un modello. Il JSON aveva già tutto,
+  comprese le prove per campo, ma le lega per `segment_id`: un modello dovrebbe incrociare
+  gli id prima di poter ragionare, spendendo contesto per un lavoro che possiamo fare noi
+  una volta sola.
+- **Scelta:** un formato nuovo (`export/contesto.py`) dove ogni affermazione porta
+  **accanto** la citazione da cui viene, scritta per esteso, con il minuto.
+- **La parte che conta di più:** quello che una fonte non ce l'ha viene **detto**. Una task
+  senza prove non diventa una task con prove implicite — si scrive che non ne ha, e che va
+  trattata come un'ipotesi. Senza questa distinzione l'ipotesi del primo modello diventa
+  la premessa del secondo, e l'errore si consolida invece di restare visibile. Per lo
+  stesso motivo l'intestazione spiega che cos'è una citazione e che cos'è interpretazione:
+  senza, «nessuna citazione» si legge come una dimenticanza invece che come un dato.
+- **Il peso si mostra prima.** Il contesto di un modello è finito e una call di due ore
+  sono ~800 segmenti: la trascrizione integrale è una spunta, spenta di default, e
+  `/export/contesto/anteprima` dice quanto pesa senza scrivere niente. Scoprirlo quando il
+  documento viene troncato è tardi.
+- **Più call insieme,** perché la domanda vera è «dammi tutto quello che ci siamo detti con
+  questo cliente» — e la selezione esiste già nell'archivio, filtrata.
+- **Data:** 2026-08-03
+
 ## Decisioni aperte
 
 - **OA-1** — Passare a Qwen3.5-9B come LLM di default? Ha IFEval più alto e KV cache più

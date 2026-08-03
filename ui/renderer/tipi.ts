@@ -424,7 +424,8 @@ export interface Impostazioni {
   }
   export?: {
     cartella: string | null
-    formato: 'markdown' | 'testo' | 'json'
+    /** 'contesto' e' il documento per un modello: vedi export/contesto.py. */
+    formato: 'markdown' | 'testo' | 'json' | 'contesto'
   }
 }
 

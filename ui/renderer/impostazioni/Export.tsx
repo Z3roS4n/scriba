@@ -11,6 +11,7 @@ const FORMATI = [
   { id: 'markdown', etichetta: 'Markdown' },
   { id: 'testo', etichetta: 'Testo' },
   { id: 'json', etichetta: 'JSON' },
+  { id: 'contesto', etichetta: "Per l'IA" },
 ] as const
 
 export function SezioneExport({
@@ -40,7 +41,13 @@ export function SezioneExport({
         <div className="row">
           <div className="row__text">
             <b>Formato</b>
-            <span>Il markdown contiene anche i minuti delle prove. Il testo è la trascrizione pulita, il JSON porta tutto — comprese le prove — in una forma per un programma.</span>
+            <span>
+              Il markdown contiene anche i minuti delle prove. Il testo è la trascrizione pulita,
+              il JSON porta tutto — comprese le prove — in una forma per un programma. «Per l'IA»
+              mette ogni citazione accanto a ciò che sostiene, invece di un riferimento da
+              incrociare, e dice quali impegni una fonte non ce l'hanno: è fatto per essere
+              incollato in un modello. Per esportarne più di una insieme c'è l'archivio.
+            </span>
           </div>
           <div className="segment">
             {FORMATI.map((f) => (

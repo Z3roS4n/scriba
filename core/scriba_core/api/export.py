@@ -16,6 +16,9 @@ from pydantic import BaseModel
 
 from . import Contesto
 from ..export import esporta
+# Alias: in questo file `Contesto` e' gia' la dataclass del contesto delle
+# rotte, e due nomi che differiscono solo per una maiuscola si leggono male.
+from ..export import contesto as doc_modello
 from ..export.http_generico import HttpGenericoError
 from ..export.http_generico import invia as invia_http
 from ..export.notion import NotionError
@@ -66,6 +69,16 @@ class HttpGenericoRequest(BaseModel):
     token: str | None = None
 
 
+class ContestoRequest(BaseModel):
+    """Le call da mettere nel documento per il modello, e quanto dettaglio."""
+
+    session_ids: list[int]
+    # Spenta di proposito: una call di due ore sono ~800 segmenti, e il contesto
+    # di un modello e' finito. Chi la vuole la chiede, dopo aver visto il peso.
+    con_trascrizione: bool = False
+    destinazione: str | None = None
+
+
 def crea_router(ctx: Contesto) -> APIRouter:
     router = APIRouter(tags=["export"])
 
@@ -79,6 +92,48 @@ def crea_router(ctx: Contesto) -> APIRouter:
         except ValueError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         return {"percorso": str(percorso)}
+
+    # --------------------------------------------------- documento per un modello
+
+    @router.post("/export/contesto/anteprima")
+    async def contesto_anteprima(req: ContestoRequest) -> dict[str, Any]:
+        """Quanto peserebbe, senza scrivere niente.
+
+        Esiste perché la scelta «includo la trascrizione?» si fa guardando un
+        numero, non a naso: scoprire che il documento non ci sta quando è già
+        stato incollato da qualche parte è tardi.
+        """
+        try:
+            return await asyncio.to_thread(
+                doc_modello.anteprima,
+                ctx.store,
+                req.session_ids,
+                con_trascrizione=req.con_trascrizione,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @router.post("/export/contesto")
+    async def contesto_esporta(req: ContestoRequest) -> dict[str, Any]:
+        destinazione = (
+            Path(req.destinazione)
+            if req.destinazione
+            else Path(ctx.db_path).parent / "export"
+        )
+        try:
+            percorso = await asyncio.to_thread(
+                doc_modello.esporta,
+                ctx.store,
+                req.session_ids,
+                destinazione,
+                con_trascrizione=req.con_trascrizione,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return {
+            "percorso": str(percorso),
+            "token_stimati": doc_modello.stima_token(percorso.read_text(encoding="utf-8")),
+        }
 
     # ------------------------------------------------------------------ notion
 

@@ -21,12 +21,16 @@ from typing import Any
 
 from ..db.store import Store
 from ..settings import Settings
-from . import json_export, markdown, testo
+from . import contesto, json_export, markdown, testo
 
 _ESPORTATORI = {
     "markdown": markdown.esporta,
     "testo": testo.esporta,
     "json": json_export.esporta,
+    # Per un modello linguistico: le citazioni accanto a cio' che sostengono,
+    # invece di id da incrociare. Qui c'e' la variante a una call sola; per
+    # esportarne piu' d'una insieme c'e' `POST /export/contesto`.
+    "contesto": contesto.esporta_sessione,
 }
 
 

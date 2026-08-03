@@ -85,6 +85,14 @@ priorità), ciascuna con un riferimento verificabile al punto della trascrizione
 viene. Puoi rivedere, correggere ed esportare in Markdown, testo semplice, JSON, verso
 Notion (una pagina per call, una riga per task) o verso un endpoint HTTP generico.
 
+**Da dare a un'altra IA.** C'è un export fatto apposta per essere incollato in un
+modello: ogni affermazione porta **accanto** la citazione da cui viene, con il minuto,
+invece di un riferimento da incrociare — e gli impegni che una fonte non ce l'hanno lo
+dicono, invece di sembrare verificati come gli altri. Dall'archivio se ne esportano
+anche molte insieme («tutto quello che ci siamo detti con questo cliente»), con il peso
+in token mostrato prima, perché il contesto di un modello è finito e la trascrizione
+integrale è una spunta.
+
 **L'archivio.** Dopo qualche mese la domanda non è più «cos'ho fatto ieri» ma «cosa ci
 siamo detti con questo cliente». C'è una pagina che risponde a quella: cerca dentro
 quello che è stato **detto**, non solo nei titoli, e filtra per cliente, periodo e
