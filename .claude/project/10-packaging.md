@@ -252,6 +252,14 @@ si vede. Si rigenera da `assets/scriba.png` con
 quando il logo cambia: il `.ico` prodotto sta nel repository, così chi
 costruisce l'installer non deve rigenerarlo.
 
+**L'area di notifica è un'altra cosa.** `assets/tray/` contiene quattro `.ico`
+disegnati per i 16 pixel, non il logo rimpicciolito: inchiostro chiaro o scuro
+a seconda della **barra** (non del tema di Scriba), e un anello che si riempie
+di rosso solo mentre si registra. Si rigenerano con
+`scripts/genera-icona-tray.ps1`, e sono scritti con immagini **BMP** invece che
+PNG: sotto i 48 pixel è la forma che tutto sa leggere, ed è anche ciò che
+rende quelle icone verificabili da uno script invece che solo a occhio.
+
 L'icona serve in due posti diversi, e sono due meccanismi distinti:
 
 | Dove | Da cosa arriva |
