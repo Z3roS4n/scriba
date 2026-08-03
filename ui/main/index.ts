@@ -622,6 +622,18 @@ app.on('second-instance', () => showWindow())
 app.whenReady().then(async () => {
   if (!solaIstanza) return
   mkdirSync(DATA_DIR, { recursive: true })
+  // Via il menu predefinito di Electron.
+  //
+  // Le finestre sono senza cornice, quindi quel menu non si e' mai visto — ma
+  // le sue scorciatoie restavano registrate lo stesso, e fra quelle c'e'
+  // `Ctrl+R`, «Ricarica». Premerlo durante una call e' un riflesso comune, e
+  // ricaricare l'interfaccia mentre si registra e' allarmante anche quando non
+  // fa danno: la registrazione vive nel core e va avanti, ma per un istante la
+  // finestra torna a dire «Registra».
+  //
+  // In sviluppo si tiene: ricaricare e aprire gli strumenti serve.
+  if (!process.argv.includes('--dev')) Menu.setApplicationMenu(null)
+
   registerIpc()
   mainWindow = createWindow()
   createTray()

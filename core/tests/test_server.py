@@ -112,6 +112,23 @@ class TestRegistrazione:
         assert client.post(auth("/session/stop")).json()["session_id"] == session_id
         assert client.get(auth("/session/state")).json()["in_registrazione"] is False
 
+    def test_lo_stato_basta_a_ricostruire_la_schermata(self, client: TestClient) -> None:
+        """Chi arriva a registrazione già iniziata deve poter ricostruire tutto.
+
+        L'interfaccia imparava che si stava registrando **solo** dall'evento
+        `session_started`: una finestra che non c'era quando è passato restava
+        convinta che non stesse succedendo niente, mostrava «Registra» e
+        premerlo era la cosa sbagliata. Adesso all'avvio chiede qui, e questa
+        risposta deve bastarle: se sta registrando, quale call, e da quanto.
+        """
+        session_id = client.post(auth("/session/start"), json={}).json()["session_id"]
+
+        stato = client.get(auth("/session/state")).json()
+        assert stato["in_registrazione"] is True
+        assert stato["session_id"] == session_id
+        # Senza, il cronometro ripartirebbe da zero a ogni riapertura.
+        assert isinstance(stato["now_ms"], int)
+
     def test_due_avvii_non_si_sovrappongono(self, client: TestClient) -> None:
         # Un doppio clic su "registra" non deve aprire due sessioni che
         # litigano per il microfono.

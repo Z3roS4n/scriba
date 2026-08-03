@@ -116,6 +116,38 @@ function App() {
     if (r.ok) setClienti(r.body)
   }, [])
 
+  /**
+   * Chiede al core se sta registrando adesso, invece di dedurlo dagli eventi.
+   *
+   * Finora questa finestra lo imparava **solo** da `session_started`. Un evento
+   * che non arriva — la finestra non c'era ancora, il core stava gia' lavorando,
+   * la pagina si e' ricaricata — la lasciava convinta che non stesse succedendo
+   * niente, per sempre: il pulsante diceva «Registra» e premerlo era la cosa
+   * sbagliata, perche' una registrazione era in corso davvero.
+   *
+   * Uno stato che si ricostruisce chiedendo non ha quel modo di rompersi.
+   */
+  const recuperaRegistrazione = useCallback(async () => {
+    const r = await window.scriba.get<{
+      in_registrazione: boolean
+      session_id?: number
+      now_ms?: number
+    }>('/session/state')
+    if (!r.ok || !r.body?.in_registrazione) return
+
+    setRegistrando(true)
+    if (r.body.session_id != null) {
+      setSessioneCorrente(r.body.session_id)
+      setSessioneVista((prec) => prec ?? r.body.session_id!)
+    }
+    // Il cronometro riparte da dove sta la call, non da zero: e' il core a
+    // sapere da quanto va, e a sapere delle pause.
+    if (r.body.now_ms != null) {
+      inizioLocale.current = Date.now()
+      setTrascorsi(r.body.now_ms)
+    }
+  }, [])
+
   // I clienti si creano dalla finestra delle impostazioni, che e' un altro
   // processo: quando ne nasce uno, questa finestra non lo sa. Rileggerli
   // all'apertura dell'archivio e' il momento esatto in cui la differenza si
@@ -222,6 +254,7 @@ function App() {
         setCorePronto(true)
         caricaSessioni()
         caricaClienti()
+        recuperaRegistrazione()
       }),
 
       window.scriba.on('core:event', (ev: EventoCore) => {
@@ -329,6 +362,7 @@ function App() {
       setCorePronto(true)
       caricaSessioni()
       caricaClienti()
+      recuperaRegistrazione()
       const r = await window.scriba.get<{
         modello: StatoModello
         db_danneggiato: DbDanneggiato | null
@@ -340,7 +374,7 @@ function App() {
     })
 
     return () => off.forEach((f) => f())
-  }, [caricaSessioni, caricaClienti, mostraAvviso])
+  }, [caricaSessioni, caricaClienti, recuperaRegistrazione, mostraAvviso])
 
   // La prima volta che l'elenco arriva senza niente aperto si mostra la call
   // piu' recente — o quella in corso, se la pagina si e' caricata (o
