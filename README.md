@@ -73,7 +73,9 @@ predefinita <kbd>Alt</kbd>+<kbd>R</kbd> per mostrarla/nasconderla).
 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> cattura uno screenshot e lo aggancia
 all'istante della call in cui l'hai preso: il testo che contiene (letto via OCR,
 in locale) entra nel contesto dell'analisi insieme a quello che si diceva in quel
-momento. Entrambe le scorciatoie si possono cambiare dalle Impostazioni.
+momento. Entrambe le scorciatoie si possono cambiare dalle Impostazioni. Con più
+monitor collegati scegli quale catturare: un pulsante per schermo, nella barra e
+sulla striscia, senza uscire dalla riunione per cercare un menu.
 
 **Dopo la call.** L'analisi produce: un riassunto strutturato (in breve, contesto,
 decisioni prese, punti aperti, prossimi passi), i punti salienti con riferimento al
@@ -82,6 +84,13 @@ conversazione, poi si ricompongono in impegni completi con responsabile, scadenz
 priorità), ciascuna con un riferimento verificabile al punto della trascrizione da cui
 viene. Puoi rivedere, correggere ed esportare in Markdown, testo semplice, JSON, verso
 Notion (una pagina per call, una riga per task) o verso un endpoint HTTP generico.
+
+**L'archivio.** Dopo qualche mese la domanda non è più «cos'ho fatto ieri» ma «cosa ci
+siamo detti con questo cliente». C'è una pagina che risponde a quella: cerca dentro
+quello che è stato **detto**, non solo nei titoli, e filtra per cliente, periodo e
+stato. I clienti sono un'anagrafica vera — si scrivono a mano o si carica un CSV — e la
+call si attribuisce da lì, riga per riga, che è il posto in cui hai davanti tutte quelle
+ancora senza.
 
 **Un database tuo, se lo vuoi.** Le call vivono in uno SQLite su questo computer, e
 quel computer si rompe. Dalle Impostazioni si collega un PostgreSQL qualunque —
@@ -97,6 +106,11 @@ lo crea, scegliendo tu quali campi ti interessano e quali no.
 **Motore di analisi.** Dalle Impostazioni scegli se usare un modello locale (scaricato
 e fatto girare sulla tua macchina tramite `llama-server`), la CLI di Claude Code se
 hai un abbonamento, oppure le API di Anthropic o OpenAI con una tua chiave.
+
+**Chiaro o scuro.** In Impostazioni → Aspetto, con l'opzione «come il sistema» che segue
+Windows anche quando cambia da solo al tramonto. Vale subito, senza riavviare. La
+striscia di trascrizione resta scura in ogni caso: sta sopra la finestra della riunione,
+e lì il bianco abbaglia.
 
 ## Cosa esce dal computer e cosa no
 
@@ -189,7 +203,9 @@ Onestamente, non solo quello che manca ma anche quello che non è mai stato veri
 - **Il rilevamento automatico delle call non è stato validato contro Zoom, Teams e
   Meet reali in modo sistematico.** È stato verificato il meccanismo di base (chi usa
   il microfono, chi riproduce audio) sulla macchina di sviluppo; non c'è una verifica
-  strutturata contro le tre piattaforme in condizioni diverse.
+  strutturata contro le tre piattaforme in condizioni diverse. Se non ti propone di
+  registrare, **Impostazioni → Rilevamento call → Mostra** dice cosa sta vedendo in quel
+  momento e quale condizione non è soddisfatta, invece di lasciartelo indovinare.
 - **`whisper-large-v3` compare in alcune schermate/dati di esempio dell'interfaccia,
   ma non esiste un motore di trascrizione che lo usi davvero.** Il motore di
   trascrizione reale, unico e predefinito, è Parakeet TDT.

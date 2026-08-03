@@ -181,6 +181,74 @@
   e fino a 6 s di attesa alla chiusura dell'app.
 - **Data:** 2026-07-30
 
+### D-010 — I clienti sono una tabella, e le call sincronizzate si riconoscono dall'uuid
+- **Contesto:** dopo qualche mese la domanda non è più «cos'ho fatto ieri» ma «cosa ci
+  siamo detti con questo cliente». Serviva un'entità cliente, e serviva mandare le call su
+  un database remoto senza duplicarle a ogni invio.
+- **Opzioni per il cliente:** A) un campo di testo su `sessions` con autocompletamento ·
+  B) una tabella con chiave esterna.
+- **Scelta:** B. Rinominare un cliente deve valere per tutte le sue call insieme, e un
+  testo libero diventa tre grafie della stessa azienda nel giro di un mese. I nomi si
+  confrontano su una forma normalizzata tenuta in una colonna sua (`nome_norm`, unique):
+  è lì che si decide se due righe di un CSV importato sono lo stesso cliente.
+- **Opzioni per l'identità remota:** A) `tasks.id` · B) un `uuid` per ogni riga.
+- **Scelta:** B. `tasks.id` è un contatore di **questo** file: due installazioni si
+  sovrascriverebbero a vicenda, e ricostruire il database locale — è già successo, vedi
+  D-009 — rimescolerebbe ogni riferimento.
+- **Conseguenze:** ogni tabella del modello remoto dichiara la sua chiave naturale, e una
+  mappatura che se la dimentica viene **rifiutata al collegamento**, con il motivo, invece
+  di accumulare doppioni silenziosi. Un test gira su tutte le tabelle e pretende che ne
+  abbiano una. Duplicare le task di una riunione dentro il sistema di lavoro di qualcuno è
+  un danno vero, non un fastidio.
+- **Prezzo pagato:** due migrazioni (`sessions.client_id`, `tasks.uuid`) e la disciplina di
+  non riusare `export_target`, che ne regge una sola ed è di Notion: il database remoto
+  tiene il suo stato in `sync_remoto`.
+- **Data:** 2026-08-01
+
+### D-011 — Il rilevamento si guarda invece di indovinarlo
+- **Contesto:** «non mi ha proposto di registrare» ha almeno cinque cause — sonda ferma,
+  processo escluso, microfono senza segnale, nessun audio in riproduzione, attesa di
+  conferma non scaduta — e dall'esterno sono indistinguibili.
+- **Opzioni:** A) tentare un rimedio sull'ipotesi più probabile · B) rendere osservabile il
+  ragionamento e poi guardare.
+- **Scelta:** B, prima di toccare le regole. Un rimedio scelto fra cinque ipotesi ha una
+  probabilità su cinque di essere quello giusto, e le altre quattro volte cambia il
+  comportamento senza sistemare niente.
+- **Conseguenze:** `GET /rilevamento/diagnostica` riporta l'esito dell'ultimo giro processo
+  per processo, con il perché scritto a parole, più lo stato della sonda (viva, ripartenze,
+  se ha rinunciato — cosa che prima succedeva in silenzio). Legge lo stato dell'ultimo giro
+  e **non** interroga le API audio: due processi che leggono insieme quelle interfacce COM
+  si disturbano, ed è la ragione per cui la sonda vive in un processo suo.
+- **Trovato costruendolo:** `psutil` non era dichiarato fra le dipendenze, e arrivava di
+  rimbalzo. È quello che collega il microfono di un browser all'audio che esce da un suo
+  processo figlio: un aggiornamento altrui si sarebbe portato via il rilevamento delle call
+  nel browser senza un errore, solo smettendo di funzionare.
+- **Sospetto aperto, non confermato:** su questa macchina ogni processo con una sessione
+  microfono riporta un picco di **esattamente 0.0**, Edge compreso, e la regola li scarta
+  come sessioni vecchie. `probe.py` afferma il contrario come dato misurato. Se non regge
+  durante una call vera, nessuna riunione può essere riconosciuta. Serve una call vera.
+- **Data:** 2026-08-01
+
+### D-012 — Scuro resta il predefinito, anche ora che il chiaro si può scegliere
+- **Contesto:** il tema chiaro esisteva già ed era completo — in `tokens.css` è il `:root`,
+  e lo scuro sono 74 sovrascritture sopra — ma era irraggiungibile per una riga scritta a
+  mano in ognuna delle tre pagine.
+- **Opzioni:** A) predefinito «come il sistema», come fanno quasi tutte le applicazioni ·
+  B) predefinito scuro, con «come il sistema» fra le scelte.
+- **Scelta:** B. Scriba è sempre stato scuro: far cambiare aspetto da sola a
+  un'applicazione già installata, perché qualcun altro ha deciso un default, è una sorpresa
+  che nessuno ha chiesto.
+- **Conseguenze:** il valore iniziale arriva dal ponte, letto in modo sincrono dal processo
+  principale da `settings.json` e applicato nel **preload** — la CSP delle pagine vieta gli
+  script inline, e quello è l'unico codice che gira prima del documento. Anche
+  `backgroundColor` delle finestre segue, altrimenti il tema chiaro comincerebbe con un
+  lampo nero a ogni apertura. Le tre finestre sono tre processi: l'evento `tema:cambiato`
+  le allinea, perché vederne due di colori diversi sarebbe peggio che non poterlo cambiare.
+- **Eccezione, voluta:** il vetro dell'overlay resta scuro in entrambi i temi — le sue
+  regole non usano nessun token di colore. Sta sopra la finestra di una riunione, spesso a
+  schermo intero e spesso scura: un rettangolo bianco lì è un abbaglio.
+- **Data:** 2026-08-02
+
 ## Decisioni aperte
 
 - **OA-1** — Passare a Qwen3.5-9B come LLM di default? Ha IFEval più alto e KV cache più
