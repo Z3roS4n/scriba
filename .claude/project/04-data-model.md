@@ -37,7 +37,14 @@ viene**, anche dopo che il segmento da cui viene è stato rifinito.
   dei parlanti sono un livello a parte (`speakers`, `speaker_id`).
 - Un segmento provvisorio viene **aggiornato**, non cancellato e reinserito:
   `revision` cresce, l'`id` resta. È ciò che tiene valide le prove che puntano lì.
-- `segments_fts` è un indice FTS5 esterno tenuto allineato da tre trigger.
+- `testo_originale` (aggiunto per migrazione) conserva com'era la frase prima che
+  il glossario rimettesse a posto i nomi propri (`stt/glossario.py`). NULL quando
+  non è stato corretto niente, che è il caso normale: l'app sta mettendo in bocca
+  a qualcuno una parola che il modello non ha sentito, e senza l'originale la
+  correzione non sarebbe né verificabile né annullabile.
+- `segments_fts` è un indice FTS5 esterno tenuto allineato da tre trigger. Indicizza
+  `testo`, cioè la **versione corretta**: cercare «Clotilde» deve trovare la call
+  in cui il modello aveva scritto *Cotilde*, che è il punto di tutto il glossario.
 
 ### `tasks` — gli impegni estratti
 - `uuid` (indice unico parziale, aggiunto per migrazione): `tasks.id` è un

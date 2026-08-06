@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 import threading
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import numpy as np
@@ -25,6 +25,7 @@ from .audio.writer import TrackWriter
 from .db.store import Store
 from .session import SessionClock, State
 from .settings import Settings
+from .stt import glossario
 from .stt.base import TranscriptEvent
 from .stt.eco import FiltroEco, soglia_per_livello
 from .stt.streaming import StreamingConfig, StreamingTranscriber
@@ -105,6 +106,12 @@ class Recorder:
         self._eco = self._nuovo_filtro_eco()
         self._echi_scartati = 0
         self._writers: dict[str, TrackWriter] = {}
+        # Nomi propri da rimettere a posto dopo la trascrizione. Si riempiono
+        # all'avvio della call, non qui: le impostazioni possono cambiare fra
+        # una call e l'altra.
+        self._glossario: list[str] = []
+        self._glossario_livello = glossario.LIVELLO_PREDEFINITO
+        self._nomi_corretti = 0
 
     # --------------------------------------------------------- impostazioni
 
@@ -118,6 +125,22 @@ class Recorder:
     def _nuovo_filtro_eco(self) -> FiltroEco:
         livello = self._stt_conf().get("filtro_eco")
         return FiltroEco(soglia=soglia_per_livello(livello))
+
+    def _termini_glossario(self) -> list[str]:
+        """I nomi che il modello sbaglierebbe, letti una volta all'avvio.
+
+        Si compone qui invece che a ogni frase: durante una call l'elenco non
+        cambia, e rileggere l'anagrafica per ogni riga di trascrizione sarebbe
+        una query al secondo per un risultato che è sempre lo stesso.
+        """
+        conf = self._stt_conf()
+        termini = [str(t) for t in conf.get("glossario") or []]
+        if conf.get("glossario_clienti", True):
+            try:
+                termini += [r["nome"] for r in self.store.clienti()]
+            except Exception:  # pragma: no cover - anagrafica non leggibile
+                log.warning("Anagrafica clienti non leggibile: resta il glossario scritto a mano.")
+        return termini
 
     # ------------------------------------------------------------------ stato
 
@@ -161,6 +184,11 @@ class Recorder:
             self._open_segments.clear()
             self._eco = self._nuovo_filtro_eco()
             self._echi_scartati = 0
+            self._glossario = self._termini_glossario()
+            self._glossario_livello = str(
+                self._stt_conf().get("glossario_livello") or glossario.LIVELLO_PREDEFINITO
+            )
+            self._nomi_corretti = 0
 
             # L'audio si salva sempre. Senza, una trascrizione venuta male non
             # si può rifare e non si può risalire a chi ha parlato: il parlato è
@@ -226,6 +254,21 @@ class Recorder:
         if session_id is None:
             return
 
+        # I nomi propri si rimettono a posto solo sui definitivi. Sui
+        # provvisori il testo cambia a ogni ipotesi, e una correzione che
+        # compare e sparisce mentre si sta leggendo è peggio del nome sbagliato.
+        # Si fa prima di tutto il resto: il filtro eco confronta i testi delle
+        # due tracce, e vanno confrontati nella stessa forma.
+        originale: str | None = None
+        if ev.is_final and ev.text and self._glossario:
+            corretto, cambi = glossario.correggi(
+                ev.text, self._glossario, livello=self._glossario_livello
+            )
+            if cambi:
+                originale = ev.text
+                self._nomi_corretti += len(cambi)
+                ev = replace(ev, text=corretto)
+
         aperto = self._open_segments.get(ev.source)
 
         # Una frase che non si è chiusa non deve essere presa dalla frase dopo:
@@ -268,12 +311,22 @@ class Recorder:
 
         if aperto is None:
             seg_id = self.store.add_segment(
-                session_id, ev.source, ev.t_start_ms, ev.t_end_ms, ev.text, is_final=ev.is_final
+                session_id,
+                ev.source,
+                ev.t_start_ms,
+                ev.t_end_ms,
+                ev.text,
+                is_final=ev.is_final,
+                testo_originale=originale,
             )
             self._open_segments[ev.source] = _Aperto(seg_id, ev.t_start_ms, ev.text)
         else:
             self.store.refine_segment(
-                aperto.id, ev.text, t_end_ms=ev.t_end_ms, is_final=ev.is_final
+                aperto.id,
+                ev.text,
+                t_end_ms=ev.t_end_ms,
+                is_final=ev.is_final,
+                testo_originale=originale,
             )
             aperto.testo = ev.text
         if ev.is_final:
@@ -351,6 +404,12 @@ class Recorder:
                 log.info(
                     "Scartate %d frasi in cui il microfono aveva ripreso l'altoparlante.",
                     self._echi_scartati,
+                )
+            if self._nomi_corretti:
+                log.info(
+                    "Rimessi a posto %d nomi propri dal glossario (livello %s).",
+                    self._nomi_corretti,
+                    self._glossario_livello,
                 )
 
             self.store.end_session(session_id, self.clock.ended_at_ms)

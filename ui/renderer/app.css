@@ -364,6 +364,15 @@ a:hover { color:var(--link-hover); }
 
 .row { display:flex; align-items:flex-start; gap:var(--sp-7); padding:var(--sp-7) 0; border-bottom:1px solid var(--line-soft); }
 .row:last-child { border-bottom:none; }
+/* Il comando va sotto la spiegazione invece che a fianco: un elenco di nomi e
+   tre pulsanti affiancati a un paragrafo lascerebbero due colonne strette. */
+.row--stack { flex-direction:column; align-items:flex-start; gap:var(--sp-5); }
+.row--stack .row__text { align-self:stretch; }
+/* Uno stacco dentro il corpo, non l'intestazione della schermata: quella e'
+   `.settings__head`, sta fuori dallo scorrimento e ha i suoi 24px di rientro
+   propri — riusarla qui la disallineerebbe da tutto il resto. */
+.settings__sub { padding:var(--sp-7) 0 var(--sp-4); font-size:var(--fs-label); font-weight:700; letter-spacing:var(--ls-label); color:var(--fg5); text-transform:uppercase; }
+.glossario__area { width:100%; resize:vertical; min-height:96px; line-height:var(--lh-body); font-family:inherit; }
 .row__text { flex:1; display:flex; flex-direction:column; gap:var(--sp-1); }
 .row__text b { font-weight:400; font-size:var(--fs-line); color:var(--fg); }
 .row__text span { font-size:var(--fs-sm); line-height:var(--lh-body); color:var(--fg4); }

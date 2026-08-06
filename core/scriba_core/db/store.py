@@ -98,6 +98,9 @@ class Segment:
     speaker_id: int | None = None
     speaker_label: str | None = None
     speaker_nome_reale: str | None = None
+    # Com'era il testo prima che il glossario correggesse i nomi propri. None
+    # quando non è stato corretto niente — cioè quasi sempre.
+    testo_originale: str | None = None
 
 
 class Store:
@@ -193,6 +196,7 @@ class Store:
         conn.executescript(_SCHEMA_EXTRA)
         self._migra_colonna_diarizzata_at(conn)
         self._migra_colonna_cliente(conn)
+        self._migra_colonna_testo_originale(conn)
         self._migra_uuid_task(conn)
         row = conn.execute("SELECT MAX(version) AS v FROM schema_version").fetchone()
         if row is None or row["v"] is None:
@@ -235,6 +239,18 @@ class Store:
         colonne = {r["name"] for r in conn.execute("PRAGMA table_info(sessions)")}
         if "client_id" not in colonne:
             conn.execute("ALTER TABLE sessions ADD COLUMN client_id INTEGER")
+
+    @staticmethod
+    def _migra_colonna_testo_originale(conn: sqlite3.Connection) -> None:
+        """Aggiunge `transcript_segments.testo_originale` ai database di prima del glossario.
+
+        Come le due sopra. Resta NULL su tutto ciò che è già stato trascritto:
+        di quelle correzioni non c'è stata nessuna, quindi non c'è niente da
+        ricostruire — l'assenza è il valore giusto, non un buco da riempire.
+        """
+        colonne = {r["name"] for r in conn.execute("PRAGMA table_info(transcript_segments)")}
+        if "testo_originale" not in colonne:
+            conn.execute("ALTER TABLE transcript_segments ADD COLUMN testo_originale TEXT")
 
     @staticmethod
     def _migra_uuid_task(conn: sqlite3.Connection) -> None:
@@ -616,14 +632,15 @@ class Store:
         *,
         is_final: bool = False,
         confidence: float | None = None,
+        testo_originale: str | None = None,
     ) -> int:
         with self.tx() as conn:
             cur = conn.execute(
                 """
                 INSERT INTO transcript_segments
                   (session_id, source, t_start_ms, t_end_ms, testo, is_final, confidence,
-                   speaker_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?,
+                   testo_originale, speaker_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?,
                         (SELECT id FROM speakers
                           WHERE session_id = ? AND ruolo = ?))
                 """,
@@ -635,6 +652,7 @@ class Store:
                     testo,
                     int(is_final),
                     confidence,
+                    testo_originale,
                     session_id,
                     "me" if source == "mic" else "them",
                 ),
@@ -649,6 +667,7 @@ class Store:
         t_end_ms: int | None = None,
         is_final: bool = True,
         confidence: float | None = None,
+        testo_originale: str | None = None,
     ) -> None:
         """Sostituisce il testo provvisorio con quello rifinito.
 
@@ -663,10 +682,11 @@ class Store:
                        t_end_ms = COALESCE(?, t_end_ms),
                        is_final = ?,
                        confidence = COALESCE(?, confidence),
+                       testo_originale = COALESCE(?, testo_originale),
                        revision = revision + 1
                  WHERE id = ?
                 """,
-                (testo, t_end_ms, int(is_final), confidence, segment_id),
+                (testo, t_end_ms, int(is_final), confidence, testo_originale, segment_id),
             )
 
     def elimina_segmento(self, segment_id: int) -> None:
@@ -695,7 +715,7 @@ class Store:
         # deve sparire dai risultati: da qui il LEFT invece di un JOIN semplice.
         sql = """
             SELECT t.id, t.session_id, t.source, t.t_start_ms, t.t_end_ms, t.testo,
-                   t.is_final, t.revision, t.confidence,
+                   t.is_final, t.revision, t.confidence, t.testo_originale,
                    sp.id AS speaker_id, sp.label AS speaker_label,
                    sp.nome_reale AS speaker_nome_reale
               FROM transcript_segments t
@@ -719,6 +739,7 @@ class Store:
                 speaker_id=r["speaker_id"],
                 speaker_label=r["speaker_label"],
                 speaker_nome_reale=r["speaker_nome_reale"],
+                testo_originale=r["testo_originale"],
             )
             for r in self.conn.execute(sql, (session_id,))
         ]

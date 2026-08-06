@@ -290,6 +290,32 @@
   dei due lati sapeva di dover controllare.
 - **Data:** 2026-08-06
 
+### D-015 — I nomi propri si correggono dopo, e solo dove il rischio è basso
+- **Contesto:** un nome fuori vocabolario viene indovinato da capo a ogni frase e
+  ogni volta diversamente («Clotilde» → *Tilde*, *Cotilde*, *Protile*). Non è estetica:
+  una task assegnata a *Giulio* invece che a Giulia è sbagliata, e la ricerca
+  nell'archivio non trova la call. Parakeet non ha un aggancio per ricevere un
+  vocabolario prima — le famiglie transducer non ne hanno uno e onnx-asr non lo espone.
+- **Scelta:** correzione **a valle**, sui soli segmenti definitivi, contro un glossario
+  che unisce i termini scritti a mano e i nomi dei clienti già in anagrafica.
+- **La parte difficile non è trovare i nomi: è non rovinarli.** Prendere *Protile* vuol
+  dire ammettere tre modifiche su otto lettere, e a quella distanza ci sta anche
+  **Matilde**, che è un'altra persona. Correggere un nome giusto in uno sbagliato è
+  peggio del difetto di partenza: il primo lo si vede rileggendo, il secondo no. Da qui
+  tre regole che valgono più della soglia:
+  1. **Serve il segnale della maiuscola.** Su una parola sola, senza, si corregge solo
+     ciò che combacia già: «totale» dista una lettera da «Tonale».
+  2. **Nel dubbio non si tocca.** Due termini entrambi compatibili con la stessa parola
+     la lasciano com'è — i nomi vicini si proteggono a vicenda.
+  3. **L'originale resta** in `transcript_segments.testo_originale`. L'app sta mettendo
+     in bocca a qualcuno una parola che il modello non ha sentito: dev'essere
+     annullabile e verificabile.
+- **Il livello lo sceglie chi usa l'app,** e `prudente` è il default: allargare la rete
+  è una decisione con un costo, non un miglioramento gratuito da attivare di nascosto.
+- **Non si tocca il provvisorio.** Una correzione che compare e sparisce mentre si legge
+  è peggio del nome sbagliato.
+- **Data:** 2026-08-06
+
 ## Decisioni aperte
 
 - **OA-1** — Passare a Qwen3.5-9B come LLM di default? Ha IFEval più alto e KV cache più
