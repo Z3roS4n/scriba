@@ -316,6 +316,42 @@
   è peggio del nome sbagliato.
 - **Data:** 2026-08-06
 
+### D-016 — Due modelli di trascrizione: Parakeet dal vivo, Canary dopo
+- **Contesto:** la lingua della sessione non arrivava al modello. Non per una svista:
+  onnx-asr onora `language` **solo** per Whisper e Canary, e `nemo-parakeet-tdt-0.6b-v3`
+  si risolve in un transducer che dai kwargs legge solo `need_logprobs`. Prova sul
+  modello installato: `language='zz-non-esiste'` non solleva niente, dove Canary dà
+  `KeyError: '<|zz-non-esiste|>'`. Da qui le frasi in spagnolo dentro una call italiana.
+- **Misurato**, non stimato, su 159 s di FLEURS italiano su questa macchina:
+
+  | | Parakeet TDT 0.6B | Canary 1B |
+  |---|---|---|
+  | RTFx | 15.2× | 6.1× |
+  | WER | 6.8 % | 5.3 % |
+  | finestra da 5 s | 382 ms | 696 ms |
+
+- **Scelta:** tutti e due. Lo streaming ritrascrive l'intera frase in corso a ogni passo
+  su due tracce serializzate — 500 ms a traccia — e Canary sfora dai cinque secondi di
+  frase in poi, cioè quasi sempre. Non può sostituire Parakeet dal vivo. Sta invece dove
+  nessuno aspetta: una passata a registrazione conclusa, con la lingua imposta.
+- **Il vantaggio è vero, non un artefatto del benchmark.** FLEURS scrive i numeri a
+  lettere e Parakeet in cifre, quindi il confronto poteva essere falsato: sulle sole
+  frasi senza numeri il divario resta +1.3 punti su +1.5. Va però detto che Canary
+  scrive «quattro milaottocento novantadue metri» dove Parakeet scrive «4.892 metri»:
+  sul benchmark vince, in un verbale è discutibile.
+- **La passata riscrive lo stesso record.** `refine_segment` cambia il testo e lascia
+  l'id: le citazioni delle task puntano lì. `testo_originale` conserva la prima versione,
+  quella dal vivo, non l'ultima — è quella che vale.
+- **E si rifiuta di lavorare quando non può.** L'audio salvato del loopback non è
+  allineato all'orologio della call (#45): tagliare per orario darebbe la frase
+  sbagliata, e la scriverebbe sopra quella giusta. Prima di riscrivere si ritrascrivono
+  alcune righe sparse e si confrontano con quelle che ci sono: sotto una soglia di
+  somiglianza quella traccia si lascia stare **e lo si dice all'utente**. Non è una stima
+  di rischio, è una misura fatta sui dati di quella call.
+- **Spenta di default:** un modello da 1 GB da scaricare e minuti di CPU dopo ogni call
+  non si accendono per conto di qualcuno.
+- **Data:** 2026-08-06
+
 ## Decisioni aperte
 
 - **OA-1** — Passare a Qwen3.5-9B come LLM di default? Ha IFEval più alto e KV cache più

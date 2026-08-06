@@ -128,6 +128,28 @@ export function SezioneTrascrizione({
           </div>
         </div>
 
+        <div className="settings__sub">Dopo la call</div>
+
+        <div className="row">
+          <div className="row__text">
+            <b>Rifai la trascrizione da sola</b>
+            <span>
+              A registrazione finita ripassa ogni riga con un modello più preciso, a cui la lingua si
+              può imporre davvero — è la correzione per le frasi che finiscono in un’altra lingua.
+              Costa qualche minuto di calcolo e un modello da scaricare (Modelli locali → Canary).
+              Il comando resta comunque su ogni singola call.
+            </span>
+          </div>
+          <button
+            className={`switch ${stt.rifinitura_automatica ? 'is-on' : ''}`}
+            onClick={() =>
+              onCambia({ stt: { ...stt, rifinitura_automatica: !stt.rifinitura_automatica } })
+            }
+          >
+            <i />
+          </button>
+        </div>
+
         <div className="settings__sub">Nomi propri</div>
 
         <div className="row row--stack">

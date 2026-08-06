@@ -9,6 +9,7 @@
  */
 
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { ControlloRifinitura, useRifinitura } from './Rifinitura'
 import type { Analisi, FaseAnalisi, Provider, Segmento, Sessione, StatoAnalisi, StatoTask, Task } from './tipi'
 import { tempo } from './tipi'
 
@@ -424,6 +425,9 @@ export function PannelloAnalisi({
   const [diarizStato, setDiarizStato] = useState<DiarizStato>(null)
   const [diarizErrore, setDiarizErrore] = useState<{ sessionId: number; messaggio: string } | null>(null)
   const [diarizConferma, setDiarizConferma] = useState(false)
+  // Come la diarizzazione, e per lo stesso motivo: il lavoro è del processo,
+  // non della call che si sta guardando.
+  const { stato: statoRifinitura } = useRifinitura()
 
   const carica = useCallback(async (id: number) => {
     const r = await window.scriba.get<Analisi>(`/sessions/${id}/analysis`)
@@ -858,6 +862,14 @@ export function PannelloAnalisi({
             onAnnullaConferma={() => setDiarizConferma(false)}
             onAvvia={avviaDiarizzazione}
           />
+          {/* Anche qui prima dell'analisi: lavora sull'audio, e rifare la
+              trascrizione ha senso soprattutto *prima* di analizzarla — le
+              task escono da quel testo. */}
+          <ControlloRifinitura
+            sessione={sessione}
+            stato={statoRifinitura}
+            onFinita={onRicaricaSegmenti}
+          />
         </div>
       </section>
     )
@@ -896,6 +908,11 @@ export function PannelloAnalisi({
           onChiediConferma={() => setDiarizConferma(true)}
           onAnnullaConferma={() => setDiarizConferma(false)}
           onAvvia={avviaDiarizzazione}
+        />
+        <ControlloRifinitura
+          sessione={sessione}
+          stato={statoRifinitura}
+          onFinita={onRicaricaSegmenti}
         />
         <div className="tabs" role="tablist">
           <button className={`tab${scheda === 'sum' ? ' is-active' : ''}`} onClick={() => setScheda('sum')}>

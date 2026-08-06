@@ -792,6 +792,37 @@ def create_app(
         )
         asyncio.create_task(lavora())
 
+    async def _prova_rifinitura_automatica(session_id: int) -> None:
+        """Ripassa la trascrizione prima dell'analisi, se è stato chiesto.
+
+        Prima, non dopo: l'analisi legge la trascrizione, e deve leggere quella
+        rifinita. Farle al contrario significherebbe estrarre le task dal testo
+        che si è appena deciso di non tenere.
+
+        Spenta di default. Ogni condizione mancante fa uscire in silenzio: è un
+        di più, e non deve poter far sembrare rotta una call registrata bene.
+        """
+        conf = settings.tutto().get("stt", {})
+        if not conf.get("rifinitura_automatica", False):
+            return
+        avvia = state.get("avvia_rifinitura")
+        if avvia is None or (state.get("rifinitura") or {}).get("in_corso"):
+            return
+        if not store.segments(session_id, only_final=True):
+            return
+        from .models_manager import modello_gestito_installato
+
+        if not await asyncio.to_thread(modello_gestito_installato, "canary-1b-v2"):
+            log.info("Rifinitura automatica saltata: il modello non è ancora scaricato.")
+            return
+        try:
+            avvia(session_id)
+            task = state.get("rifinitura_task")
+            if task is not None:
+                await task
+        except Exception:
+            log.exception("Rifinitura automatica non riuscita per la sessione %s", session_id)
+
     async def _prova_analisi_automatica(session_id: int) -> None:
         """Fa partire l'analisi da sola a fine registrazione, se si può.
 
@@ -802,6 +833,7 @@ def create_app(
         Ogni condizione mancante fa uscire in silenzio, non con un errore.
         """
         await asyncio.sleep(RITARDO_ANALISI_AUTOMATICA_S)
+        await _prova_rifinitura_automatica(session_id)
         if not settings.tutto().get("analisi_automatica", True):
             return
         if state["analisi_in_corso"]:
@@ -1178,6 +1210,7 @@ def create_app(
     from .api import export as api_export
     from .api import modelli as api_modelli
     from .api import note as api_note
+    from .api import rifinitura as api_rifinitura
     from .api import sistema as api_sistema
 
     contesto = Contesto(
@@ -1193,6 +1226,7 @@ def create_app(
         api_export.crea_router,
         api_modelli.crea_router,
         api_note.crea_router,
+        api_rifinitura.crea_router,
         api_sistema.crea_router,
     ]
     # Un altro agente sta scrivendo questo modulo adesso (vedi
@@ -1211,6 +1245,10 @@ def create_app(
 
     app.state.store = store
     app.state.settings = settings
+    # Lo stato condiviso fra le rotte (`modello`, `recorder`, `analisi_*`,
+    # `rifinitura`). Esposto qui perché è l'unico modo di osservarlo dall'esterno
+    # senza inventarsi una rotta che esista solo per i test.
+    app.state.stato_server = state
     app.state.token = token
     return app
 

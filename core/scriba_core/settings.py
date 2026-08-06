@@ -42,6 +42,11 @@ PREDEFINITE: dict[str, Any] = {
         # I nomi dei clienti entrano nel glossario da soli: sono già scritti
         # nell'anagrafica, e riscriverli a mano è il modo di tenerli disallineati.
         "glossario_clienti": True,
+        # Ripassare la trascrizione a call finita con Canary, che è più preciso
+        # e a cui la lingua si può imporre davvero (vedi stt/rifinitura.py).
+        # Spenta: costa un modello da 1 GB da scaricare e minuti di CPU dopo
+        # ogni call. Il comando resta disponibile a mano sulla singola call.
+        "rifinitura_automatica": False,
     },
     "analisi_automatica": True,
     # Aggiorna una nota di lavoro mentre la call è ancora in corso, invece di
