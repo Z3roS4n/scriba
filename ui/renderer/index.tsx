@@ -267,6 +267,10 @@ function App() {
             // Riusare lo stesso id e' anche cio' che permette a Trascrizione
             // di NON smontare e rimontare la riga alla chiusura della frase.
             const i = prec.findIndex((s) => !s.is_final && s.source === e.source)
+            // Un definitivo senza testo chiude la frase dicendo che non ne e'
+            // rimasto niente: la riga provvisoria va tolta, non congelata
+            // vuota. Il core ha gia' cancellato il segmento dal database.
+            if (e.is_final && !e.text) return i < 0 ? prec : prec.filter((_, k) => k !== i)
             const riga: Segmento = {
               id: i >= 0 ? prec[i].id : -Date.now(),
               source: e.source,

@@ -267,42 +267,59 @@ class StreamingTranscriber:
         if text == utt.last_emitted:
             return
         utt.last_emitted = text
+        self._emit(utt, text, is_final=False)
 
+    def _emit(self, utt: _Utterance, text: str, *, is_final: bool) -> None:
         self.on_event(
             TranscriptEvent(
                 source=self.source,
                 t_start_ms=utt.t_start_ms,
                 t_end_ms=utt.t_start_ms + int(utt.duration_s * 1000),
                 text=text,
-                is_final=False,
+                is_final=is_final,
             )
         )
 
     def _finalize(self) -> None:
-        """Chiude la frase ritrascrivendola per intero."""
+        """Chiude la frase ritrascrivendola per intero.
+
+        Una frase che ha emesso un provvisorio emette **sempre** un definitivo,
+        anche quando non c'è testo da scrivere: il definitivo è ciò che chiude
+        la frase, e una frase che resta aperta se la prende quella dopo — che
+        la sovrascrive, cancellandone il testo. Un definitivo vuoto vuol dire
+        "qui non è rimasto niente, butta via quello che avevi".
+        """
         utt, self._utt = self._utt, None
-        if utt is None or utt.duration_s < self.cfg.min_utterance_s:
+        if utt is None:
+            return
+        # Se non è mai uscito un provvisorio non c'è niente da chiudere, e un
+        # definitivo vuoto sarebbe solo rumore per chi ascolta.
+        aperta = bool(utt.last_emitted)
+
+        if utt.duration_s < self.cfg.min_utterance_s:
+            if aperta:
+                self._emit(utt, "", is_final=True)
             return
 
         # Secondo controllo prima di scrivere: il VAD aveva sentito voce
         # all'apertura, ma un colpo isolato (una porta, una notifica) può
         # aprire una frase che di parlato non ne contiene.
         if not self.engine.has_speech(utt.waveform()):
+            if aperta:
+                self._emit(utt, "", is_final=True)
             return
 
         # Una passata sola su tutta la frase: il modello vede il contesto
         # completo invece di una finestra, e corregge ciò che in tempo reale
         # aveva potuto solo indovinare.
-        text = self.engine.transcribe(utt.waveform(), language=self.cfg.language)
-        if not text.strip():
+        text = self.engine.transcribe(utt.waveform(), language=self.cfg.language).strip()
+        if not text:
+            # La passata completa non ha prodotto niente mentre i provvisori
+            # sì: capita su frasi lunghe o rumorose. Si tiene l'ultimo
+            # provvisorio invece di perdere la frase — l'audio resta comunque
+            # sul disco per rifare la trascrizione, una riga mancante no.
+            text = utt.last_emitted
+        if not text:
             return
 
-        self.on_event(
-            TranscriptEvent(
-                source=self.source,
-                t_start_ms=utt.t_start_ms,
-                t_end_ms=utt.t_start_ms + int(utt.duration_s * 1000),
-                text=text.strip(),
-                is_final=True,
-            )
-        )
+        self._emit(utt, text, is_final=True)

@@ -245,6 +245,43 @@ class TestFinalizzazione:
         t._step()
         assert events == []
 
+    def test_una_frase_gia_mostrata_non_sparisce_se_la_passata_finale_e_vuota(self) -> None:
+        # La passata di `_finalize` guarda la frase intera: su una frase lunga o
+        # rumorosa puo' restituire vuoto anche dopo provvisori sensati. Buttare
+        # via tutto vorrebbe dire perdere una riga che l'utente ha gia' letto.
+        events: list[TranscriptEvent] = []
+        t = StreamingTranscriber(
+            FakeEngine(["il preventivo", "il preventivo di Clotilde", ""], speech=True),
+            "mic",
+            events.append,
+            StreamingConfig(hop_s=0.01, min_utterance_s=0.1),
+        )
+        utt = apri_frase(t)
+        t._emit_partial(utt)
+        t._emit_partial(utt)
+        t._finalize()
+
+        assert events[-1].is_final
+        assert events[-1].text == "il preventivo di Clotilde"
+
+    def test_una_frase_gia_mostrata_si_chiude_anche_quando_non_resta_niente(self) -> None:
+        # Qui non c'e' niente da salvare — il VAD, riguardando tutta la frase,
+        # non ci sente parlato. Il definitivo esce lo stesso, vuoto: e' cio' che
+        # dice a chi ascolta di togliere il provvisorio. Senza, quella frase
+        # resterebbe aperta e se la prenderebbe la successiva.
+        events: list[TranscriptEvent] = []
+        t = StreamingTranscriber(
+            FakeEngine(["rumore preso per parola"], speech=[True, False]),
+            "mic",
+            events.append,
+            StreamingConfig(hop_s=0.01, min_utterance_s=0.1),
+        )
+        utt = apri_frase(t)
+        t._emit_partial(utt)
+        t._finalize()
+
+        assert [(e.is_final, e.text) for e in events][-1] == (True, "")
+
     def test_un_rumore_isolato_non_diventa_testo(self) -> None:
         # Il VAD apre la frase su un colpo secco (una porta, una notifica), ma
         # sul totale non c'e' parlato: non deve finire nella trascrizione.
