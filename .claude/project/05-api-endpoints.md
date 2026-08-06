@@ -50,6 +50,24 @@ token sarebbe raggiungibile da qualunque pagina web aperta nel browser.
 | GET | `/analisi/stato` | fasi dell'analisi in corso |
 | POST | `/tasks/{id}` | correzione manuale di una task |
 
+### Rifinitura della trascrizione
+| Metodo | Path | Scopo |
+|---|---|---|
+| POST | `/sessions/{id}/rifinisci` | ripassa la call con Canary; risponde subito |
+| GET | `/rifinitura/stato` | a che punto è, e se il modello c'è (`modello_pronto`) |
+| POST | `/rifinitura/interrompi` | |
+
+`POST /sessions/{id}/rifinisci` risponde `412` quando la call non ha trascrizione
+o quando il modello non è ancora scaricato — e in quel caso il messaggio dice
+**dove** scaricarlo. Una seconda richiesta sulla stessa call mentre sta già
+girando risponde `200 già_avviata`, non `409`: sta succedendo quello che si sta
+chiedendo, e un errore lì farebbe smettere l'interfaccia di aspettare.
+
+L'esito distingue traccia per traccia: `rifinita`, `assente`, `vuota` e
+`non_allineata` — l'ultimo quando l'audio salvato non corrisponde ai minuti della
+trascrizione (vedi #45), nel qual caso **non si è riscritto niente** e `motivo`
+spiega perché.
+
 ### Clienti e archivio
 | Metodo | Path | Scopo |
 |---|---|---|
@@ -106,8 +124,12 @@ IPv6, usa il pooler». Un messaggio generico manda a cercare nel posto sbagliato
 ## Eventi WebSocket
 
 `transcript` · `session_started` · `session_stopped` · `screenshot` · `analisi`
-(`in_corso` | `fatto` | `errore`) · `modello_locale` · `call_rilevata` ·
-`diarizzazione` · `database_remoto`.
+(`in_corso` | `fatto` | `errore`) · `rifinitura` (`in_corso` | `finita` |
+`interrotta` | `errore`) · `modello_locale` · `call_rilevata` · `diarizzazione` ·
+`database_remoto`.
+
+`rifinitura`/`in_corso` non esce a ogni riga ma ogni dieci: su una call lunga
+sarebbero centinaia di eventi che dicono la stessa cosa.
 
 Gli eventi lunghi non si interrogano a ripetizione: un download di modello dura
 fino a un'ora, e chiedere ogni secondo per un'ora sarebbe assurdo.

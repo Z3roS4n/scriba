@@ -37,11 +37,18 @@ viene**, anche dopo che il segmento da cui viene è stato rifinito.
   dei parlanti sono un livello a parte (`speakers`, `speaker_id`).
 - Un segmento provvisorio viene **aggiornato**, non cancellato e reinserito:
   `revision` cresce, l'`id` resta. È ciò che tiene valide le prove che puntano lì.
-- `testo_originale` (aggiunto per migrazione) conserva com'era la frase prima che
-  il glossario rimettesse a posto i nomi propri (`stt/glossario.py`). NULL quando
-  non è stato corretto niente, che è il caso normale: l'app sta mettendo in bocca
-  a qualcuno una parola che il modello non ha sentito, e senza l'originale la
-  correzione non sarebbe né verificabile né annullabile.
+- `testo_originale` (aggiunto per migrazione) conserva com'era la frase **prima di
+  ogni ritocco automatico**: il glossario che rimette a posto i nomi propri
+  (`stt/glossario.py`) e la passata di rifinitura che la ritrascrive con un altro
+  modello (`stt/rifinitura.py`). NULL quando non è stato toccato niente, che è il
+  caso normale. Si scrive con `COALESCE`, quindi resta la **prima** versione, non
+  l'ultima: quella dal vivo è l'unica che nessun automatismo ha già riscritto.
+  Senza, la correzione non sarebbe né verificabile né annullabile — e l'app sta
+  mettendo in bocca a qualcuno parole che il modello non ha sentito.
+- `t_start_ms` / `t_end_ms` sono l'orologio della **call**, non una posizione dentro
+  il file audio: le due cose coincidono sulla traccia del microfono e **non** su
+  quella del loopback, dove i silenzi non vengono scritti (#45). Chi torna
+  sull'audio partendo da questi numeri deve verificarlo, non darlo per buono.
 - `segments_fts` è un indice FTS5 esterno tenuto allineato da tre trigger. Indicizza
   `testo`, cioè la **versione corretta**: cercare «Clotilde» deve trovare la call
   in cui il modello aveva scritto *Cotilde*, che è il punto di tutto il glossario.

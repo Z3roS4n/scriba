@@ -157,6 +157,13 @@ def _scarica_parakeet() -> None:
     scarica_modello()
 
 
+def _scarica_canary() -> None:
+    """Come sopra, per il modello della rifinitura."""
+    from .stt.canary import scarica_modello
+
+    scarica_modello()
+
+
 # Quanto si sta ad aspettare che il server di analisi cominci a rispondere.
 # Generoso: un modello da 17 GB su disco lento ci mette minuti, e rinunciare
 # prima significherebbe dire «non è partito» di uno che sta ancora caricando.
@@ -226,7 +233,38 @@ CATALOGO: list[ModelloDisponibile] = [
         uso="trascrizione",
         scaricatore=_scarica_parakeet,
     ),
+    ModelloDisponibile(
+        id="canary-1b-v2",
+        repo="istupakov/canary-1b-v2-onnx",
+        commit="",
+        file="",
+        etichetta="Canary 1B v2",
+        descrizione="Serve alla rifinitura dopo la call, non alla trascrizione dal vivo: "
+        "è l'unico dei due a cui si possa imporre la lingua, ed è più preciso "
+        "(WER 5.3% contro 6.8% su FLEURS italiano, misurati su questa macchina). "
+        "Troppo lento per stare al passo mentre si parla — 2,5 volte Parakeet.",
+        # Byte reali della cache locale con quantizzazione int8, la stessa che
+        # usa CanaryEngine: encoder 859 MB + decoder 170 MB + vocab.
+        size_bytes=1_029_328_659,
+        uso="trascrizione",
+        scaricatore=_scarica_canary,
+    ),
 ]
+
+
+def modello_gestito_installato(model_id: str) -> bool:
+    """C'è già, senza costruire un `ModelsManager`.
+
+    Serve a chi deve solo sapere se può usare un modello — la rifinitura, per
+    dirne una — senza tirarsi dietro il thread di download e il sottoprocesso
+    di llama-server che quell'oggetto tiene vivi. Vale per i modelli scaricati
+    da onnx-asr, che finiscono nella cache di Hugging Face e non in una
+    cartella nostra.
+    """
+    for modello in CATALOGO:
+        if modello.id == model_id and modello.scaricatore is not None:
+            return any(repo == modello.repo for repo, _, _ in _cache_hf())
+    return False
 
 
 @dataclass

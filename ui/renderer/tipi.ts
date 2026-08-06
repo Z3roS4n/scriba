@@ -409,6 +409,8 @@ export interface Impostazioni {
     glossario?: string[]
     glossario_livello?: 'prudente' | 'medio' | 'aggressivo'
     glossario_clienti?: boolean
+    /** Ripassa la trascrizione con Canary a fine call, prima dell'analisi. */
+    rifinitura_automatica?: boolean
   }
   analisi_automatica: boolean
   note_incrementali?: boolean
