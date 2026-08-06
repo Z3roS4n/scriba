@@ -34,6 +34,20 @@ log = logging.getLogger(__name__)
 SOURCES = ("mic", "loopback")
 
 
+@dataclass
+class _Aperto:
+    """Il segmento provvisorio di una traccia, in attesa del definitivo.
+
+    Si tiene anche l'istante di inizio e l'ultimo testo scritto: servono a
+    riconoscere una frase rimasta aperta e a chiuderla com'era, invece di
+    lasciarla sovrascrivere dalla frase successiva.
+    """
+
+    id: int
+    t_start_ms: int
+    testo: str
+
+
 @dataclass(frozen=True)
 class RecordingInfo:
     session_id: int
@@ -86,7 +100,7 @@ class Recorder:
         # Il segmento provvisorio aperto per ogni traccia. Quando la frase si
         # chiude, quel record viene rifinito invece di crearne uno nuovo: è ciò
         # che tiene validi i riferimenti che le task avranno su questi segmenti.
-        self._open_segments: dict[str, int] = {}
+        self._open_segments: dict[str, _Aperto] = {}
         # Il microfono riprende sempre un po' di quello che esce dalle casse.
         self._eco = self._nuovo_filtro_eco()
         self._echi_scartati = 0
@@ -212,36 +226,67 @@ class Recorder:
         if session_id is None:
             return
 
+        aperto = self._open_segments.get(ev.source)
+
+        # Una frase che non si è chiusa non deve essere presa dalla frase dopo:
+        # `refine_segment` ne sostituirebbe il testo lasciandole l'istante di
+        # inizio del parlato precedente, e della frase di prima non resterebbe
+        # niente. Si chiude com'era e si riparte. Il trascrittore emette sempre
+        # un definitivo, quindi qui non si dovrebbe passare mai: se succede si
+        # vuole saperlo, invece di scoprirlo da una trascrizione con dei buchi.
+        if aperto is not None and aperto.t_start_ms != ev.t_start_ms:
+            log.warning(
+                "Frase su %s rimasta aperta a %d ms: chiusa prima di aprire quella a %d ms.",
+                ev.source,
+                aperto.t_start_ms,
+                ev.t_start_ms,
+            )
+            self.store.refine_segment(aperto.id, aperto.testo, is_final=True)
+            del self._open_segments[ev.source]
+            aperto = None
+
         # Quello che esce dalle casse viene annotato, così se torna indietro dal
         # microfono lo si riconosce.
         if ev.source == "loopback":
-            if ev.is_final:
+            if ev.is_final and ev.text:
                 self._eco.registra_uscita(ev.t_start_ms, ev.text)
-        elif ev.is_final and self._eco.e_eco(ev.t_start_ms, ev.text):
+        elif ev.is_final and ev.text and self._eco.e_eco(ev.t_start_ms, ev.text):
             # Il microfono ha ripreso l'altoparlante: non sono parole di chi
             # registra. Attribuirgliele significa invertire chi ha detto cosa
             # nel riassunto, che è peggio di perdere una riga.
-            aperto = self._open_segments.pop(ev.source, None)
-            if aperto is not None:
-                self.store.elimina_segmento(aperto)
+            self._scarta_aperto(ev.source)
             self._echi_scartati += 1
             return
 
-        seg_id = self._open_segments.get(ev.source)
-        if seg_id is None:
+        # Definitivo senza testo: la frase si è chiusa senza produrre niente.
+        # Il provvisorio va tolto, non lasciato lì come riga vuota.
+        if ev.is_final and not ev.text:
+            self._scarta_aperto(ev.source)
+            if self._on_event is not None:
+                self._on_event(ev)
+            return
+
+        if aperto is None:
             seg_id = self.store.add_segment(
                 session_id, ev.source, ev.t_start_ms, ev.t_end_ms, ev.text, is_final=ev.is_final
             )
-            self._open_segments[ev.source] = seg_id
+            self._open_segments[ev.source] = _Aperto(seg_id, ev.t_start_ms, ev.text)
         else:
             self.store.refine_segment(
-                seg_id, ev.text, t_end_ms=ev.t_end_ms, is_final=ev.is_final
+                aperto.id, ev.text, t_end_ms=ev.t_end_ms, is_final=ev.is_final
             )
+            aperto.testo = ev.text
         if ev.is_final:
             self._open_segments.pop(ev.source, None)
 
         if self._on_event is not None:
             self._on_event(ev)
+
+    def _scarta_aperto(self, source: str) -> None:
+        """Toglie il segmento provvisorio di una traccia, se ce n'è uno."""
+        aperto = self._open_segments.pop(source, None)
+        if aperto is not None:
+            self.store.elimina_segmento(aperto.id)
 
     # ------------------------------------------------------------ screenshot
 

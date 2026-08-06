@@ -270,6 +270,26 @@
   questo cliente» — e la selezione esiste già nell'archivio, filtrata.
 - **Data:** 2026-08-03
 
+### D-014 — Una frase che si apre si chiude sempre, anche a mani vuote
+- **Contesto:** `_finalize` poteva uscire senza emettere niente (VAD che non risente
+  parlato, passata completa che restituisce vuoto) dopo che i provvisori erano già usciti.
+  Il segmento restava aperto, e il primo provvisorio della frase **successiva** lo rifiniva:
+  la frase di prima veniva cancellata e quella dopo ereditava il suo istante di inizio.
+  Non era il modello che capiva male — era testo trascritto bene e perso dopo.
+- **Scelta:** l'invariante è «chi ha emesso un provvisorio emette un definitivo», senza
+  eccezioni. Un definitivo **vuoto** è un messaggio pieno: vuol dire «non è rimasto niente,
+  butta via quello che avevi». Il recorder cancella il segmento, i due renderer tolgono la
+  riga provvisoria.
+- **Quando la passata finale non produce niente si tiene l'ultimo provvisorio.** Imperfetto
+  batte mancante: l'audio resta sul disco e la trascrizione si può rifare, ma una riga che
+  non c'è nessuno la nota finché non gli serve — e intanto il riassunto e le task sono
+  nati senza.
+- **Il recorder non si fida comunque.** Riconosce un segmento rimasto aperto dall'istante
+  di inizio diverso, lo chiude com'era e **lo scrive nel log**. È ridondante rispetto
+  all'invariante di sopra, ed è voluto: il difetto era invisibile proprio perché nessuno
+  dei due lati sapeva di dover controllare.
+- **Data:** 2026-08-06
+
 ## Decisioni aperte
 
 - **OA-1** — Passare a Qwen3.5-9B come LLM di default? Ha IFEval più alto e KV cache più

@@ -84,6 +84,10 @@ function App() {
           // sostituisce la riga invece di accodarne un'altra, e la chiave resta
           // la stessa — altrimenti la riga si smonta e rimonta e la lista salta.
           const i = prec.findIndex((r) => r.provvisoria && r.source === ev.source)
+          // Definitivo senza testo: la frase si è chiusa senza produrre
+          // niente. Si toglie la riga provvisoria invece di lasciarla lì
+          // vuota a occupare una delle poche righe dell'overlay.
+          if (ev.is_final && !ev.text) return i < 0 ? prec : prec.filter((_, k) => k !== i)
           const riga: Riga = {
             chiave: i >= 0 ? prec[i].chiave : `r${contatore.current++}`,
             source: ev.source,
