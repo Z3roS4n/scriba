@@ -96,6 +96,12 @@ CREATE TABLE IF NOT EXISTS transcript_segments (
   t_start_ms  INTEGER NOT NULL,        -- offset dall'inizio della sessione
   t_end_ms    INTEGER NOT NULL,
   testo       TEXT    NOT NULL,
+  -- Com'era prima che il glossario rimettesse a posto i nomi propri (vedi
+  -- stt/glossario.py). NULL quando non è stato corretto niente, che è il caso
+  -- normale. Serve a rendere la correzione verificabile: l'app sta mettendo in
+  -- bocca a qualcuno una parola che il modello non ha sentito, e chi rilegge
+  -- deve poter risalire a cosa c'era scritto.
+  testo_originale TEXT,
   confidence  REAL,
   -- Il testo compare provvisorio mentre si parla e viene rifinito a fine frase.
   -- Il record resta lo stesso: si aggiorna testo e si incrementa revision, così

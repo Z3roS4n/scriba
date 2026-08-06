@@ -29,6 +29,19 @@ PREDEFINITE: dict[str, Any] = {
         "microfono_id": None,
         "loopback_id": None,
         "filtro_eco": "medio",
+        # Nomi che il modello non conosce e sbaglia a ogni occorrenza: clienti,
+        # partecipanti, prodotti. Vengono rimessi a posto dopo la trascrizione
+        # (vedi stt/glossario.py) perché Parakeet non ha un modo di riceverli
+        # prima.
+        "glossario": [],
+        # Quanto può essere storpiata una parola perché venga comunque
+        # riconosciuta: 'prudente' | 'medio' | 'aggressivo'. Prudente di
+        # default — allargare la rete significa anche correggere nomi che
+        # erano già giusti, e quello non lo si nota rileggendo.
+        "glossario_livello": "prudente",
+        # I nomi dei clienti entrano nel glossario da soli: sono già scritti
+        # nell'anagrafica, e riscriverli a mano è il modo di tenerli disallineati.
+        "glossario_clienti": True,
     },
     "analisi_automatica": True,
     # Aggiorna una nota di lavoro mentre la call è ancora in corso, invece di

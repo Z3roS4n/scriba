@@ -77,6 +77,16 @@ momento. Entrambe le scorciatoie si possono cambiare dalle Impostazioni. Con pi�
 monitor collegati scegli quale catturare: un pulsante per schermo, nella barra e
 sulla striscia, senza uscire dalla riunione per cercare un menu.
 
+**I nomi propri.** Un nome che il modello non conosce lo indovina da capo a ogni
+frase, e ogni volta in modo diverso: nella stessa call «Clotilde» può uscire come
+*Tilde*, *Cotilde* e *Protile*. In **Impostazioni → Trascrizione → Nomi propri** si
+scrivono i nomi che contano, uno per riga; i clienti dell'anagrafica ci entrano da
+soli. Vengono rimessi a posto a frase finita, e il testo di partenza resta salvato
+accanto a quello corretto. «Quanto insistere» decide quanto storpiata può essere
+una parola perché venga comunque riconosciuta: alzando si prendono più
+storpiature, e si rischia di correggere un nome simile in quello sbagliato — che è
+l'errore che rileggendo non si nota.
+
 **Dopo la call.** L'analisi produce: un riassunto strutturato (in breve, contesto,
 decisioni prese, punti aperti, prossimi passi), i punti salienti con riferimento al
 minuto, e le task — estratte in due passaggi (si raccolgono i frammenti sparsi nella
@@ -214,6 +224,19 @@ Onestamente, non solo quello che manca ma anche quello che non è mai stato veri
   strutturata contro le tre piattaforme in condizioni diverse. Se non ti propone di
   registrare, **Impostazioni → Rilevamento call → Mostra** dice cosa sta vedendo in quel
   momento e quale condizione non è soddisfatta, invece di lasciartelo indovinare.
+- **La lingua della trascrizione non si può imporre al modello.** Parakeet la deduce
+  dall'audio a ogni chiamata, e su spezzoni corti sbaglia: in una call in italiano
+  compaiono frasi in spagnolo o portoghese, che con l'italiano condividono buona parte
+  della fonetica. L'impostazione «Lingua principale» c'è, ma quel modello **non la
+  legge** — la onorano solo Whisper e Canary. Vedi
+  [#41](https://github.com/Z3roS4n/scriba/issues/41): cambiare modello è una scelta da
+  misurare, non da dare per buona.
+- **La correzione dei nomi propri è approssimata per costruzione.** Confronta le parole
+  trascritte con il glossario e sceglie in base a quanto si somigliano: al livello
+  «Aggressivo» può prendere un nome simile e correggerlo in quello sbagliato. Due nomi
+  vicini messi entrambi nel glossario si proteggono a vicenda (nel dubbio non si tocca
+  niente), e l'originale resta sempre salvato — ma il livello alto va usato sapendo
+  cosa costa.
 - **`whisper-large-v3` compare in alcune schermate/dati di esempio dell'interfaccia,
   ma non esiste un motore di trascrizione che lo usi davvero.** Il motore di
   trascrizione reale, unico e predefinito, è Parakeet TDT.

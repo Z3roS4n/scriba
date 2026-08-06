@@ -6,6 +6,8 @@
  * punto 10).
  */
 
+import { useEffect, useState } from 'react'
+
 import type { Dispositivo, Impostazioni } from '../tipi'
 import type { OpzioneSelect } from './Select'
 import { Select } from './Select'
@@ -22,6 +24,45 @@ const LINGUE: OpzioneSelect[] = [
 ]
 
 const FILTRI_ECO = ['basso', 'medio', 'alto'] as const
+
+/** Quanto storpiata può essere una parola perché venga comunque riconosciuta.
+ *  Le descrizioni dicono cosa si perde alzando, non solo cosa si guadagna:
+ *  allargare la rete significa anche correggere nomi che erano già giusti, e
+ *  quello — a differenza del nome sbagliato — rileggendo non si nota. */
+const LIVELLI_GLOSSARIO = [
+  { id: 'prudente', etichetta: 'Prudente', nota: 'Solo una lettera di scarto. Non sbaglia quasi mai, e non prende le storpiature grosse.' },
+  { id: 'medio', etichetta: 'Medio', nota: 'Prende anche i nomi mangiati all’inizio o alla fine («Tilde» per «Clotilde»).' },
+  { id: 'aggressivo', etichetta: 'Aggressivo', nota: 'Prende anche «Protile». Può correggere un nome simile in quello sbagliato.' },
+] as const
+
+/**
+ * L'elenco dei nomi, uno per riga.
+ *
+ * Si salva quando il campo perde il fuoco, non a ogni tasto: qui si scrive un
+ * elenco, e salvare a metà di un nome lo manderebbe nel glossario storpiato —
+ * esattamente il problema che questa schermata esiste per risolvere.
+ */
+function Elenco({ termini, onSalva }: { termini: string[]; onSalva: (t: string[]) => void }) {
+  const [testo, setTesto] = useState(termini.join('\n'))
+
+  // Se le impostazioni cambiano da fuori (un altro salvataggio, una rilettura)
+  // il campo si riallinea — ma non mentre ci si sta scrivendo dentro.
+  useEffect(() => {
+    setTesto((prec) => (prec.trim() === termini.join('\n').trim() ? prec : termini.join('\n')))
+  }, [termini])
+
+  return (
+    <textarea
+      className="arch__search glossario__area"
+      value={testo}
+      rows={5}
+      spellCheck={false}
+      placeholder={'Clotilde\nBanca Sella\nGiulia'}
+      onChange={(e) => setTesto(e.target.value)}
+      onBlur={() => onSalva(testo.split('\n').map((r) => r.trim()).filter(Boolean))}
+    />
+  )
+}
 
 export function SezioneTrascrizione({
   impostazioni,
@@ -82,6 +123,59 @@ export function SezioneTrascrizione({
                 onClick={() => onCambia({ stt: { ...stt, filtro_eco: v } })}
               >
                 {v[0].toUpperCase() + v.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="settings__sub">Nomi propri</div>
+
+        <div className="row row--stack">
+          <div className="row__text">
+            <b>Glossario</b>
+            <span>
+              I nomi che il modello non conosce li indovina da capo a ogni frase, e ogni volta in
+              modo diverso: nella stessa call «Clotilde» diventa Tilde, Cotilde e Protile. Scrivili
+              qui, uno per riga, e vengono rimessi a posto a frase finita. Il testo di partenza
+              resta salvato.
+            </span>
+          </div>
+          <Elenco
+            termini={stt.glossario ?? []}
+            onSalva={(glossario) => onCambia({ stt: { ...stt, glossario } })}
+          />
+        </div>
+
+        <div className="row">
+          <div className="row__text">
+            <b>Anche i clienti</b>
+            <span>I nomi dell’anagrafica entrano nel glossario da soli, senza riscriverli qui.</span>
+          </div>
+          <button
+            className={`switch ${stt.glossario_clienti !== false ? 'is-on' : ''}`}
+            onClick={() =>
+              onCambia({ stt: { ...stt, glossario_clienti: stt.glossario_clienti === false } })
+            }
+          >
+            <i />
+          </button>
+        </div>
+
+        <div className="row row--stack">
+          <div className="row__text">
+            <b>Quanto insistere</b>
+            <span>
+              {LIVELLI_GLOSSARIO.find((l) => l.id === (stt.glossario_livello ?? 'prudente'))?.nota}
+            </span>
+          </div>
+          <div className="segment">
+            {LIVELLI_GLOSSARIO.map((l) => (
+              <button
+                key={l.id}
+                className={(stt.glossario_livello ?? 'prudente') === l.id ? 'is-on' : ''}
+                onClick={() => onCambia({ stt: { ...stt, glossario_livello: l.id } })}
+              >
+                {l.etichetta}
               </button>
             ))}
           </div>

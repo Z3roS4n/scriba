@@ -405,6 +405,10 @@ export interface Impostazioni {
     microfono_id?: string | null
     loopback_id?: string | null
     filtro_eco?: 'basso' | 'medio' | 'alto'
+    /** Nomi propri che il modello sbaglia, rimessi a posto dopo la trascrizione. */
+    glossario?: string[]
+    glossario_livello?: 'prudente' | 'medio' | 'aggressivo'
+    glossario_clienti?: boolean
   }
   analisi_automatica: boolean
   note_incrementali?: boolean
