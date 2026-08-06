@@ -241,13 +241,15 @@ Onestamente, non solo quello che manca ma anche quello che non è mai stato veri
   L'impostazione «Lingua principale» c'è, ma quel modello **non la legge** — la onorano
   solo Whisper e Canary. Il rimedio è «Rifai la trascrizione» a call finita (vedi sopra),
   non un'impostazione diversa.
-- **La traccia degli altri, su certe call, non si può ritrascrivere.** Il file salvato è
-  la concatenazione di quello che il sistema ha consegnato, e mentre nessuno riproduce
-  audio non consegna niente: su una call misurata qui mancano 24 minuti di silenzi, e i
-  minuti scritti nella trascrizione non corrispondono più a dove sta il parlato dentro
-  il file. La rifinitura se ne accorge e **rinuncia su quella traccia dicendolo**, invece
-  di riscrivere ogni riga con il testo di un'altra. Resta da sistemare alla radice:
-  [#45](https://github.com/Z3roS4n/scriba/issues/45).
+- **Le call registrate prima di questa versione non si possono rifinire sulla traccia
+  degli altri.** Fino a poco fa il file salvato era la concatenazione di quello che il
+  sistema aveva consegnato, e mentre nessuno riproduce audio non consegna niente: su una
+  call misurata qui mancavano 24 minuti di silenzi, e i minuti della trascrizione non
+  corrispondevano più a dove sta il parlato dentro il file. **Le registrazioni nuove sono
+  allineate** ([#45](https://github.com/Z3roS4n/scriba/issues/45)); quelle vecchie no, e
+  quel file non contiene l'informazione che servirebbe a rimetterle a posto. La rifinitura
+  se ne accorge e rinuncia su quella traccia dicendolo, invece di riscrivere ogni riga con
+  il testo di un'altra.
 - **La correzione dei nomi propri è approssimata per costruzione.** Confronta le parole
   trascritte con il glossario e sceglie in base a quanto si somigliano: al livello
   «Aggressivo» può prendere un nome simile e correggerlo in quello sbagliato. Due nomi

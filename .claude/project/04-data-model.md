@@ -45,10 +45,14 @@ viene**, anche dopo che il segmento da cui viene è stato rifinito.
   l'ultima: quella dal vivo è l'unica che nessun automatismo ha già riscritto.
   Senza, la correzione non sarebbe né verificabile né annullabile — e l'app sta
   mettendo in bocca a qualcuno parole che il modello non ha sentito.
-- `t_start_ms` / `t_end_ms` sono l'orologio della **call**, non una posizione dentro
-  il file audio: le due cose coincidono sulla traccia del microfono e **non** su
-  quella del loopback, dove i silenzi non vengono scritti (#45). Chi torna
-  sull'audio partendo da questi numeri deve verificarlo, non darlo per buono.
+- `t_start_ms` / `t_end_ms` sono l'orologio della **call**, e da #45 il file audio lo
+  rispetta: i buchi di consegna vengono riempiti di silenzio, quindi il secondo 900
+  del file è il secondo 900 della call. Resta uno scarto proporzionale di ~0.2% —
+  la scheda audio non campiona esattamente alla frequenza dichiarata — che si
+  corregge confrontando la lunghezza del file con `sessions.durata_ms`. **Sulle call
+  registrate prima non vale**, e nel file non c'è l'informazione per rimediare: chi
+  torna sull'audio da questi numeri lo verifica (vedi `stt/rifinitura.py`), non lo dà
+  per buono.
 - `segments_fts` è un indice FTS5 esterno tenuto allineato da tre trigger. Indicizza
   `testo`, cioè la **versione corretta**: cercare «Clotilde» deve trovare la call
   in cui il modello aveva scritto *Cotilde*, che è il punto di tutto il glossario.
