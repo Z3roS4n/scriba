@@ -245,7 +245,10 @@ class Recorder:
             transcriber.feed(samples, t_ms)
         writer = self._writers.get(source)
         if writer is not None:
-            writer.write(samples)
+            # L'istante serve al file quanto al trascrittore: è quello a
+            # decidere dove il blocco finisce dentro la traccia, e senza il
+            # loopback perde tutti i silenzi (vedi audio/writer.py).
+            writer.write(samples, t_ms)
 
     # ------------------------------------------------------------- eventi STT
 
@@ -393,7 +396,25 @@ class Recorder:
             # quando ha premuto stop.
             self._teardown_transcribers()
 
+            # Le tracce si portano fino alla fine della call prima di chiuderle.
+            # Chi smette di consegnare cinque minuti prima dello stop —
+            # tipicamente il loopback, se nessuno riproduce più niente —
+            # lascerebbe un file più corto della sessione, e chi lo confronta
+            # con `durata_ms` per orientarsi dentro lo giudicherebbe
+            # disallineato in tutta la sua lunghezza.
+            fine_ms = self.clock.now_ms()
+            for w in self._writers.values():
+                w.porta_fino_a(fine_ms)
+
             percorsi = {s: w.stop() for s, w in self._writers.items()}
+            for sorgente, w in self._writers.items():
+                if w.silenzio_ricostruito_s > 1.0:
+                    log.info(
+                        "Traccia %s: %.0f s di silenzio ricostruito su %.0f s totali.",
+                        sorgente,
+                        w.silenzio_ricostruito_s,
+                        w.durata_s,
+                    )
             self._writers.clear()
             self.store.set_audio_paths(
                 session_id,

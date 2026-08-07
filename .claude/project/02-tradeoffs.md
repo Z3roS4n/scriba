@@ -352,6 +352,32 @@
   non si accendono per conto di qualcuno.
 - **Data:** 2026-08-06
 
+### D-017 — Il silenzio si scrive sul disco, e costa
+- **Contesto:** D-006 aveva deciso la timeline ibrida, ma quella decisione era rimasta
+  nella misurazione di Fase 1: nel percorso che **salva il file** non c'era. Il loopback
+  WASAPI non consegna pacchetti mentre nessuno riproduce audio, e `TrackWriter` scriveva
+  di seguito quello che arrivava. Misurato su una registrazione vera: la traccia degli
+  altri della call 5 è **-21.7%**, ventiquattro minuti di silenzi mancanti. Ogni istante
+  della trascrizione puntava, dentro quel file, a un punto diverso da quello giusto.
+- **Scelta:** ogni blocco porta l'istante della call, e il file lo rispetta — contiguo
+  sotto i 50 ms di scarto, salto alla posizione assoluta sopra. È D-006, applicato dove
+  serviva. In più `porta_fino_a` allunga la coda fino alla fine della call: senza, una
+  traccia che smette di consegnare cinque minuti prima dello stop resta corta, e chi la
+  confronta con `durata_ms` la giudica disallineata per tutta la sua lunghezza.
+- **Il prezzo è disco.** Un'ora in cui gli altri parlano venti minuti passa da ~37 MB a
+  ~115 MB. L'alternativa — salvare una mappa `(istante → posizione)` accanto alla traccia
+  — non spreca niente ma va conosciuta da **ogni** consumatore futuro, e chi apre il
+  `.wav` con un lettore qualunque vedrebbe comunque una traccia compressa. Il modo in cui
+  questo difetto falliva era silenzioso: si è preferito pagare in byte una proprietà che
+  vale per costruzione.
+- **Una traccia interamente muta continua a non lasciare file.** Il confronto in `stop()`
+  è sul catturato (`_campioni - _silenzio`), non sul totale: da quando i buchi si
+  riempiono, il totale è quasi sempre diverso da zero anche quando non è arrivato niente.
+- **Vale solo da qui in avanti.** Le registrazioni già sul disco restano come sono, e la
+  rifinitura continuerà a rifiutarle — correttamente: quel file non contiene
+  l'informazione che servirebbe a riallinearlo, e nessun fattore la inventa.
+- **Data:** 2026-08-07
+
 ## Decisioni aperte
 
 - **OA-1** — Passare a Qwen3.5-9B come LLM di default? Ha IFEval più alto e KV cache più
