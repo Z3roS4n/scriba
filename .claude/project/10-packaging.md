@@ -70,17 +70,23 @@ era il primo giorno.
 ### Ogni fix esce come release
 
 Regola di progetto (vedi `AGENTS.md`): un fix in `main` diventa una release su GitHub.
-Il numero si alza **nella PR del fix** — su `main` non si committa — e dopo il merge
-`scripts/rilascia.ps1` mette il tag e pubblica.
+Il numero si alza **nella PR del fix** — su `main` non si committa — e insieme al numero
+si scrive la voce nei due changelog.
 
-Le note sono divise in tre sezioni fisse (`## Cambiamenti che rompono`,
-`## Funzioni nuove`, `## Correzioni`) ed è la più alta con delle voci a decidere lo
-scatto. Lo script **confronta lo scatto dichiarato con quello fatto** e si ferma se non
-coincidono: senza quel controllo la classificazione diventa decorativa, e un numero che
-non riflette cosa c'è dentro è peggio di nessun numero.
+**Il changelog non sta nella descrizione della release** ma in `CHANGELOG.md` (inglese) e
+`CHANGELOG.it.md` (italiano): una descrizione su GitHub non si cerca, non entra in un
+diff e non si trova guardando il repository. La descrizione si limita a due righe e ai
+collegamenti, che `scripts/rilascia.ps1` genera da solo puntando al tag appena creato —
+non a `main`, così restano quelli di quella versione anche quando i file cambiano.
 
-L'installer non viene allegato di default: ~170 MB non firmati su un repository
-pubblico sono una decisione da prendere ogni volta (`-ConInstaller`).
+Le sezioni sono tre (`### Breaking changes`, `### New features`, `### Fixes`) ed è la più
+alta con delle voci a decidere lo scatto. Lo script **confronta lo scatto dichiarato con
+quello fatto** e si ferma se non coincidono: senza quel controllo la classificazione
+diventa decorativa, e un numero che non riflette cosa c'è dentro è peggio di nessun
+numero. Controlla anche che **entrambe** le lingue abbiano la voce.
+
+L'installer viene allegato. Non è firmato, e questo va scritto nel changelog: chi scarica
+incontra l'avviso di SmartScreen e deve sapere perché. `-SenzaInstaller` lo esclude.
 
 ## Struttura dei file di packaging
 
