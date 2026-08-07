@@ -1,4 +1,9 @@
-# Pubblica una release su GitHub per la versione che sta in ui/package.json.
+﻿# Pubblica una release su GitHub per la versione che sta in ui/package.json.
+#
+# ATTENZIONE: questo file e' salvato in UTF-8 **con BOM**, e deve restarci.
+# PowerShell 5.1 legge un .ps1 senza firma come ANSI: le lettere accentate nelle
+# stringhe qui dentro diventerebbero "Ã¨" e finirebbero cosi' nella descrizione
+# della release, pubblicate. E' gia' successo una volta.
 #
 #   powershell -ExecutionPolicy Bypass -File scripts/rilascia.ps1
 #   powershell -ExecutionPolicy Bypass -File scripts/rilascia.ps1 -SenzaInstaller
