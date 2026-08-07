@@ -18,7 +18,7 @@ from datetime import datetime
 
 from ..db.store import Segment, Store
 from ..llm.base import Completion, LLMProvider
-from . import date_italiane, prompts
+from . import date_italiane, lingue, prompts
 
 
 class AnalisiInterrotta(Exception):
@@ -196,6 +196,17 @@ class Analizzatore:
         if self.on_fase is not None:
             self.on_fase(chiave, stato, nota)
 
+    # I due prompt di sistema portano dentro la lingua della call: senza,
+    # dicevano al modello che la trascrizione era italiana anche quando non lo
+    # era, e il riassunto usciva in italiano comunque (#61).
+    @staticmethod
+    def _redazione(lingua: str | None) -> str:
+        return prompts.SYSTEM_REDAZIONE.format(lingua=lingue.nome(lingua))
+
+    @staticmethod
+    def _estrazione(lingua: str | None) -> str:
+        return prompts.SYSTEM_ESTRAZIONE.format(lingua=lingue.nome(lingua))
+
     @staticmethod
     def _somma(analisi: Analisi, c: Completion) -> None:
         analisi.tokens_in += c.tokens_in or 0
@@ -206,20 +217,23 @@ class Analizzatore:
 
     # ------------------------------------------------------------- redazione
 
-    def riassumi(self, segmenti: list[Segment], schermate: list | None = None) -> Completion:
+    def riassumi(
+        self, segmenti: list[Segment], schermate: list | None = None, *, lingua: str | None = None
+    ) -> Completion:
         return self._chiedi(
-            prompts.SYSTEM_REDAZIONE,
+            self._redazione(lingua),
             prompts.SUMMARY_PROMPT.format(
-                trascrizione=formatta_segmenti(segmenti, schermate)
+                trascrizione=formatta_segmenti(segmenti, schermate),
+                **lingue.sezioni_riassunto(lingua),
             ),
             max_tokens=1200,
         )
 
     def punti_salienti(
-        self, segmenti: list[Segment], schermate: list | None = None
+        self, segmenti: list[Segment], schermate: list | None = None, *, lingua: str | None = None
     ) -> Completion:
         return self._chiedi(
-            prompts.SYSTEM_REDAZIONE,
+            self._redazione(lingua),
             prompts.HIGHLIGHTS_PROMPT.format(
                 trascrizione=formatta_segmenti(segmenti, schermate)
             ),
@@ -229,7 +243,11 @@ class Analizzatore:
     # ------------------------------------------------------------------ task
 
     def candidati(
-        self, segmenti: list[Segment], schermate: list | None = None
+        self,
+        segmenti: list[Segment],
+        schermate: list | None = None,
+        *,
+        lingua: str | None = None,
     ) -> tuple[list[dict], list[Completion]]:
         """Primo passaggio: raccoglie tutto, finestra per finestra."""
         tutti: list[dict] = []
@@ -251,7 +269,7 @@ class Analizzatore:
             dentro = [s for s in (schermate or []) if inizio <= s["t_ms"] <= fine]
 
             c = self._chiedi(
-                prompts.SYSTEM_ESTRAZIONE,
+                self._estrazione(lingua),
                 prompts.EXTRACT_CANDIDATES_PROMPT.format(
                     finestra=formatta_segmenti(finestra, dentro)
                 ),
@@ -316,7 +334,9 @@ class Analizzatore:
             completate.append(unita)
         return completate
 
-    def unisci(self, candidati: list[dict], quando: datetime) -> Completion:
+    def unisci(
+        self, candidati: list[dict], quando: datetime, *, lingua: str | None = None
+    ) -> Completion:
         """Secondo passaggio: ricompone gli impegni sparsi.
 
         Riceve solo i candidati, non la trascrizione: sono poche migliaia di
@@ -324,7 +344,7 @@ class Analizzatore:
         confronto invece di rileggere tutto.
         """
         return self._chiedi(
-            prompts.SYSTEM_ESTRAZIONE,
+            self._estrazione(lingua),
             prompts.MERGE_TASKS_PROMPT.format(
                 candidati=json.dumps(candidati, ensure_ascii=False, indent=1),
                 data_riunione=quando.strftime("%Y-%m-%d"),
@@ -344,9 +364,13 @@ class Analizzatore:
             return analisi
 
         sessione = self.store.conn.execute(
-            "SELECT started_at FROM sessions WHERE id = ?", (session_id,)
+            "SELECT started_at, lingua FROM sessions WHERE id = ?", (session_id,)
         ).fetchone()
         quando = datetime.fromtimestamp((sessione["started_at"] if sessione else 0) / 1000)
+        # La lingua della call decide quella dell'analisi. Sta gia' in questa
+        # riga: prima la si leggeva solo per l'orario, e il riassunto usciva in
+        # italiano anche per una riunione tenuta in un'altra lingua (#61).
+        lingua = sessione["lingua"] if sessione else None
 
         # Le schermate catturate durante la call entrano nel contesto insieme a
         # quello che si diceva mentre erano sullo schermo.
@@ -354,7 +378,7 @@ class Analizzatore:
 
         self._avvisa("riassunto", "in_corso")
         t0 = time.monotonic()
-        riassunto = self.riassumi(segmenti, schermate)
+        riassunto = self.riassumi(segmenti, schermate, lingua=lingua)
         analisi.riassunto = riassunto.text.strip()
         self._somma(analisi, riassunto)
         self._salva_output(session_id, "summary", analisi.riassunto, riassunto, prompts.SUMMARY)
@@ -362,7 +386,7 @@ class Analizzatore:
 
         self._avvisa("salienti", "in_corso")
         t0 = time.monotonic()
-        salienti = self.punti_salienti(segmenti, schermate)
+        salienti = self.punti_salienti(segmenti, schermate, lingua=lingua)
         analisi.punti_salienti = salienti.text.strip()
         self._somma(analisi, salienti)
         self._salva_output(
@@ -373,14 +397,14 @@ class Analizzatore:
         # candidati() avvisa "task" finestra per finestra: qui si segna solo
         # l'inizio, per il caso raro di zero finestre (nessun segmento finale).
         self._avvisa("task", "in_corso", None)
-        candidati, completions = self.candidati(segmenti, schermate)
+        candidati, completions = self.candidati(segmenti, schermate, lingua=lingua)
         for c in completions:
             self._somma(analisi, c)
         self._avvisa("task", "fatta", f"{len(candidati)} candidati")
 
         if candidati:
             self._avvisa("unione", "in_corso")
-            unione = self.unisci(candidati, quando)
+            unione = self.unisci(candidati, quando, lingua=lingua)
             self._somma(analisi, unione)
             dati = unione.data or {}
             analisi.scartati = dati.get("scartati", [])

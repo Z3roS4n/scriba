@@ -220,7 +220,12 @@ def _riassunto_a_gruppi(testo: str | None) -> list[dict[str, Any]]:
 class StartRequest(BaseModel):
     titolo: str | None = None
     piattaforma: str | None = None
-    lingua: str = "it"
+    # None, non "it": la lingua predefinita e' quella scelta in Impostazioni, e
+    # metterla qui vorrebbe dire che chi non la manda registra sempre in
+    # italiano. E' quello che succedeva — l'interfaccia non la manda mai, e
+    # `sessions.lingua` valeva "it" su ogni call, anche su quelle tenute in
+    # un'altra lingua (#61).
+    lingua: str | None = None
     # L'utente ha confermato di aver avvisato i partecipanti. Non è un
     # tecnicismo: senza, la sessione resta marcata come non confermata.
     consenso_confermato: bool = False
@@ -600,7 +605,7 @@ def create_app(
                 recorder.start,
                 titolo=req.titolo,
                 piattaforma=req.piattaforma,
-                lingua=req.lingua,
+                lingua=req.lingua or str(settings.tutto().get("stt", {}).get("lingua") or "it"),
                 consenso_confermato_at=int(time.time() * 1000) if req.consenso_confermato else None,
             )
         except RuntimeError as exc:

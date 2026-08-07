@@ -9,20 +9,29 @@ le citazioni**. Indica quale segmento, e il testo lo rilegge il codice dal
 database. Un modello da 12 miliardi di parametri tende a parafrasare le frasi
 invece di copiarle e a inventare i timestamp; togliergli quel compito elimina
 l'intera categoria di errore invece di sperare che non capiti.
+
+I due prompt di sistema sono **modelli da riempire**, non costanti: la lingua
+dentro cambia con quella della call. Prima erano fissi all'italiano, e una
+riunione in inglese usciva riassunta in italiano da un modello a cui era stato
+detto che la trascrizione era italiana — cioè una cosa falsa su ciò che aveva
+sotto gli occhi (#61). Vedi `ai/lingue.py` per il perché le istruzioni restino
+in italiano mentre l'uscita no.
 """
 
 from __future__ import annotations
 
-SYSTEM_ESTRAZIONE = """Sei un analista che ricava impegni operativi da trascrizioni di riunioni di lavoro in italiano.
+SYSTEM_ESTRAZIONE = """Sei un analista che ricava impegni operativi da trascrizioni di riunioni di lavoro in {lingua}.
 Lavori solo su ciò che è scritto nella trascrizione. Non aggiungi conoscenza tua, non deduci ciò che non è stato detto.
+I campi di testo che compili vanno scritti in {lingua}, la lingua della riunione.
 Rispondi esclusivamente con JSON conforme allo schema richiesto."""
 
-SYSTEM_REDAZIONE = """Scrivi in italiano, per una persona che alla riunione non c'era.
+SYSTEM_REDAZIONE = """Scrivi in {lingua}, per una persona che alla riunione non c'era.
+La riunione si è svolta in {lingua} e in {lingua} va scritto tutto quello che produci, anche se questa istruzione è in un'altra lingua.
 Tono asciutto e professionale. Nessuna formula di apertura o chiusura, nessun commento tuo.
 Ogni affermazione deve derivare dalla trascrizione."""
 
 
-EXTRACT_CANDIDATES = ("extract_candidates", "v2")
+EXTRACT_CANDIDATES = ("extract_candidates", "v3")
 EXTRACT_CANDIDATES_PROMPT = """Questa è una finestra della riunione. Ogni riga ha la forma:
 
 [id] (mm:ss) CHI: testo
@@ -111,7 +120,7 @@ SCHEMA_CANDIDATES = {
 }
 
 
-MERGE_TASKS = ("merge_tasks", "v2")
+MERGE_TASKS = ("merge_tasks", "v3")
 MERGE_TASKS_PROMPT = """Questi sono i candidati estratti da un'unica riunione, in ordine cronologico.
 
 I dettagli di uno stesso impegno sono spesso SPARSI: il lavoro viene nominato a un certo punto,
@@ -220,24 +229,27 @@ SCHEMA_MERGE = {
 }
 
 
-SUMMARY = ("summary", "v1")
+SUMMARY = ("summary", "v2")
+# I titoli arrivano da `lingue.py` invece di stare scritti qui: sono le uniche
+# parole di questo prompt che finiscono davvero sotto gli occhi dell'utente, e
+# una call in inglese non deve produrre un riassunto con le sezioni in italiano.
 SUMMARY_PROMPT = """Scrivi il riassunto di questa riunione.
 
-Struttura in Markdown:
+Struttura in Markdown, con queste intestazioni esatte:
 
-## In breve
+## {t_breve}
 Da tre a cinque punti con l'esito della riunione. Se è stata presa una decisione, va qui.
 
-## Contesto
+## {t_contesto}
 Un paragrafo: di cosa si è parlato e perché.
 
-## Decisioni prese
+## {t_decisioni}
 Elenco. Per ognuna indica chi ha deciso e il minuto fra parentesi quadre.
 
-## Punti aperti
+## {t_aperti}
 Questioni non risolte, con chi deve scioglierle.
 
-## Prossimi passi
+## {t_passi}
 Solo ciò che è stato esplicitamente concordato.
 
 Vincoli:
@@ -250,7 +262,7 @@ Trascrizione:
 {trascrizione}"""
 
 
-HIGHLIGHTS = ("highlights", "v1")
+HIGHLIGHTS = ("highlights", "v2")
 HIGHLIGHTS_PROMPT = """Estrai i momenti salienti: i passaggi che una persona vorrebbe riascoltare.
 
 Per ciascuno produci una riga così:
@@ -268,7 +280,7 @@ Trascrizione:
 {trascrizione}"""
 
 
-RUNNING_NOTE = ("running_note", "v1")
+RUNNING_NOTE = ("running_note", "v2")
 RUNNING_NOTE_PROMPT = """La riunione è ancora in corso. Aggiorna la nota di lavoro.
 
 Nota precedente:

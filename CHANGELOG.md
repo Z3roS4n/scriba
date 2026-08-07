@@ -7,6 +7,26 @@ Each entry is split into three sections, and the highest one present decides
 the version bump: **Breaking changes** (major), **New features** (minor),
 **Fixes** (patch). A section with nothing in it is left out.
 
+## 0.6.0 — 7 August 2026
+
+### New features
+
+- **The analysis comes out in the language of the call.** Summary, key points,
+  tasks and the working note follow the language chosen under Settings →
+  Transcription: an English meeting produces an English summary, with English
+  section headings. It used to always come out in Italian, and the model was
+  told the transcript was Italian even when it was not — a false statement
+  about what it had in front of it.
+  ([#61](https://github.com/Z3roS4n/scriba/issues/61))
+
+### Fixes
+
+- **The language you pick in settings now actually applies.** Only "Redo the
+  transcription" read it: recording always started in Italian, so every call
+  showed as Italian in the archive and in exports even when it was not. Calls
+  recorded before this stay marked "it", because that is how they were
+  recorded. ([#61](https://github.com/Z3roS4n/scriba/issues/61))
+
 ## 0.5.1 — 7 August 2026
 
 ### Fixes
