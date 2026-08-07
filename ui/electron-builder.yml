@@ -24,6 +24,11 @@ directories:
 files:
   - dist/main/**/*
   - dist/renderer/**/*
+  # Commit, data e stato dell'albero della build. Senza questa riga finisce
+  # nell'asar tutto tranne lui, e l'applicazione pacchettizzata riporta la
+  # versione senza il commit: proprio il caso che serviva coprire, perche' fra
+  # due build della stessa versione e' l'unica cosa che le distingue.
+  - dist/versione.json
   - package.json
   - "!node_modules"
   - "!**/*.map"
