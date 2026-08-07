@@ -414,6 +414,8 @@ export interface Impostazioni {
   }
   analisi_automatica: boolean
   note_incrementali?: boolean
+  /** Secondi fra una nota e l'altra. Il core la legge al volo con un default di 600. */
+  note_incrementali_intervallo_s?: number
   interfaccia: {
     scorciatoia_overlay: string
     scorciatoia_screenshot: string

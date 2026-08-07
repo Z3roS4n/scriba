@@ -10,6 +10,10 @@
 
 import type { Impostazioni } from '../tipi'
 
+/** Minuti fra una nota e l'altra. Sotto i cinque il modello lavorerebbe quasi
+ *  di continuo sulla stessa macchina che sta trascrivendo dal vivo. */
+const INTERVALLI = [5, 10, 15] as const
+
 export function SezioneAnalisi({
   impostazioni,
   onCambia,
@@ -57,6 +61,30 @@ export function SezioneAnalisi({
             <i />
           </button>
         </div>
+        {impostazioni.note_incrementali && (
+          <div className="row">
+            <div className="row__text">
+              <b>Ogni quanto</b>
+              <span>
+                Su una call più corta dell’intervallo non ne esce nessuna: è il motivo più
+                comune per cui sembra che non funzionino.
+              </span>
+            </div>
+            <div className="segment">
+              {INTERVALLI.map((m) => (
+                <button
+                  key={m}
+                  className={
+                    (impostazioni.note_incrementali_intervallo_s ?? 600) === m * 60 ? 'is-on' : ''
+                  }
+                  onClick={() => onCambia({ note_incrementali_intervallo_s: m * 60 })}
+                >
+                  {m} min
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </>
   )

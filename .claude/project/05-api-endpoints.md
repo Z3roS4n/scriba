@@ -48,7 +48,16 @@ token sarebbe raggiungibile da qualunque pagina web aperta nel browser.
 | POST | `/sessions/{id}/analyze/stop` | |
 | GET | `/sessions/{id}/analysis` | riassunto, salienti, task, prove |
 | GET | `/analisi/stato` | fasi dell'analisi in corso |
+| GET | `/sessions/{id}/note` | le note di lavoro scritte durante la call |
 | POST | `/tasks/{id}` | correzione manuale di una task |
+
+`/sessions/{id}/note` restituisce tutte le note **e** l'ultima a parte: ognuna
+riscrive la precedente incorporandola, quindi è quella da mostrare. Non passa da
+`/sessions/{id}/analysis` perché quella costruisce `{kind: testo}` e le note sono
+`is_current` tutte insieme — hanno finestre diverse — quindi lì collasserebbero in
+una sola, e quale dipenderebbe dall'ordine di scansione. `attive` dice se
+l'impostazione è accesa: senza, l'interfaccia non sa distinguere «non ancora» da
+«non le vuoi».
 
 ### Rifinitura della trascrizione
 | Metodo | Path | Scopo |

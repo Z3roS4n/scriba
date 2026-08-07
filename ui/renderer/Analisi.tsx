@@ -9,6 +9,7 @@
  */
 
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { NotaDiLavoro } from './NotaDiLavoro'
 import { ControlloRifinitura, useRifinitura } from './Rifinitura'
 import type { Analisi, FaseAnalisi, Provider, Segmento, Sessione, StatoAnalisi, StatoTask, Task } from './tipi'
 import { tempo } from './tipi'
@@ -818,6 +819,10 @@ export function PannelloAnalisi({
     return (
       <section className="analysis">
         <div className="pad">
+          {/* Prima dell'analisi, non dopo: durante la call e' l'unica cosa
+              che ha qualcosa da dire, e a call appena finita e' quello che
+              c'e' finche' il riassunto non arriva. */}
+          <NotaDiLavoro sessionId={sessione.id} registrando={registrando} />
           <span className="label">ANALISI</span>
           <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: 'var(--fg2)' }}>
             Questa call non è ancora stata analizzata.
@@ -948,6 +953,11 @@ export function PannelloAnalisi({
                 </div>
               ))
             : analisi.riassunto && <Markdown testo={analisi.riassunto} />}
+          {/* In fondo, non in cima: a call analizzata la nota è il modo in cui
+              la riunione si vedeva mentre andava, e il riassunto la supera.
+              Resta perché è quella che si è letta al momento — e perché è la
+              materia prima da cui certe task sono uscite. */}
+          <NotaDiLavoro sessionId={sessione.id} registrando={registrando} />
         </div>
       </div>
 

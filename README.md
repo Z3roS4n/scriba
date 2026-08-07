@@ -98,6 +98,14 @@ calcolo. Se l'audio salvato di una traccia non corrisponde ai minuti della trasc
 quella traccia **non viene toccata** e te lo dice: riscriverla significherebbe mettere
 sotto ogni riga il testo di un'altra.
 
+**Mentre la call va.** Se lo accendi (Impostazioni → Analisi), ogni dieci minuti —
+o cinque, o quindici — viene scritta una **nota di lavoro**: un riassunto parziale di
+quello che si è detto finora, che compare accanto alla trascrizione senza aspettare la
+fine. Ogni nota riscrive la precedente incorporandola, quindi l'ultima è quella da
+leggere; le altre restano a un clic. È spenta di default, e con un motore di analisi in
+rete significa mandare fuori la trascrizione più volte durante la riunione invece di una
+sola alla fine.
+
 **Dopo la call.** L'analisi produce: un riassunto strutturato (in breve, contesto,
 decisioni prese, punti aperti, prossimi passi), i punti salienti con riferimento al
 minuto, e le task — estratte in due passaggi (si raccolgono i frammenti sparsi nella
