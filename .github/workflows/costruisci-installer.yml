@@ -87,8 +87,16 @@ jobs:
         run: |
           # Un installer costruito da codice che non compila o non passa i test
           # è un artefatto che qualcuno installerà credendolo buono.
+          #
+          # L'esito di ogni comando va controllato a mano: in pwsh il codice di
+          # uscita di un passo è quello dell'**ultimo** comando, quindi senza
+          # questi controlli un pytest fallito passerebbe inosservato purché
+          # tsc dopo di lui andasse bene. È successo alla prima esecuzione.
           ./core/.venv/Scripts/python.exe -m pytest core/tests -q
-          cd ui; npx tsc --noEmit
+          if ($LASTEXITCODE -ne 0) { throw "I test del core non passano." }
+          cd ui
+          npx tsc --noEmit
+          if ($LASTEXITCODE -ne 0) { throw "L'interfaccia non compila." }
 
       - name: Installer
         working-directory: ui
