@@ -1092,6 +1092,31 @@ def create_app(
             risultato.append(voce)
         return risultato
 
+    @app.get("/sessions/{session_id}/note", dependencies=[Depends(check_token)])
+    async def note_correnti(session_id: int) -> dict[str, Any]:
+        """Le note di lavoro scritte mentre la call andava.
+
+        Restituisce l'ultima a parte, oltre a tutte: ogni nota riscrive la
+        precedente incorporandola, quindi è quella da mostrare — le altre
+        raccontano come è cambiata la comprensione della riunione, ed è
+        un'altra domanda.
+        """
+        righe = [dict(r) for r in store.note_correnti(session_id)]
+        for r in righe:
+            # I candidati sono JSON in una colonna di testo: si consegnano già
+            # decodificati, così l'interfaccia non deve saperlo.
+            grezzo = r.pop("content_json", None)
+            try:
+                r["candidati"] = json.loads(grezzo) if grezzo else []
+            except (TypeError, ValueError):
+                r["candidati"] = []
+        return {
+            "session_id": session_id,
+            "note": righe,
+            "ultima": righe[-1] if righe else None,
+            "attive": bool(settings.tutto().get("note_incrementali", False)),
+        }
+
     @app.get("/sessions/{session_id}/segments", dependencies=[Depends(check_token)])
     async def segments(session_id: int) -> list[dict[str, Any]]:
         # `diarizzata_at` distingue «non l'ha mai fatta nessuno» da «fatta, e

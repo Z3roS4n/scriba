@@ -1036,6 +1036,32 @@ class Store:
                 (session_id, messaggio),
             )
 
+    def note_correnti(self, session_id: int) -> list[sqlite3.Row]:
+        """Le note di lavoro di una call, dalla prima all'ultima.
+
+        Ognuna riscrive la precedente incorporandola, quindi **l'ultima le
+        contiene tutte**: le altre servono solo a chi vuole vedere com'è
+        cambiata la comprensione della riunione mentre andava.
+
+        Non passano da `get_analysis`: quella costruisce `{kind: testo}` e le
+        note sono `is_current` tutte insieme — hanno finestre diverse, e
+        `add_ai_output` tiene la corrente per `(sessione, kind, finestra)` —
+        quindi lì collasserebbero in una sola, e quale dipenderebbe
+        dall'ordine di scansione.
+        """
+        return list(
+            self.conn.execute(
+                """
+                SELECT id, scope_start_ms, scope_end_ms, content_md, content_json,
+                       model, provider, created_at
+                  FROM ai_outputs
+                 WHERE session_id = ? AND kind = 'running_note' AND is_current = 1
+                 ORDER BY IFNULL(scope_start_ms, 0), id
+                """,
+                (session_id,),
+            )
+        )
+
     def get_analysis_meta(self, session_id: int) -> sqlite3.Row | None:
         return self.conn.execute(
             "SELECT * FROM analysis_meta WHERE session_id = ?", (session_id,)

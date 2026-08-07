@@ -214,6 +214,17 @@ a:hover { color:var(--link-hover); }
    mentre la larghezza cresce — due movimenti che si contraddicono. */
 .progress--quota i { animation:none; transition:width .3s ease; }
 
+/* ---------- nota di lavoro durante la call ---------- */
+.nota { padding:var(--sp-5) 0; border-bottom:1px solid var(--line-soft); }
+.nota__testa { display:flex; align-items:baseline; gap:var(--sp-3); margin-bottom:var(--sp-3); }
+.nota__stato { font-size:var(--fs-xs); color:var(--fg5); }
+.nota__titolo { font-size:var(--fs-md); font-weight:600; color:var(--fg2); margin:var(--sp-3) 0 var(--sp-1); }
+.nota__par { margin:0 0 var(--sp-2); font-size:var(--fs-md); line-height:var(--lh-body); color:var(--fg2); text-wrap:pretty; }
+.nota__elenco { margin:0 0 var(--sp-2); padding-left:var(--sp-6); display:flex; flex-direction:column; gap:3px; }
+.nota__elenco li { font-size:var(--fs-md); line-height:var(--lh-body); color:var(--fg2); }
+.nota__attesa { color:var(--fg5); }
+.nota__errore { margin:0 0 var(--sp-2); font-size:var(--fs-xs); line-height:var(--lh-body); color:var(--warn-fg); }
+
 /* ---------- rifinitura della trascrizione ---------- */
 .rif { display:flex; align-items:center; gap:var(--sp-3); flex-wrap:wrap; }
 .rif--conferma, .rif--esito { flex-direction:column; align-items:flex-start; gap:var(--sp-2); max-width:340px; }
