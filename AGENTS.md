@@ -93,6 +93,13 @@ cosa è cambiato per chi usa l'app, non quale funzione è stata toccata, e cita 
 Se un limite resta, si scrive lì: una release che tace su cosa non funziona ancora fa
 perdere tempo a chi installa.
 
+**Cosa non produce una release.** I cambiamenti che non arrivano dentro l'applicazione:
+uno script di sviluppo, i documenti in `.claude/`, questo file. Alzare il numero per
+qualcosa che non cambia nulla in ciò che si installa vorrebbe dire pubblicare due
+installer diversi con lo stesso contenuto — cioè rifare, dall'altra parte, il problema
+che la regola esiste per risolvere. Nel dubbio: se il file finisce nel pacchetto, si
+rilascia.
+
 ## Commit
 - Usa l'identità Git già configurata in locale. **Mai co-author.** Messaggi imperativi in inglese.
 

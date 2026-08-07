@@ -69,7 +69,12 @@ $testo = Get-Content $Note -Raw -Encoding UTF8
 function Ha-Sezione([string]$titolo) {
     # La sezione conta solo se ha delle voci sotto: un'intestazione vuota
     # dichiarerebbe uno scatto che nessuno ha fatto.
-    $m = [regex]::Match($testo, "(?ms)^##\s+$titolo\s*$(.*?)(?=^##\s|\z)")
+    #
+    # Il pattern si compone da stringhe con apici singoli: fra doppi apici
+    # PowerShell leggerebbe `$(` come l'inizio di una sottoespressione e
+    # proverebbe a eseguire `.*?` come se fosse un comando.
+    $pattern = '(?ms)^##\s+' + [regex]::Escape($titolo) + '\s*$(.*?)(?=^##\s|\z)'
+    $m = [regex]::Match($testo, $pattern)
     return $m.Success -and ($m.Groups[1].Value.Trim().Length -gt 0)
 }
 
