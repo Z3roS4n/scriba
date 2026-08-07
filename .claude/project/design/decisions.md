@@ -4,6 +4,27 @@
 > Per i gap funzionali (design → nessun backend) vedi [da-implementare.md](da-implementare.md);
 > per lo stile vedi [design-system.md](design-system.md).
 
+## D-UI-08 — Il redesign con msworks è la 1.0.0, e si fa tutto insieme
+
+Tutta l'interfaccia viene rifatta applicando il sistema di design **msworks**, e quel
+lavoro fa uscire la **1.0.0**: dopo vengono solo patch. Non è un re-skin — è anche una
+revisione dei percorsi, perché troppe schermate oggi si fermano e rimandano alla finestra
+delle impostazioni, che è separata: uscire vuol dire perdere il posto e tornare indietro.
+
+Il principio che il brief chiede di applicare: **un'impostazione vive dove si vede la sua
+conseguenza.** Le impostazioni restano il posto dove c'è tutto, non l'unico dove si può
+agire. Se le impostazioni debbano restare una finestra a sé è lasciato al design, con
+motivazione.
+
+Due cose che cambiano rispetto a D-UI-01 e al brief di luglio:
+
+- **Il tema chiaro non è più fuori scope.** Esiste già (chiaro / scuro / come il sistema).
+- **Il font non è obbligatoriamente quello di sistema.** Il vincolo è la rete, non il
+  font: un carattere può viaggiare dentro l'installer, che pesa già 170 MB. Il brief
+  precedente confondeva le due cose e avrebbe fatto buttare via la tipografia di msworks.
+
+Il brief sta in [brief-1.0.md](brief-1.0.md).
+
 ## D-UI-01 — Scope
 
 Si rivede **tutta** l'interfaccia esistente, che è stata scritta funzionale e mai
