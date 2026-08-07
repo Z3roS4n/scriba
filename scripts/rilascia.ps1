@@ -1,32 +1,38 @@
 # Pubblica una release su GitHub per la versione che sta in ui/package.json.
 #
-#   powershell -ExecutionPolicy Bypass -File scripts/rilascia.ps1 -Note note.md
-#   powershell -ExecutionPolicy Bypass -File scripts/rilascia.ps1 -Note note.md -ConInstaller
+#   powershell -ExecutionPolicy Bypass -File scripts/rilascia.ps1
+#   powershell -ExecutionPolicy Bypass -File scripts/rilascia.ps1 -SenzaInstaller
+#
+# **Il changelog non sta nella descrizione della release**, sta in `CHANGELOG.md`
+# e `CHANGELOG.it.md`. Una descrizione e' un pezzo di testo dentro GitHub: non si
+# cerca, non si legge in blocco, non entra in un diff, e chi guarda il repository
+# non la trova. Il file si', e le due lingue restano una accanto all'altra.
+# La descrizione della release si limita a due righe e ai collegamenti.
 #
 # Il numero **non** lo alza questo script: lo alza la PR che contiene il fix
 # (`scripts/versione.ps1`), perche' su `main` non si committa mai. Qui si
 # controlla che sia stato alzato davvero, si mette il tag e si pubblica.
 #
-# Le note vanno divise in tre sezioni, ed e' la divisione a decidere lo scatto:
+# La voce del changelog va divisa in tre sezioni, ed e' la divisione a decidere
+# lo scatto:
 #
-#   ## Cambiamenti che rompono   -> maggiore   cambia il modo di usarla, o i dati
-#                                              vanno migrati
-#   ## Funzioni nuove            -> minore     qualcosa che prima non si poteva fare,
-#                                              o un comportamento visibilmente diverso
-#   ## Correzioni                -> patch      un difetto in meno, niente di nuovo
-#                                              da imparare
+#   ### Breaking changes  -> maggiore  cambia il modo di usarla, o i dati vanno
+#                                      migrati
+#   ### New features      -> minore    qualcosa che prima non si poteva fare, o
+#                                      un comportamento visibilmente diverso
+#   ### Fixes             -> patch     un difetto in meno, niente di nuovo da
+#                                      imparare
 #
 # Una sezione senza voci si lascia fuori. Lo scatto atteso e' quello della
 # sezione piu' alta presente: se non corrisponde a quanto e' stato alzato in
-# package.json lo script lo dice e si ferma, perche' un numero che non riflette
-# cosa c'e' dentro e' peggio di nessun numero.
+# package.json lo script si ferma, perche' un numero che non riflette cosa c'e'
+# dentro e' peggio di nessun numero.
 
 param(
-    [Parameter(Mandatory = $true)]
-    [string]$Note,
-    # L'installer pesa ~170 MB e non e' firmato: allegarlo a una release
-    # pubblica e' una decisione, non un dettaglio, e si chiede a parte.
-    [switch]$ConInstaller,
+    # L'installer e' allegato di default: una release di un'applicazione senza
+    # l'applicazione costringe chi arriva a compilarsela. Resta **non firmato**,
+    # e questo va detto nel changelog, non nascosto.
+    [switch]$SenzaInstaller,
     # Salta i controlli sullo stato del repository. Per riprovare una
     # pubblicazione fallita a meta', non per pubblicare da un albero sporco.
     [switch]$Forza
@@ -34,8 +40,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $radice = Split-Path -Parent $PSScriptRoot
-
-if (-not (Test-Path $Note)) { throw "File delle note non trovato: $Note" }
+$changelog = Join-Path $radice 'CHANGELOG.md'
+$changelogIt = Join-Path $radice 'CHANGELOG.it.md'
 
 # ------------------------------------------------------------- il repository
 
@@ -63,27 +69,42 @@ if ((git -C $radice tag --list $tag)) {
     throw "Il tag $tag esiste gia'. La versione va alzata nella PR del fix (scripts/versione.ps1)."
 }
 
-# ------------------------------------------------------- lo scatto dichiarato
+# --------------------------------------------------------------- il changelog
 
-$testo = Get-Content $Note -Raw -Encoding UTF8
-function Ha-Sezione([string]$titolo) {
-    # La sezione conta solo se ha delle voci sotto: un'intestazione vuota
-    # dichiarerebbe uno scatto che nessuno ha fatto.
-    #
-    # Il pattern si compone da stringhe con apici singoli: fra doppi apici
-    # PowerShell leggerebbe `$(` come l'inizio di una sottoespressione e
-    # proverebbe a eseguire `.*?` come se fosse un comando.
-    $pattern = '(?ms)^##\s+' + [regex]::Escape($titolo) + '\s*$(.*?)(?=^##\s|\z)'
+function Voce-Changelog([string]$file, [string]$v) {
+    <#
+        Il testo della voce di questa versione, senza la sua intestazione.
+        Il pattern si compone da stringhe con apici singoli: fra doppi apici
+        PowerShell leggerebbe `$(` come l'inizio di una sottoespressione e
+        proverebbe a eseguire il resto come se fosse un comando.
+    #>
+    if (-not (Test-Path $file)) { throw "Changelog non trovato: $file" }
+    $testo = Get-Content $file -Raw -Encoding UTF8
+    $pattern = '(?ms)^##\s+' + [regex]::Escape($v) + '\b.*?$(.*?)(?=^##\s|\z)'
     $m = [regex]::Match($testo, $pattern)
+    if (-not $m.Success -or $m.Groups[1].Value.Trim().Length -eq 0) {
+        throw "$([System.IO.Path]::GetFileName($file)) non ha una voce per $v. Va scritta nella PR del fix."
+    }
+    return $m.Groups[1].Value
+}
+
+$voce = Voce-Changelog $changelog $versione
+# L'italiano non decide niente, ma deve esserci: una release documentata in una
+# lingua sola e' una release documentata a meta'.
+[void](Voce-Changelog $changelogIt $versione)
+
+function Ha-Sezione([string]$titolo) {
+    $pattern = '(?ms)^###\s+' + [regex]::Escape($titolo) + '\s*$(.*?)(?=^###\s|\z)'
+    $m = [regex]::Match($voce, $pattern)
     return $m.Success -and ($m.Groups[1].Value.Trim().Length -gt 0)
 }
 
 $atteso = $null
-if (Ha-Sezione 'Cambiamenti che rompono') { $atteso = 'maggiore' }
-elseif (Ha-Sezione 'Funzioni nuove') { $atteso = 'minore' }
-elseif (Ha-Sezione 'Correzioni') { $atteso = 'patch' }
+if (Ha-Sezione 'Breaking changes') { $atteso = 'maggiore' }
+elseif (Ha-Sezione 'New features') { $atteso = 'minore' }
+elseif (Ha-Sezione 'Fixes') { $atteso = 'patch' }
 if (-not $atteso) {
-    throw "Le note non hanno nessuna sezione con voci. Attese: '## Cambiamenti che rompono', '## Funzioni nuove', '## Correzioni'."
+    throw "La voce $versione non ha nessuna sezione con voci. Attese: '### Breaking changes', '### New features', '### Fixes'."
 }
 
 $precedente = (git -C $radice tag --list 'v*' --sort=-v:refname | Select-Object -First 1)
@@ -97,26 +118,34 @@ if ($precedente) {
     else { 'nessuno' }
 
     if ($fatto -ne $atteso) {
-        throw "Le note dichiarano uno scatto '$atteso' ma da $precedente a $tag lo scatto e' '$fatto'. Correggi l'uno o le altre."
+        throw "Il changelog dichiara uno scatto '$atteso' ma da $precedente a $tag lo scatto e' '$fatto'. Correggi l'uno o l'altro."
     }
 }
 
 # ----------------------------------------------------------------- pubblica
 
+$installer = Join-Path $radice "ui\release\Scriba Setup $versione.exe"
+if (-not $SenzaInstaller -and -not (Test-Path $installer)) {
+    throw "Installer non trovato: $installer. Costruiscilo con 'cd ui; npm run dist', oppure passa -SenzaInstaller."
+}
+
 $commit = (git -C $radice rev-parse --short HEAD).Trim()
 Write-Host "rilascio  $tag  ($atteso)  da $commit"
+
+$base = "https://github.com/Z3roS4n/scriba/blob/$tag"
+$descrizione = @"
+Cosa è cambiato: **[CHANGELOG.it.md]($base/CHANGELOG.it.md)** · **[CHANGELOG.md]($base/CHANGELOG.md)** (English).
+
+$(if ($SenzaInstaller) { "L'installer non è allegato: si costruisce dai sorgenti con ``cd ui && npm run dist``." } else { "L'installer allegato **non è firmato**: Windows mostrerà l'avviso di SmartScreen alla prima apertura. I limiti noti stanno nel changelog." })
+"@
+$fileDescrizione = Join-Path ([System.IO.Path]::GetTempPath()) "scriba-release-$versione.md"
+[System.IO.File]::WriteAllText($fileDescrizione, $descrizione, (New-Object System.Text.UTF8Encoding($false)))
 
 git -C $radice tag -a $tag -m "Scriba $versione"
 git -C $radice push --quiet origin $tag
 
-$argomenti = @('release', 'create', $tag, '--title', "Scriba $versione", '--notes-file', (Resolve-Path $Note).Path)
-if ($ConInstaller) {
-    $installer = Join-Path $radice "ui\release\Scriba Setup $versione.exe"
-    if (-not (Test-Path $installer)) {
-        throw "Installer non trovato: $installer. Costruiscilo con 'cd ui; npm run dist'."
-    }
-    $argomenti += $installer
-}
+$argomenti = @('release', 'create', $tag, '--title', "Scriba $versione", '--notes-file', $fileDescrizione)
+if (-not $SenzaInstaller) { $argomenti += $installer }
 
 & gh @argomenti
 if ($LASTEXITCODE -ne 0) {
@@ -124,4 +153,5 @@ if ($LASTEXITCODE -ne 0) {
     # stato a meta' senza spiegazione.
     throw "gh release create non e' riuscito. Il tag $tag e' gia' pubblicato: rilancia con -Forza dopo aver risolto."
 }
+Remove-Item $fileDescrizione -ErrorAction SilentlyContinue
 Write-Host "pubblicata: https://github.com/Z3roS4n/scriba/releases/tag/$tag"

@@ -309,6 +309,13 @@ Onestamente, non solo quello che manca ma anche quello che non è mai stato veri
   aggiungere `pyannote.audio`, `torch` e un token Hugging Face nell'ambiente Python
   del core a mano.
 
+## Cosa è cambiato
+
+Le release stanno su [GitHub](https://github.com/Z3roS4n/scriba/releases), con
+l'installer allegato. Il registro delle modifiche è in [CHANGELOG.it.md](CHANGELOG.it.md)
+(e in inglese in [CHANGELOG.md](CHANGELOG.md)): ogni versione dice cosa è cambiato per
+chi usa l'app, e cosa **non** funziona ancora.
+
 ## Documentazione interna
 
 La documentazione di progetto — architettura, decisioni tecniche (ADR), modello dati,

@@ -62,14 +62,21 @@ qualcuno installa quelle due domande arrivano sempre.
 powershell -ExecutionPolicy Bypass -File scripts/versione.ps1 patch
 ```
 
-**Lo scatto lo decide la sezione più alta presente nelle note**, e le note sono divise
-in tre — sempre le stesse tre, anche quando due sono vuote:
+**Il changelog sta in un file, non nella descrizione della release.**
+[`CHANGELOG.md`](CHANGELOG.md) in inglese e [`CHANGELOG.it.md`](CHANGELOG.it.md) in
+italiano, una voce per versione, la più recente in cima. Una descrizione su GitHub non
+si cerca, non entra in un diff e chi guarda il repository non la trova; un file sì, e le
+due lingue restano una accanto all'altra. **La voce si scrive nella PR del fix**,
+insieme al numero.
 
-| sezione | scatto | quando |
+**Lo scatto lo decide la sezione più alta presente nella voce**, e le sezioni sono tre —
+sempre le stesse tre, anche quando due sono vuote:
+
+| sezione (in `CHANGELOG.md`) | scatto | quando |
 |---|---|---|
-| `## Cambiamenti che rompono` | **maggiore** | cambia il modo di usarla, o i dati vanno migrati |
-| `## Funzioni nuove` | **minore** | qualcosa che prima non si poteva fare, o un comportamento visibilmente diverso |
-| `## Correzioni` | **patch** | un difetto in meno, niente di nuovo da imparare |
+| `### Breaking changes` | **maggiore** | cambia il modo di usarla, o i dati vanno migrati |
+| `### New features` | **minore** | qualcosa che prima non si poteva fare, o un comportamento visibilmente diverso |
+| `### Fixes` | **patch** | un difetto in meno, niente di nuovo da imparare |
 
 Nel dubbio si sceglie **il più piccolo che sia ancora onesto**. Una correzione che
 cambia quello che l'utente vede non è una patch: è una minore, e va detto.
@@ -77,21 +84,24 @@ cambia quello che l'utente vede non è una patch: è una minore, e va detto.
 **Dopo il merge**, da `main`:
 
 ```bash
-powershell -ExecutionPolicy Bypass -File scripts/rilascia.ps1 -Note note-rilascio.md
+powershell -ExecutionPolicy Bypass -File scripts/rilascia.ps1
 ```
 
-Lo script rifiuta di pubblicare se l'albero è sporco, se `main` non coincide con
-`origin/main`, se il tag esiste già (vuol dire che la versione non è stata alzata), o se
-**lo scatto dichiarato dalle note non corrisponde a quello fatto** in `package.json`: un
-numero che non riflette cosa c'è dentro è peggio di nessun numero.
+Lo script legge la voce dal changelog, mette il tag, pubblica una descrizione di due
+righe con i collegamenti alle due lingue, e **allega l'installer**. Rifiuta se l'albero è
+sporco, se `main` non coincide con `origin/main`, se il tag esiste già (vuol dire che la
+versione non è stata alzata), se una delle due lingue non ha la voce per questa versione,
+o se **lo scatto dichiarato dal changelog non corrisponde a quello fatto** in
+`package.json`: un numero che non riflette cosa c'è dentro è peggio di nessun numero.
 
-`-ConInstaller` allega l'eseguibile. Non è il default: sono ~170 MB non firmati su un
-repository pubblico, ed è una decisione da prendere ogni volta, non un'abitudine.
+`-SenzaInstaller` pubblica senza allegarlo. L'eseguibile non è firmato e questo va
+**scritto nel changelog**, non taciuto: chi scarica incontra l'avviso di SmartScreen e
+deve sapere perché.
 
-**Le note si scrivono per chi le legge senza aver seguito il lavoro.** Ogni voce dice
-cosa è cambiato per chi usa l'app, non quale funzione è stata toccata, e cita la issue.
-Se un limite resta, si scrive lì: una release che tace su cosa non funziona ancora fa
-perdere tempo a chi installa.
+**Le voci si scrivono per chi le legge senza aver seguito il lavoro.** Ognuna dice cosa è
+cambiato per chi usa l'app, non quale funzione è stata toccata, e cita la issue. Se un
+limite resta, si scrive lì: una release che tace su cosa non funziona ancora fa perdere
+tempo a chi installa.
 
 **Cosa non produce una release.** I cambiamenti che non arrivano dentro l'applicazione:
 uno script di sviluppo, i documenti in `.claude/`, questo file. Alzare il numero per
