@@ -9,6 +9,8 @@
 | Integrazione | Tipo | Stato | Scheda |
 |---|---|---|---|
 | Notion | API REST (uscita) | ✅ integrata, non ancora provata su un account vero | [notion.md](notion.md) |
+| PostgreSQL remoto | driver `psycopg` (uscita) | ✅ integrato, non ancora provato su un server vero | [postgres.md](postgres.md) |
+| SignPath Foundation | firma del codice in CI | ⏳ da chiedere: il codice è pronto, la domanda no | [signpath.md](signpath.md) |
 
 ## Webhook in entrata (endpoint esposti dalla nostra app)
 
