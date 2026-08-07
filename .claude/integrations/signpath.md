@@ -33,10 +33,36 @@ artefatti prodotti da una pipeline**: è così che verifica che il binario venga
 davvero dal repository dichiarato e non dal disco di qualcuno. Un installer
 costruito in locale, per loro, non esiste.
 
-Il punto da guardare prima di presentare la domanda è «nessun componente
-proprietario». Scriba scarica a runtime modelli e motore di analisi, che quindi
-non sono dentro il pacchetto; ma le dipendenze impacchettate vanno elencate con
-la loro licenza, non date per buone.
+### «Nessun componente proprietario»: verificato
+
+Letto dai metadati di tutte le dipendenze installate. **Nessuna proprietaria**,
+tutte con licenza approvata OSI. Modelli e motore di analisi si scaricano a
+runtime e non stanno nel pacchetto.
+
+Due voci meritano una nota, e non sono ostacoli per SignPath ma obblighi nostri:
+
+- **`psycopg` e `psycopg_binary` sono LGPLv3**, e vengono spediti dentro
+  l'installer. La LGPL è approvata OSI, quindi la condizione è soddisfatta; ma
+  distribuire un binario che la include comporta gli obblighi della licenza —
+  fra cui mettere chi riceve il programma in condizione di sostituire quella
+  libreria. Da guardare a parte dalla firma.
+- **PyInstaller è GPLv2**, ma con l'eccezione esplicita che permette di
+  costruire e distribuire programmi con qualunque licenza: è quella che rende
+  possibile spedire il bootloader dentro l'eseguibile senza che la GPL si
+  propaghi al risultato. Va citata, non taciuta.
+
+Il resto è MIT, BSD, Apache-2.0, MPL-2.0 e PSF. L'elenco si rifà con:
+
+```bash
+for d in core/.venv/Lib/site-packages/*.dist-info; do
+  grep -m1 -E "^(License-Expression|License):" "$d/METADATA"
+done
+```
+
+Attenzione: quell'elenco copre l'**ambiente di sviluppo**, che include anche
+pytest, pip e setuptools. Nel pacchetto finisce meno roba — quello che
+PyInstaller raccoglie davvero seguendo gli import — quindi è un
+sovrainsieme prudente, non la lista esatta.
 
 ## Cosa manca, e chi lo fa
 
