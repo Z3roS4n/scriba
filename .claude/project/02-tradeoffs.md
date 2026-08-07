@@ -437,6 +437,35 @@
 - **Sulle call già registrate non cambia niente:** la colonna nasce a 0 e nessuno le
   ripassa da solo. Le righe di eco che sono in quelle trascrizioni ci sono davvero, e
   dire di no sarebbe un valore di comodo.
+
+### D-021 — L'analisi segue la lingua della call; i prompt restano in italiano
+
+- **Contesto:** `SYSTEM_ESTRAZIONE` diceva «trascrizioni di riunioni di lavoro in italiano»
+  e `SYSTEM_REDAZIONE` «Scrivi in italiano», sempre. Una call in inglese usciva riassunta
+  in italiano — e al modello veniva affermata una cosa **falsa** sulla trascrizione che
+  stava leggendo.
+- **Il difetto sotto il difetto:** `sessions.lingua` valeva `"it"` su ogni call. La
+  scelta in Impostazioni → Trascrizione la leggeva **solo la rifinitura**;
+  `StartRequest.lingua` aveva `"it"` come predefinito e l'interfaccia non l'ha mai
+  mandata. Correggere solo i prompt sarebbe stato inerte: avrebbero chiesto l'italiano
+  con più parole.
+- **Scelta:** la lingua della registrazione arriva dalle impostazioni quando la richiesta
+  non ne porta una, e i due prompt di sistema diventano modelli con `{lingua}`.
+- **Si traduce l'uscita, non le istruzioni.** Un prompt è una specifica per il modello,
+  non un testo che qualcuno legge, e `prompts.py` li versiona apposta per poter
+  confrontare il prima e il dopo sulla stessa call: sei traduzioni vorrebbero dire sei
+  versioni da far avanzare insieme, e sei occasioni perché una diverga in silenzio.
+  Fanno eccezione i **titoli del riassunto**, che sono le uniche parole del prompt che
+  finiscono sotto gli occhi di chi legge: quelli stanno in `ai/lingue.py`, scritti per le
+  sei lingue, invece di essere lasciati alla discrezione di un modello da 12B che li
+  renderebbe diversi a ogni call.
+- **Cosa resta da misurare:** istruzioni in una lingua e contenuto in un'altra funzionano
+  con i modelli in uso, ma è una scommessa verificabile, non una certezza. Se un modello
+  locale piccolo dovesse rispondere nella lingua del prompt, la strada è tradurre
+  `SYSTEM_REDAZIONE` — che è corto — prima di tutto il resto.
+- **Sulle call già registrate non cambia niente:** dicono `"it"` perché così sono state
+  registrate. È la verità di allora, non un dato da riscrivere.
+
 - **Data:** 2026-08-07
 
 ## Decisioni aperte

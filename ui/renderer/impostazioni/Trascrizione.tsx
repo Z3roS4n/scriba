@@ -83,8 +83,16 @@ export function SezioneTrascrizione({
       <div className="settings__body">
         <div className="row">
           <div className="row__text">
-            <b>Lingua principale</b>
-            <span>Le altre lingue vengono riconosciute lo stesso, ma con più errori sui nomi.</span>
+            <b>Lingua delle call</b>
+            {/* Diceva solo cosa succede alla trascrizione. Ma da questa scelta
+                dipende anche in che lingua vengono scritti riassunto, punti
+                salienti e task: chi la cambia deve saperlo prima, non
+                scoprirlo leggendo un riassunto nella lingua sbagliata. */}
+            <span>
+              Vale per la trascrizione e per quello che ne viene ricavato: riassunto, punti
+              salienti e task escono in questa lingua. Le altre vengono riconosciute lo stesso,
+              ma con più errori sui nomi.
+            </span>
           </div>
           <Select opzioni={LINGUE} selezionato={stt.lingua} onScegli={(lingua) => onCambia({ stt: { ...stt, lingua } })} />
         </div>

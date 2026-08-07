@@ -7,6 +7,26 @@ Ogni voce è divisa in tre sezioni, ed è la più alta presente a decidere lo
 scatto di versione: **Cambiamenti che rompono** (maggiore), **Funzioni nuove**
 (minore), **Correzioni** (patch). Una sezione senza voci si lascia fuori.
 
+## 0.6.0 — 7 agosto 2026
+
+### Funzioni nuove
+
+- **L'analisi esce nella lingua della call.** Riassunto, punti salienti, task e
+  nota di lavoro seguono la lingua scelta in Impostazioni → Trascrizione: una
+  riunione in inglese produce un riassunto in inglese, con i titoli delle
+  sezioni in inglese. Prima usciva sempre in italiano, e al modello veniva
+  detto che la trascrizione era italiana anche quando non lo era — cioè una
+  cosa falsa su quello che aveva davanti.
+  ([#61](https://github.com/Z3roS4n/scriba/issues/61))
+
+### Correzioni
+
+- **La lingua scelta nelle impostazioni ora vale davvero.** La leggeva solo
+  «Rifai la trascrizione»: la registrazione partiva sempre in italiano, quindi
+  ogni call risultava italiana nell'archivio e negli export anche quando non lo
+  era. Le call registrate prima restano marcate «it», perché così sono state
+  registrate. ([#61](https://github.com/Z3roS4n/scriba/issues/61))
+
 ## 0.5.1 — 7 agosto 2026
 
 ### Correzioni

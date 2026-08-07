@@ -34,7 +34,7 @@ from typing import Any
 
 from ..db.store import Segment, Store
 from ..llm.providers import costruisci
-from . import prompts
+from . import lingue, prompts
 from .analyze import Analizzatore, formatta_segmenti
 
 log = logging.getLogger(__name__)
@@ -204,8 +204,15 @@ class GestoreNote:
             inizio, fine = nuovi[0].t_start_ms, nuovi[-1].t_end_ms
             dentro_finestra = [s for s in schermate if inizio <= s["t_ms"] <= fine]
 
+            # La nota si scrive nella lingua della call, come il riassunto
+            # (#61): e' lo stesso testo, solo scritto mentre la riunione va.
+            riga = self.store.conn.execute(
+                "SELECT lingua FROM sessions WHERE id = ?", (session_id,)
+            ).fetchone()
             completamento = provider.complete(
-                system=prompts.SYSTEM_REDAZIONE,
+                system=prompts.SYSTEM_REDAZIONE.format(
+                    lingua=lingue.nome(riga["lingua"] if riga else None)
+                ),
                 user=prompts.RUNNING_NOTE_PROMPT.format(
                     nota_precedente=self._nota_testo
                     or "(nessuna nota precedente: è l'inizio della call)",
