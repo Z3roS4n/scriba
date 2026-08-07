@@ -15,12 +15,49 @@ ritardata di ciò che è appena uscito dalle casse, quindi le stesse parole
 compaiono su entrambe le tracce a pochi secondi di distanza. Confrontare il
 testo evita di dover fare cancellazione d'eco vera, che richiede allineamento
 del segnale e un filtro adattivo.
+
+## Quando si giudica conta quanto come
+
+Il confronto funziona: misurato su sei call vere, segnala il 34,5% delle righe
+del microfono confrontate con quelle dell'altoparlante lì accanto e lo 0,2%
+confrontate con quelle di dieci minuti prima, dove eco non ce ne può essere.
+Fra segnale e falso positivo c'è due ordini di grandezza.
+
+A non funzionare era il **momento**. Una frase dell'altoparlante entra qui
+quando si chiude, cioè dopo una pausa o dopo venticinque secondi; l'eco sul
+microfono si chiude molto prima, perché è più smorzato e il rilevatore di voce
+lo spezza a ogni avvallamento. Il filtro giudicava quindi una riga confrontandola
+con una frase che non era ancora stata detta per intero, e nel 97-100% dei casi
+sopravvissuti la frase che la spiegava si è chiusa dopo (#59).
+
+Da qui due cose, che vanno insieme:
+
+- dal vivo si annotano anche le **ipotesi provvisorie** dell'altoparlante, non
+  solo le frasi chiuse: riduce la cecità, non la elimina — quello che l'altro
+  non ha ancora finito di dire non lo sa nessuno;
+- a call finita si **ripassa** (`ripassa`), quando ogni frase esiste per intero.
+  È lì che si recupera ciò che dal vivo era impossibile sapere.
 """
 
 from __future__ import annotations
 
 import re
 import unicodedata
+from collections.abc import Sequence
+from typing import Protocol
+
+
+class Riga(Protocol):
+    """Il minimo che serve per giudicare una riga: quando, cosa, e quale.
+
+    Un protocollo e non il `Segment` del database: così `ripassa` si prova con
+    tre campi scritti a mano, senza aprire uno store.
+    """
+
+    id: int
+    t_start_ms: int
+    testo: str
+
 
 # Quanto indietro guardare. L'eco arriva quasi subito, ma la trascrizione delle
 # due tracce non è simultanea: una frase lunga sul loopback si chiude dopo.
@@ -95,6 +132,34 @@ def somiglianza(a: str, b: str) -> float:
     return comuni / len(pa)
 
 
+def _spiegata_da(
+    t_ms: int,
+    testo: str,
+    uscite: list[tuple[int, str]],
+    *,
+    soglia: float,
+    finestra_ms: int,
+) -> bool:
+    """La regola, in un posto solo: questa riga del microfono è già stata detta?
+
+    La usano sia il giudizio dal vivo sia il ripasso a call finita. Sono due
+    momenti con informazioni diverse — e quella differenza è tutto il difetto
+    #59 — ma il criterio deve restare uno: due regole che divergono darebbero
+    trascrizioni diverse a seconda di quando le si guarda.
+    """
+    if len(_parole(testo)) < MIN_PAROLE:
+        return False
+
+    for t_uscita, detto in uscite:
+        # L'eco segue quello che l'ha causato, ma le due trascrizioni si
+        # chiudono in momenti diversi: si guarda anche un po' all'indietro.
+        if not (-finestra_ms // 3 <= t_ms - t_uscita <= finestra_ms):
+            continue
+        if somiglianza(testo, detto) >= soglia:
+            return True
+    return False
+
+
 class FiltroEco:
     """Tiene a mente cosa è uscito dalle casse, per riconoscerlo sul microfono.
 
@@ -108,9 +173,23 @@ class FiltroEco:
         self._uscite: list[tuple[int, str]] = []
 
     def registra_uscita(self, t_ms: int, testo: str) -> None:
-        """Annota una frase arrivata dall'altoparlante."""
+        """Annota cosa sta dicendo l'altoparlante, finita o no la frase.
+
+        Le ipotesi provvisorie contano quanto le definitive. Aspettare che la
+        frase si chiuda vuol dire giudicare l'eco prima di sapere cosa l'ha
+        causato: è esattamente ciò che lasciava passare una riga su tre (#59).
+
+        Una nuova ipotesi della **stessa** frase sostituisce la precedente
+        invece di aggiungersi: è la stessa frase, più lunga. Le due si
+        riconoscono dall'istante di inizio, che una frase non cambia più.
+        """
         if testo.strip():
-            self._uscite.append((t_ms, testo))
+            for i, (t, _) in enumerate(self._uscite):
+                if t == t_ms:
+                    self._uscite[i] = (t_ms, testo)
+                    break
+            else:
+                self._uscite.append((t_ms, testo))
         self._dimentica(t_ms)
 
     def _dimentica(self, adesso_ms: int) -> None:
@@ -119,14 +198,32 @@ class FiltroEco:
 
     def e_eco(self, t_ms: int, testo: str) -> bool:
         """Vero se questa frase del microfono è il ritorno dell'altoparlante."""
-        if len(_parole(testo)) < MIN_PAROLE:
-            return False
+        return _spiegata_da(
+            t_ms, testo, self._uscite, soglia=self.soglia, finestra_ms=self.finestra_ms
+        )
 
-        for t_uscita, detto in self._uscite:
-            # L'eco segue quello che l'ha causato, ma le due trascrizioni si
-            # chiudono in momenti diversi: si guarda anche un po' all'indietro.
-            if not (-self.finestra_ms // 3 <= t_ms - t_uscita <= self.finestra_ms):
-                continue
-            if somiglianza(testo, detto) >= self.soglia:
-                return True
-        return False
+
+def ripassa(
+    mic: Sequence[Riga],
+    loopback: Sequence[Riga],
+    *,
+    soglia: float = SOGLIA,
+    finestra_ms: int = FINESTRA_MS,
+) -> list[int]:
+    """Rigiudica tutte le righe del microfono, a call finita.
+
+    Dal vivo il filtro può confrontare solo con ciò che l'altoparlante ha già
+    detto, e quasi sempre non basta: la frase che spiega l'eco si chiude dopo.
+    Qui invece esistono tutte, e il giudizio si può dare per intero.
+
+    Restituisce gli id da marcare. Non tocca niente: chi chiama decide cosa
+    farne, e resta una funzione che si prova senza database.
+    """
+    uscite = [(r.t_start_ms, r.testo) for r in loopback if r.testo.strip()]
+    return [
+        r.id
+        for r in mic
+        if _spiegata_da(
+            r.t_start_ms, r.testo, uscite, soglia=soglia, finestra_ms=finestra_ms
+        )
+    ]

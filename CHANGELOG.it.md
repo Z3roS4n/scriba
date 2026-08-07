@@ -7,6 +7,40 @@ Ogni voce è divisa in tre sezioni, ed è la più alta presente a decidere lo
 scatto di versione: **Cambiamenti che rompono** (maggiore), **Funzioni nuove**
 (minore), **Correzioni** (patch). Una sezione senza voci si lascia fuori.
 
+## 0.5.1 — 7 agosto 2026
+
+### Correzioni
+
+- **Le frasi che il microfono riprende dall'altoparlante non finiscono più nel
+  riassunto come tue.** Il microfono raccoglie sempre un po' di quello che esce
+  dalle cuffie, anche a volume basso, e quelle frasi venivano attribuite a chi
+  registra: il riassunto faceva dire a te quello che aveva detto l'altro.
+  Misurato su sei call registrate, **una riga del microfono su tre** era la
+  ripetizione di una riga degli altri — 352 in tutto. Ora vengono riconosciute e
+  tenute fuori da riassunto, note di lavoro ed export.
+
+  L'impostazione in Impostazioni → Trascrizione non c'entrava: il criterio è
+  preciso — sulle stesse registrazioni segnala il 34,5 % delle righe confrontate
+  con quello che l'altoparlante aveva appena detto e lo 0,2 % confrontate con
+  quello di dieci minuti prima, dove eco non ce ne può essere. A non funzionare
+  era il momento. Una frase degli altri entrava nel filtro solo una volta
+  finita, e l'eco sul microfono finisce molto prima: il confronto avveniva con
+  qualcosa che non era ancora stato detto. Ora conta anche l'ipotesi in corso, e
+  a call finita si ricontrolla tutto.
+
+  Quelle righe **non vengono cancellate**: in cima alla trascrizione compare «N
+  righe riprese dall'altoparlante», e aprendolo si vedono, sbiadite ed
+  etichettate come riprese invece che come parole tue. Una riga su tre è troppo
+  per buttarla via senza lasciare niente da controllare.
+
+  Vale per le call registrate d'ora in poi. Quelle già registrate restano come
+  sono: le righe di eco che contengono ci sono davvero, e nessuno torna indietro
+  a rivederle da solo.
+  ([#59](https://github.com/Z3roS4n/scriba/issues/59))
+
+L'installer resta non firmato: Windows mostra l'avviso di SmartScreen, e con
+Smart App Control attivo lo rifiuta del tutto.
+
 ## 0.5.0 — 7 agosto 2026
 
 Prima release pubblicata. Il progetto esisteva già da parecchio: questa voce

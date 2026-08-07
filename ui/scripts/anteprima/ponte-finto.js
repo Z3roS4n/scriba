@@ -21,6 +21,10 @@
     ['mic', 380, 'Questo è il pannello vecchio, lo tengo come riferimento di cosa non rifare.'],
     ['loopback', 1120, 'Non mi è chiaro se un utente esterno vede anche i dati degli altri clienti.'],
     ['loopback', 1152, 'Comunque va chiarito prima del rilascio, non dopo.'],
+    // Il microfono ha ripreso l'altoparlante: e' la riga di sopra, tornata
+    // indietro tre secondi dopo. Sta qui per far vedere come compare — fuori
+    // dalla trascrizione finche' non la si chiede, e mai attribuita a "Io".
+    ['mic', 1155, 'Comunque va chiarito prima del rilascio, non dopo.', true],
     ['mic', 1904, 'Quando li vogliamo pronti?'],
     ['loopback', 1920, 'Diciamo entro il quattordici, così abbiamo una settimana per rivederli.'],
     ['mic', 1938, 'Il quattordici è un venerdì, va bene.'],
@@ -39,17 +43,18 @@
   }
   const speakerRighe = [
     SPEAKER.voce2, null, SPEAKER.voce2, null, SPEAKER.voce3, null,
-    SPEAKER.voce2, SPEAKER.voce2, null, SPEAKER.voce3, null, SPEAKER.voce2,
-    SPEAKER.voce3, null,
+    SPEAKER.voce2, SPEAKER.voce2, null, null, SPEAKER.voce3, null,
+    SPEAKER.voce2, SPEAKER.voce3, null,
   ]
 
-  const segmenti = righe.map(([source, s, testo], i) => ({
+  const segmenti = righe.map(([source, s, testo, eco], i) => ({
     id: i + 1,
     source,
     t_start_ms: s * 1000,
     t_end_ms: (s + 4) * 1000,
     testo,
     is_final: true,
+    eco: Boolean(eco),
     speaker: source === 'loopback' ? speakerRighe[i] : null,
   }))
 
@@ -355,6 +360,13 @@
     post: (p, body) => Promise.resolve(notion(p, body) ?? { ok: true, status: 200, body: risolvi(p) ?? {} }),
     patch: (p, body) => Promise.resolve(rinomina(p, body)),
     screenshot: () => Promise.resolve(),
+    // Due schermi: uno solo farebbe sparire il selettore dalla topbar, che e'
+    // proprio la parte che qui si vuole poter guardare.
+    schermi: () =>
+      Promise.resolve([
+        { id: 'schermo-0', etichetta: 'Principale', larghezza: 2560, altezza: 1440, principale: true },
+        { id: 'schermo-1', etichetta: 'Secondario', larghezza: 1920, altezza: 1080, principale: false },
+      ]),
     mostraFile: () => Promise.resolve(),
     apriCartella: () => Promise.resolve(),
     scegliCartella: () => Promise.resolve(null),

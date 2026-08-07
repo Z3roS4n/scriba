@@ -7,6 +7,39 @@ Each entry is split into three sections, and the highest one present decides
 the version bump: **Breaking changes** (major), **New features** (minor),
 **Fixes** (patch). A section with nothing in it is left out.
 
+## 0.5.1 — 7 August 2026
+
+### Fixes
+
+- **Sentences your microphone picked up from the speaker no longer end up in
+  the summary as yours.** Your microphone always catches some of what comes out
+  of your headphones, even at low volume, and those sentences were attributed
+  to you: the summary then had the wrong person saying things. Measured on six
+  recorded calls, **one microphone line in three** was a repeat of the other
+  side — 352 lines in all. They are now recognised and left out of the summary,
+  the working notes and every export.
+
+  The setting under Settings → Transcription was never the problem: the rule is
+  accurate — on the same recordings it flags 34.5% of lines against what the
+  speaker had just said and 0.2% against what it said ten minutes earlier,
+  where no echo can exist. What failed was the timing. A sentence from the
+  other side only entered the filter once it had finished, and the echo on the
+  microphone finishes well before that, so the filter was comparing against
+  something not yet said. It now takes the running hypothesis too, and
+  re-checks everything once the call ends.
+
+  Those lines are **not deleted**: the transcript shows a "N lines picked up
+  from the speaker" control at the top, and opening it shows them faded and
+  labelled as picked up rather than as your own words. One line in three is too
+  much to throw away without leaving anything to check.
+
+  This applies to calls recorded from now on. Existing calls are untouched: the
+  echo lines in them are real, and nothing goes back to reconsider them.
+  ([#59](https://github.com/Z3roS4n/scriba/issues/59))
+
+The installer is still unsigned: Windows shows a SmartScreen warning, and with
+Smart App Control on it is refused outright.
+
 ## 0.5.0 — 7 August 2026
 
 First published release. The project had been going for a while: this entry

@@ -12,13 +12,23 @@ inverte chi ha detto cosa.
 from __future__ import annotations
 
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scriba_core.stt.eco import FiltroEco, somiglianza  # noqa: E402
+from scriba_core.stt.eco import FiltroEco, ripassa, somiglianza  # noqa: E402
+
+
+@dataclass
+class Riga:
+    """Una riga di trascrizione, ridotta a cio' che serve per giudicarla."""
+
+    id: int
+    t_start_ms: int
+    testo: str
 
 # Le due righe come sono comparse davvero, a tre secondi di distanza.
 DETTO_DA_LORO = (
@@ -95,6 +105,84 @@ class TestSomiglianza:
 
     def test_testo_vuoto(self) -> None:
         assert somiglianza("", "qualcosa") == 0.0
+
+
+# Il caso che il filtro lasciava passare, preso dalla sessione 11: un unico
+# intervento dell'interlocutore lungo 26 secondi, di cui il microfono ha
+# prodotto due pezzi, chiusi venti secondi prima che l'originale finisse.
+LUNGA_DELL_ALTRO = "Ok. Quindi ora io devo dividere, mi sento vincolato di fare tutto insieme."
+PEZZI_DAL_MICROFONO = [
+    (158_400, "Quindi ora io devo dividere."),
+    (160_900, "mi sento vincolato di fare tutto"),
+]
+
+
+class TestGiudicatoTroppoPresto:
+    """Il difetto #59: si giudicava prima che la frase dell'altro finisse."""
+
+    def test_aspettare_il_definitivo_rende_il_filtro_cieco(self) -> None:
+        # Com'era: la frase dell'altoparlante entra solo quando si chiude, a
+        # 183 s. I pezzi del microfono sono stati giudicati a 158 e 160 s.
+        f = FiltroEco()
+        for t, testo in PEZZI_DAL_MICROFONO:
+            assert not f.e_eco(t, testo), "senza le ipotesi provvisorie non puo' saperlo"
+        f.registra_uscita(157_200, LUNGA_DELL_ALTRO)
+
+    def test_con_le_ipotesi_provvisorie_li_riconosce(self) -> None:
+        # Com'e': l'altoparlante annota man mano. A 158 s ha gia' detto la
+        # prima meta', a 161 s anche la seconda.
+        f = FiltroEco()
+        f.registra_uscita(157_200, "Ok. Quindi ora io devo dividere,")
+        assert f.e_eco(158_400, PEZZI_DAL_MICROFONO[0][1])
+        f.registra_uscita(157_200, LUNGA_DELL_ALTRO)
+        assert f.e_eco(160_900, PEZZI_DAL_MICROFONO[1][1])
+
+    def test_l_ipotesi_nuova_sostituisce_la_vecchia(self) -> None:
+        # Sono la stessa frase, non due: se si accumulassero, un'ora di call
+        # riempirebbe la memoria di versioni parziali della stessa cosa.
+        f = FiltroEco()
+        f.registra_uscita(1_000, "il budget complessivo")
+        f.registra_uscita(1_000, "il budget complessivo e' di cinquantamila euro")
+        assert len(f._uscite) == 1
+        assert f._uscite[0][1].endswith("cinquantamila euro")
+
+
+class TestRipasso:
+    """A call finita esiste tutto, e il giudizio si rifa' per intero."""
+
+    def test_prende_quello_che_dal_vivo_era_impossibile_sapere(self) -> None:
+        mic = [Riga(i, t, testo) for i, (t, testo) in enumerate(PEZZI_DAL_MICROFONO, start=1)]
+        loopback = [Riga(90, 157_200, LUNGA_DELL_ALTRO)]
+        assert ripassa(mic, loopback) == [1, 2]
+
+    def test_non_tocca_quello_che_e_stato_detto_davvero(self) -> None:
+        mic = [
+            Riga(1, 4_000, "non sono d'accordo, settembre e' troppo tardi per il cliente"),
+            Riga(2, 9_000, "cinquantamila mi sembra ragionevole, procediamo pure cosi'"),
+        ]
+        loopback = [
+            Riga(90, 1_000, "secondo me dovremmo rimandare la migrazione a settembre"),
+            Riga(91, 6_000, "il budget complessivo e' di cinquantamila euro sul progetto"),
+        ]
+        assert ripassa(mic, loopback) == []
+
+    def test_la_stessa_frase_mezz_ora_dopo_resta(self) -> None:
+        # Fuori dalla finestra e' qualcuno che la ripete davvero.
+        mic = [Riga(1, 1_800_000, TORNATO_DAL_MICROFONO)]
+        loopback = [Riga(90, 1_000, DETTO_DA_LORO)]
+        assert ripassa(mic, loopback) == []
+
+    def test_senza_traccia_dell_altro_non_giudica_niente(self) -> None:
+        mic = [Riga(1, 1_000, DETTO_DA_LORO)]
+        assert ripassa(mic, []) == []
+
+    def test_il_livello_scelto_vale_anche_qui(self) -> None:
+        # Un giudizio che dal vivo e a fine call usa soglie diverse darebbe
+        # trascrizioni diverse a seconda di quando la si guarda.
+        mic = [Riga(1, 3_000, "gestione delle scadenze e del processo interno")]
+        loopback = [Riga(90, 1_000, "gestione delle scadenze, il processo interno, tutto qui")]
+        assert ripassa(mic, loopback, soglia=0.55) == [1]
+        assert ripassa(mic, loopback, soglia=0.99) == []
 
 
 class TestMemoria:

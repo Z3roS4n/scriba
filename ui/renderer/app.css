@@ -67,6 +67,10 @@ a:hover { color:var(--link-hover); }
 .btn--primary { background:var(--pri-soft-bg); border-color:var(--pri-bd); color:var(--pri-fg); font-weight:600; }
 .btn--primary:hover { background:var(--pri-soft-bg); filter:brightness(1.15); }
 .btn--block { display:block; width:100%; text-align:left; padding:9px 13px; font-size:var(--fs-base); }
+/* Sta accanto alla legenda in cima alla trascrizione: e' un'informazione, non
+   un comando da fare notare. Alla stessa scala della legenda. */
+.btn--eco { padding:2px var(--sp-3); font-size:var(--fs-mono); color:var(--fg6); background:transparent; border-color:transparent; }
+.btn--eco:hover { background:var(--sel); color:var(--fg3); }
 .btn--rec { font-weight:600; padding:5px var(--sp-5); display:flex; align-items:center; gap:var(--sp-2); border-color:var(--line4); color:var(--fg); }
 .btn--rec::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--red); }
 .btn--rec.is-recording { background:var(--red-soft2); border-color:var(--red-bd2); color:var(--red-fg); }
@@ -147,6 +151,11 @@ a:hover { color:var(--link-hover); }
 /* testo provvisorio: opacità ridotta, MAI corsivo (rallenta la lettura periferica) */
 .line__text.is-provisional { color:var(--fg3); opacity:.55; }
 .caret { display:inline-block; width:6px; height:13px; margin-left:3px; transform:translateY(1px); background:var(--other-rule); animation:caretBlink 1.15s steps(1,end) infinite; }
+/* Riga ripresa dall'altoparlante: si vede che c'e', si vede che non conta.
+   Sbiadita e non barrata — barrare direbbe "cancellata", e invece e' li' per
+   essere letta e controllata. */
+.line--eco { opacity:.5; }
+.line--eco .line__who { border-left-color:var(--line4); background:var(--line-soft); color:var(--fg6); font-weight:500; }
 .line.is-cited { background:var(--ev-row); box-shadow:inset 0 0 0 1px var(--ok-bd); }
 .line.is-flashing { animation:flashLine 1.1s ease-out 1; }
 

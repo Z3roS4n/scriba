@@ -1146,6 +1146,12 @@ def create_app(
                 "testo": s.testo,
                 "is_final": s.is_final,
                 "revision": s.revision,
+                # Riconosciuta come ritorno dell'altoparlante. Arrivano fin qui
+                # apposta: sono già fuori da riassunto, note ed export, e
+                # questa è l'unica schermata in cui si può controllare che il
+                # giudizio fosse giusto. Nasconderle anche qui vorrebbe dire
+                # cancellarle con un altro nome.
+                "eco": s.eco,
                 "speaker": (
                     {
                         "id": s.speaker_id,
@@ -1156,7 +1162,7 @@ def create_app(
                     else None
                 ),
             }
-            for s in store.segments(session_id)
+            for s in store.segments(session_id, includi_eco=True)
         ]
 
     @app.post("/sessions/{session_id}/export/markdown", dependencies=[Depends(check_token)])

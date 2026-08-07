@@ -75,11 +75,27 @@ sempre le stesse tre, anche quando due sono vuote:
 | sezione (in `CHANGELOG.md`) | scatto | quando |
 |---|---|---|
 | `### Breaking changes` | **maggiore** | cambia il modo di usarla, o i dati vanno migrati |
-| `### New features` | **minore** | qualcosa che prima non si poteva fare, o un comportamento visibilmente diverso |
-| `### Fixes` | **patch** | un difetto in meno, niente di nuovo da imparare |
+| `### New features` | **minore** | qualcosa che prima non si poteva fare |
+| `### Fixes` | **patch** | un difetto in meno |
 
-Nel dubbio si sceglie **il più piccolo che sia ancora onesto**. Una correzione che
-cambia quello che l'utente vede non è una patch: è una minore, e va detto.
+**Un difetto corretto è una patch, anche quando si vede.** Quasi ogni correzione cambia
+quello che l'utente ha davanti — è il motivo per cui la si fa — e trattarla come minore
+vorrebbe dire non usare mai le patch. La domanda da farsi non è «si nota?» ma **«c'è
+qualcosa di nuovo da imparare?»**: se dopo l'aggiornamento si continua a usare l'app
+esattamente come prima, e semplicemente funziona, è una patch. Se c'è un comando nuovo,
+una scelta nuova o un posto nuovo dove guardare, è una minore.
+
+Un rimedio può portarsi dietro un comando piccolo — un interruttore per vedere cosa ha
+scartato, un motivo scritto accanto a un rifiuto — senza per questo diventare una
+funzione nuova: nasce dalla correzione e serve a renderla controllabile. Va raccontato
+dentro la voce di `### Fixes`, non promosso a `### New features`.
+
+Nel dubbio si sceglie **il più piccolo che sia ancora onesto**.
+
+Attenzione: `rilascia.ps1` **confronta lo scatto dichiarato dal changelog con quello
+fatto** in `package.json` e rifiuta se non coincidono. Cambiare idea sul numero significa
+quindi rifare anche le sezioni della voce, in tutte e due le lingue — non basta
+correggere la cifra.
 
 **Dopo il merge**, da `main`:
 
