@@ -7,6 +7,10 @@
 
 ## File
 
+- **[brief-1.0.md](brief-1.0.md)** — il prompt per Claude Design del redesign completo con il
+  sistema **msworks**, che farà uscire la 1.0.0. **È questo il brief buono.**
+  [brief-per-claude-design.md](brief-per-claude-design.md) descrive l'app di fine luglio 2026 e
+  resta solo come storia: metà delle schermate di oggi lì non ci sono.
 - **[design-system.md](design-system.md)** — la guida di stile: palette (dark/light se previsto),
   tipografia, spaziature/radius, icone, convenzioni di componente (regole su numeri/mono, controlli
   stilizzati vs nativi...), pattern architetturale per-sezione, harness di anteprima.
