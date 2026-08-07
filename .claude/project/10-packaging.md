@@ -67,6 +67,21 @@ Per anni la versione è stata `0.1.0` su una ventina di installer diversi (#48):
 il numero è ripartito da `0.5.0`, che riflette dov'è il prodotto invece di dove
 era il primo giorno.
 
+### Ogni fix esce come release
+
+Regola di progetto (vedi `AGENTS.md`): un fix in `main` diventa una release su GitHub.
+Il numero si alza **nella PR del fix** — su `main` non si committa — e dopo il merge
+`scripts/rilascia.ps1` mette il tag e pubblica.
+
+Le note sono divise in tre sezioni fisse (`## Cambiamenti che rompono`,
+`## Funzioni nuove`, `## Correzioni`) ed è la più alta con delle voci a decidere lo
+scatto. Lo script **confronta lo scatto dichiarato con quello fatto** e si ferma se non
+coincidono: senza quel controllo la classificazione diventa decorativa, e un numero che
+non riflette cosa c'è dentro è peggio di nessun numero.
+
+L'installer non viene allegato di default: ~170 MB non firmati su un repository
+pubblico sono una decisione da prendere ogni volta (`-ConInstaller`).
+
 ## Struttura dei file di packaging
 
 | File | Cosa fa |

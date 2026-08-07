@@ -50,6 +50,49 @@ viene registrata **automaticamente** in [.claude/project/contributi.md](.claude/
 dal workflow `.github/workflows/registra-contributi.yml`. Il registro non si compila a mano:
 ricordarselo è esattamente ciò che non funziona.
 
+## Rilasci: ogni fix ne produce uno
+
+Ogni fix che entra in `main` esce come **release su GitHub**. Senza, «che versione sto
+usando» e «questo difetto era già corretto» non hanno risposta, e su un'applicazione che
+qualcuno installa quelle due domande arrivano sempre.
+
+**Il numero si alza nella PR del fix**, non dopo: su `main` non si committa mai.
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/versione.ps1 patch
+```
+
+**Lo scatto lo decide la sezione più alta presente nelle note**, e le note sono divise
+in tre — sempre le stesse tre, anche quando due sono vuote:
+
+| sezione | scatto | quando |
+|---|---|---|
+| `## Cambiamenti che rompono` | **maggiore** | cambia il modo di usarla, o i dati vanno migrati |
+| `## Funzioni nuove` | **minore** | qualcosa che prima non si poteva fare, o un comportamento visibilmente diverso |
+| `## Correzioni` | **patch** | un difetto in meno, niente di nuovo da imparare |
+
+Nel dubbio si sceglie **il più piccolo che sia ancora onesto**. Una correzione che
+cambia quello che l'utente vede non è una patch: è una minore, e va detto.
+
+**Dopo il merge**, da `main`:
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/rilascia.ps1 -Note note-rilascio.md
+```
+
+Lo script rifiuta di pubblicare se l'albero è sporco, se `main` non coincide con
+`origin/main`, se il tag esiste già (vuol dire che la versione non è stata alzata), o se
+**lo scatto dichiarato dalle note non corrisponde a quello fatto** in `package.json`: un
+numero che non riflette cosa c'è dentro è peggio di nessun numero.
+
+`-ConInstaller` allega l'eseguibile. Non è il default: sono ~170 MB non firmati su un
+repository pubblico, ed è una decisione da prendere ogni volta, non un'abitudine.
+
+**Le note si scrivono per chi le legge senza aver seguito il lavoro.** Ogni voce dice
+cosa è cambiato per chi usa l'app, non quale funzione è stata toccata, e cita la issue.
+Se un limite resta, si scrive lì: una release che tace su cosa non funziona ancora fa
+perdere tempo a chi installa.
+
 ## Commit
 - Usa l'identità Git già configurata in locale. **Mai co-author.** Messaggi imperativi in inglese.
 
