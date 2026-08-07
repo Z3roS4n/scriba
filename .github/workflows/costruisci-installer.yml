@@ -1,0 +1,123 @@
+# Costruisce l'installer di Windows su un runner GitHub.
+#
+# Serve a due cose, e la seconda è quella che ha fatto scrivere questo file.
+#
+# 1. Un installer che non dipende dalla macchina di chi lo compila. Finora
+#    esisteva un solo computer al mondo in grado di produrne uno.
+# 2. **La firma.** SignPath Foundation firma gratuitamente i progetti open
+#    source, ma firma **solo artefatti costruiti in CI**: è così che verifica
+#    che il binario venga davvero da questo repository e non dal disco di
+#    qualcuno. Senza questo workflow, quella strada non è percorribile (#57).
+#
+# Non pubblica niente da solo: produce un artefatto e si ferma. Allegare un
+# eseguibile a una release resta un gesto esplicito, fatto da
+# `scripts/rilascia.ps1`.
+
+name: Costruisci l'installer
+
+on:
+  # A mano, indicando cosa si vuole. Non a ogni push: una build completa scarica
+  # Electron, impacchetta ~290 MB di core con PyInstaller e dura una decina di
+  # minuti — farla girare su ogni commit sarebbe tempo bruciato per un artefatto
+  # che quasi sempre nessuno scarica.
+  workflow_dispatch:
+  # E sui tag di versione, che è il momento in cui un installer serve davvero.
+  push:
+    tags:
+      - "v*"
+  # E quando cambia il modo di costruirlo. Non su ogni PR — durerebbe dieci
+  # minuti per niente — ma su quelle che toccano la build sì: è l'unico momento
+  # in cui può rompersi, e scoprirlo al prossimo rilascio significa scoprirlo
+  # quando serve funzionante.
+  pull_request:
+    paths:
+      - ".github/workflows/costruisci-installer.yml"
+      - "ui/electron-builder.yml"
+      - "ui/scripts/**"
+      - "ui/package.json"
+      - "scripts/build-core.ps1"
+      - "scripts/pyinstaller/**"
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Serve la storia, non solo l'ultimo commit: `npm run build` incide
+          # nella build il commit da cui viene, e con un checkout superficiale
+          # `git status --porcelain` e `rev-parse` rispondono male.
+          fetch-depth: 0
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Ambiente Python del core
+        shell: pwsh
+        run: |
+          # requirements-dev include PyInstaller: senza, build-core.ps1 se lo
+          # installerebbe da solo, ma è meglio che l'ambiente sia quello
+          # dichiarato invece di uno costruito per strada.
+          uv venv core/.venv --python 3.12
+          uv pip install --python core/.venv/Scripts/python.exe -r core/requirements-dev.txt
+
+      - name: Dipendenze dell'interfaccia
+        working-directory: ui
+        run: npm ci
+
+      - name: Controlli
+        shell: pwsh
+        run: |
+          # Un installer costruito da codice che non compila o non passa i test
+          # è un artefatto che qualcuno installerà credendolo buono.
+          #
+          # L'esito di ogni comando va controllato a mano: in pwsh il codice di
+          # uscita di un passo è quello dell'**ultimo** comando, quindi senza
+          # questi controlli un pytest fallito passerebbe inosservato purché
+          # tsc dopo di lui andasse bene. È successo alla prima esecuzione.
+          ./core/.venv/Scripts/python.exe -m pytest core/tests -q
+          if ($LASTEXITCODE -ne 0) { throw "I test del core non passano." }
+          cd ui
+          npx tsc --noEmit
+          if ($LASTEXITCODE -ne 0) { throw "L'interfaccia non compila." }
+
+      - name: Installer
+        working-directory: ui
+        run: npm run dist
+
+      - name: Cosa è uscito
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem ui/release -Filter "Scriba Setup *.exe" | Select-Object -First 1
+          if (-not $exe) { throw "Nessun installer prodotto." }
+          "{0}  {1:N1} MB" -f $exe.Name, ($exe.Length / 1MB)
+          "firma: " + (Get-AuthenticodeSignature $exe.FullName).Status
+          # Il timbro dentro il pacchetto, letto dall'asar: e' la prova che la
+          # build sa da che commit viene, non un'affermazione del workflow.
+          node ui/scripts/leggi-timbro.mjs ui/release/win-unpacked/resources/app.asar
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scriba-installer
+          path: ui/release/Scriba Setup *.exe
+          if-no-files-found: error
+          # Trenta giorni: un artefatto non firmato non è qualcosa da tenere in
+          # giro a lungo, e chi lo vuole se lo riprende rilanciando il workflow.
+          retention-days: 30

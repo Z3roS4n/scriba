@@ -33,14 +33,19 @@ if (-not (Test-Path $venvPython)) {
     exit 1
 }
 
-$haPip = & $venvPython -c "import pip" 2>$null
-if ($LASTEXITCODE -ne 0) {
+# Si chiede a Python di rispondere su stdout invece di lasciarlo fallire:
+# redirigere lo stderr di un eseguibile nativo (`2>$null`) fa avvolgere ogni
+# riga in un ErrorRecord, e con ErrorActionPreference a Stop quella diventa
+# un'eccezione terminante. In locale non si vedeva perche' pip c'era gia';
+# su un runner pulito la build moriva qui.
+$haPip = (& $venvPython -c "import importlib.util as u, sys; sys.stdout.write('si' if u.find_spec('pip') else 'no')")
+if ($haPip -ne 'si') {
     Write-Host "[!] pip assente nell'ambiente (normale per un venv creato con uv): lo installo." -ForegroundColor Yellow
     & $venvPython -m ensurepip --upgrade | Out-Null
 }
 
-$haPyInstaller = & $venvPython -c "import PyInstaller" 2>$null
-if ($LASTEXITCODE -ne 0) {
+$haPyInstaller = (& $venvPython -c "import importlib.util as u, sys; sys.stdout.write('si' if u.find_spec('PyInstaller') else 'no')")
+if ($haPyInstaller -ne 'si') {
     Write-Host "[!] PyInstaller assente: lo installo nell'ambiente del core." -ForegroundColor Yellow
     & $venvPython -m pip install --upgrade pyinstaller
     if ($LASTEXITCODE -ne 0) { Write-Host "[X] Installazione di PyInstaller non riuscita." -ForegroundColor Red; exit 1 }

@@ -17,7 +17,7 @@
     "start": "npm run build && electron .",
     "dev": "npm run build && electron . --dev",
     "build:core": "powershell -ExecutionPolicy Bypass -File ../scripts/build-core.ps1",
-    "dist": "npm run build && npm run build:core && electron-builder --config electron-builder.yml"
+    "dist": "npm run build && npm run build:core && node scripts/impacchetta.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

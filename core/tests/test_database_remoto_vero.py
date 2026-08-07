@@ -43,22 +43,35 @@ PASSWORD = "prova"
 PORTA = 55432
 
 
-def _docker_c_e() -> bool:
+def _docker_c_e() -> tuple[bool, str]:
+    """Docker c'è **e** può far girare l'immagine che serve.
+
+    Non basta che il comando esista: un runner Windows ha Docker ma parla
+    container Windows, e `postgres:17-alpine` è Linux. Il controllo va fatto
+    sulla cosa che serve davvero — il sistema operativo del motore — altrimenti
+    passa per il motivo sbagliato e i test esplodono più avanti con un
+    `exit status 125` che non spiega niente.
+    """
     try:
         esito = subprocess.run(
-            ["docker", "info", "--format", "{{.ServerVersion}}"],
+            ["docker", "info", "--format", "{{.ServerVersion}}|{{.OSType}}"],
             capture_output=True,
             timeout=20,
             text=True,
         )
     except (OSError, subprocess.TimeoutExpired):
-        return False
-    return esito.returncode == 0
+        return False, "Docker non risponde"
+    if esito.returncode != 0:
+        return False, "Docker non è in esecuzione"
+    tipo = (esito.stdout.strip().split("|") + [""])[1].lower()
+    if tipo and tipo != "linux":
+        return False, f"Docker è in modalità container {tipo}, e serve Linux"
+    return True, ""
 
 
 def _avvia_contenitore() -> str:
     subprocess.run(["docker", "rm", "-f", CONTENITORE], capture_output=True, timeout=60)
-    subprocess.run(
+    avvio = subprocess.run(
         [
             "docker", "run", "-d", "--name", CONTENITORE,
             "-e", f"POSTGRES_PASSWORD={PASSWORD}",
@@ -66,10 +79,16 @@ def _avvia_contenitore() -> str:
             "-p", f"{PORTA}:5432",
             "postgres:17-alpine",
         ],
-        check=True,
         capture_output=True,
         timeout=300,
+        text=True,
     )
+    if avvio.returncode != 0:
+        # Si salta invece di esplodere: qui non si sta provando Docker, si sta
+        # provando il codice di Scriba contro un PostgreSQL vero. Se il
+        # PostgreSQL non c'e', quei test non hanno risposta da dare — ne'
+        # positiva ne' negativa.
+        pytest.skip(f"contenitore non avviato: {avvio.stderr.strip().splitlines()[-1] if avvio.stderr.strip() else avvio.returncode}")
     url = f"postgresql://postgres:{PASSWORD}@localhost:{PORTA}/scriba"
     # Il container risponde alla porta prima di essere pronto a servire: si
     # aspetta una connessione riuscita, non l'apertura della porta.
@@ -88,10 +107,11 @@ def url_server() -> str:
     dall_ambiente = os.environ.get("SCRIBA_PG_URL", "").strip()
     if dall_ambiente:
         return dall_ambiente
-    if not _docker_c_e():
+    utilizzabile, perche = _docker_c_e()
+    if not utilizzabile:
         pytest.skip(
-            "Nessun PostgreSQL per la prova: imposta SCRIBA_PG_URL, oppure avvia Docker "
-            "(questi test ne creano uno usa-e-getta da soli)."
+            f"Nessun PostgreSQL per la prova ({perche}): imposta SCRIBA_PG_URL, oppure "
+            "avvia Docker (questi test ne creano uno usa-e-getta da soli)."
         )
     url = _avvia_contenitore()
     yield url

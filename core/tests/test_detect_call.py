@@ -325,6 +325,13 @@ class TestSistemaVero:
             r.stop()
 
     def test_la_sonda_produce_letture_valide(self) -> None:
+        """La sonda risponde con una lettura utilizzabile.
+
+        Salta dove non c'e' una scheda audio: su un runner di CI le API COM
+        rispondono «Element not found», che non e' un difetto della sonda ma
+        l'assenza di hardware. Si distingue guardando cosa risponde, non
+        indovinando dall'ambiente.
+        """
         import subprocess
         from pathlib import Path
 
@@ -338,6 +345,8 @@ class TestSistemaVero:
         try:
             riga = p.stdout.readline()
             lettura = json.loads(riga)
+            if "Element not found" in str(lettura.get("errore", "")):
+                pytest.skip("nessun dispositivo audio: niente da leggere")
             assert "microfono" in lettura and "riproducono" in lettura
             assert isinstance(lettura["microfono"], list)
         finally:
