@@ -23,6 +23,21 @@ Due cose che cambiano rispetto a D-UI-01 e al brief di luglio:
   font: un carattere può viaggiare dentro l'installer, che pesa già 170 MB. Il brief
   precedente confondeva le due cose e avrebbe fatto buttare via la tipografia di msworks.
 
+**Terza richiesta, aggiunta dopo:** l'interfaccia in **italiano e inglese**. Non sei
+lingue — due cataloghi si tengono allineati a ogni patch, sei invecchiano male senza
+qualcuno che le parli. La scelta sta in Aspetto, accanto al tema, che ha già risolto la
+parte difficile: applicarsi subito a tre finestre che sono tre processi separati.
+
+Il punto non è tradurre, è la **sequenza**. Estrarre le stringhe adesso, da componenti
+che il redesign sta per buttare, sarebbe lavoro fatto due volte; arrivarci alla fine con
+diecimila righe di italiano scritto dentro vorrebbe dire rifare la passata su schermate
+appena finite. Da qui la richiesta nell'handoff: ogni schermata torna indietro con una
+tabella `chiave · italiano · inglese`, e il catalogo si forma insieme al design.
+
+Da non confondere con la **lingua delle call** (`stt.lingua`), che decide trascrizione e
+lingua dell'analisi: si può usare Scriba in inglese per trascrivere una riunione in
+italiano. Una sta in Aspetto, l'altra in Trascrizione, e devono restare distinguibili.
+
 Il brief sta in [brief-1.0.md](brief-1.0.md).
 
 ## D-UI-01 — Scope

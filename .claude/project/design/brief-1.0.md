@@ -45,7 +45,7 @@ leggibilità periferica e il non dare fastidio; dopo conta la densità di inform
 Non applicare lo stesso criterio a entrambi.
 
 
-═══ LE DUE COSE CHE TI CHIEDO ═══
+═══ LE TRE COSE CHE TI CHIEDO ═══
 
 ▸ 1. Applicare msworks.
 
@@ -107,6 +107,37 @@ spazio ma toglierebbe il salto. Valuta e motiva.
 Attenzione: non voglio che ogni impostazione compaia ovunque. Un'interfaccia in cui ogni
 schermata contiene mezzo pannello di configurazione è peggio del problema. Il criterio è
 il momento: si mostra quando è quel momento, non sempre.
+
+▸ 3. L'interfaccia parla italiano e inglese.
+
+Oggi è solo italiano, e non per scelta: ogni testo è scritto dentro il componente che lo
+mostra, per circa diecimila righe. Il repository è pubblico e chi ci arriva scarica
+un'applicazione che non sa leggere. Nella 1.0 le lingue sono due — non sei: due cataloghi
+si tengono allineati a ogni patch, sei invecchiano male.
+
+Per te questo vuol dire tre cose concrete:
+
+  · **Ogni testo che scrivi arriva in italiano E in inglese.** Non «poi lo traduciamo»:
+    una schermata consegnata con un solo testo è una schermata da rifare. I testi
+    italiani che trovi nel codice sono scritti con cura, e l'inglese deve dire le stesse
+    cose con la stessa precisione — soprattutto le spiegazioni sotto ogni impostazione e
+    i messaggi di errore, che dicono cosa fare.
+
+  · **Il layout deve reggere entrambe.** Fra italiano e inglese cambiano le lunghezze, e
+    non sempre nella direzione che ci si aspetta: «Impostazioni» è più lungo di
+    «Settings», ma «Rifai la trascrizione» è più corto di «Redo the transcription».
+    Niente larghezze fisse tarate su una stringa italiana. Dove una parola non ci sta,
+    voglio saperlo dal design, non dall'implementazione.
+
+  · **La scelta della lingua sta in Aspetto**, accanto al tema. È la stessa categoria —
+    come Scriba si presenta, non cosa fa — e il tema ha già risolto la parte difficile:
+    applicarsi subito a tutte e tre le finestre, che sono processi separati.
+
+Quello che NON è questo: la **lingua della call**. Si può usare Scriba in inglese per
+trascrivere una riunione in italiano, e viceversa. Sono due assi indipendenti e devono
+restare distinguibili anche a colpo d'occhio nelle impostazioni: una sta in Aspetto,
+l'altra in Trascrizione. Se ti sembra che confondano, dimmelo — è il tipo di cosa che si
+vede meglio disegnandola.
 
 
 ═══ LE SUPERFICI DA DISEGNARE ═══
@@ -258,9 +289,11 @@ Undici sezioni. Alcune sono grandi quanto una schermata a sé.
      Sono operazioni che durano fino a un'ora: vanno progettate come tali, non come un
      pulsante che gira.
 
-  3. TRASCRIZIONE — lingua · microfono e uscita audio · sensibilità del filtro eco (tre
-     livelli) · glossario dei nomi propri (uno per riga, più i clienti dell'anagrafica) e
-     quanto essere aggressivi nel correggerli.
+  3. TRASCRIZIONE — **lingua delle call**: decide sia come viene trascritto l'audio sia in
+     che lingua escono riassunto, punti salienti e task. Da non confondere con la lingua
+     dell'interfaccia, che sta in Aspetto · microfono e uscita audio · sensibilità del
+     filtro eco (tre livelli) · glossario dei nomi propri (uno per riga, più i clienti
+     dell'anagrafica) e quanto essere aggressivi nel correggerli.
 
   4. RILEVAMENTO CALL — attivo o no · dopo quanti secondi proporre · se proporre soltanto
      o avviare da solo (di default: solo proporre) · una diagnostica che mostra cosa il
@@ -270,8 +303,10 @@ Undici sezioni. Alcune sono grandi quanto una schermata a sé.
      conflitto va detto subito: Windows rifiuta la registrazione in silenzio, e senza
      segnalarlo l'utente resta a premere un tasto che non fa niente.
 
-  6. ASPETTO — tema chiaro / scuro / come il sistema. Si applica subito e a tutte e tre
-     le finestre.
+  6. ASPETTO — tema chiaro / scuro / come il sistema, e **lingua dell'interfaccia**
+     (italiano / inglese / come il sistema). Entrambe si applicano subito e a tutte e tre
+     le finestre, non al prossimo avvio: scegliere qualcosa e non vederlo è il modo più
+     veloce per far credere che il comando non funzioni.
 
   7. ANALISI — analizzare da solo a fine call o a richiesta · note di lavoro durante la
      call, e ogni quanto.
@@ -346,11 +381,20 @@ rivede il design.
     analisi, sotto 900 px anche l'elenco call; la trascrizione non sparisce mai. Rivedi le
     soglie se il tuo impianto ne vuole altre, ma la regola «la trascrizione resta» tienila.
 
+  · Le date, le ore e i numeri seguono la lingua dell'interfaccia, non quella della call.
+    Le durate restano `mm:ss` ovunque: è un minutaggio, non un orario.
+  · Alcune parole NON si traducono mai, perché sono identificativi salvati nel database e
+    nello schema dei prompt: `mic` / `loopback`, `bassa` / `media` / `alta` / `critica`,
+    `titolo` / `assignee` / `due_date`. Si traducono dove si mostrano, mai dove si
+    confrontano. Se nel tuo design compare una di queste parole come etichetta, dimmi che
+    è un'etichetta e non il valore.
+
 TONO
-Italiano, asciutto, senza gergo. L'app dice cosa succede e cosa fare, non «Operazione
-completata con successo». Niente esclamazioni, niente emoji. I testi che vedi nel codice
-sono stati scritti con cura: se ne cambi uno, cambialo perché è meglio, non per riempire
-un riquadro.
+Asciutto, senza gergo, in entrambe le lingue. L'app dice cosa succede e cosa fare, non
+«Operazione completata con successo». Niente esclamazioni, niente emoji. I testi italiani
+che vedi nel codice sono stati scritti con cura: se ne cambi uno, cambialo perché è
+meglio, non per riempire un riquadro. E l'inglese non è una traduzione automatica
+dell'italiano — è lo stesso testo scritto bene un'altra volta.
 
 
 ═══ COSA LEGGERE NEL REPOSITORY ═══
@@ -382,10 +426,17 @@ DA IGNORARE
 
 Per ogni schermata, quando l'abbiamo decisa:
 
-  · HTML + CSS autonomo e funzionante, con dati finti realistici — italiani, plausibili,
-    della lunghezza vera (una frase di trascrizione non è «Lorem ipsum», è lunga trenta
-    parole e ogni tanto finisce a metà)
+  · HTML + CSS autonomo e funzionante, con dati finti realistici — plausibili, della
+    lunghezza vera (una frase di trascrizione non è «Lorem ipsum», è lunga trenta parole
+    e ogni tanto finisce a metà)
   · i token come variabili CSS, per entrambi i temi
+  · **i testi dell'interfaccia in italiano e inglese**, in una tabella a parte —
+    `chiave · italiano · inglese` — non solo dentro l'HTML. È quella tabella che diventa
+    il catalogo delle traduzioni: una schermata consegnata in una lingua sola è una
+    schermata da rifare, e ricavare le chiavi a posteriori da dodici file HTML è lavoro
+    che nessuno fa bene
+  · la schermata resa **anche con i testi inglesi**, se qualche stringa cambia
+    sensibilmente di lunghezza: serve a vedere subito dove il layout cede
   · gli stati alternativi in FILE SEPARATI, non descritti a parole
   · le note di comportamento che il codice deve rispettare — nel formato di
     handoff/comportamento.md, che è la parte del lavoro precedente che è servita di più
@@ -425,3 +476,10 @@ Da lì andiamo una schermata alla volta.
 - **Una schermata alla volta.** Il brief chiede di non disegnare subito: una conversazione
   che parte a produrre HTML al primo messaggio produce dodici schermate coerenti fra loro
   e sbagliate insieme.
+- **L'italiano+inglese è entrato nel brief, non rimandato**, ed è una decisione di
+  sequenza più che di traduzione. Estrarre le stringhe adesso, da componenti che il
+  redesign sta per buttare, sarebbe lavoro fatto due volte; arrivare a fine redesign con
+  diecimila righe di italiano scritto dentro vorrebbe dire rifare la stessa passata su
+  schermate appena finite. Chiedendo i testi nelle due lingue **dentro l'handoff**, il
+  catalogo si forma insieme al design e nessuno dei due lavori si ripete. Vedi
+  [#62](https://github.com/Z3roS4n/scriba/issues/62) per l'impianto lato codice.
