@@ -378,6 +378,26 @@
   l'informazione che servirebbe a riallinearlo, e nessun fattore la inventa.
 - **Data:** 2026-08-07
 
+### D-018 — La versione sta in un posto solo, e il commit la accompagna
+- **Contesto:** una ventina di installer diversi, tutti chiamati `Scriba Setup 0.1.0.exe`,
+  e nessun punto dell'applicazione in cui leggere quale build fosse in esecuzione.
+  «Questo difetto c'era anche prima?» non aveva risposta.
+- **Scelta:** la verità è `ui/package.json`. La leggono electron-builder, il processo
+  principale (`app.getVersion()`) e il core, che la riceve nell'ambiente dal sidecar e
+  la riporta in `/health`. Nessuna seconda copia da tenere allineata.
+- **Il numero non basta.** Durante lo sviluppo si fanno molte build con lo stesso numero,
+  ed è esattamente lì che serve distinguerle: `npm run build` incide commit, data e un
+  flag `pulito` in `dist/versione.json`, e l'app li mostra accanto alla versione.
+- **Si alza a mano, non a ogni build.** Un numero che cambia da solo a ogni
+  compilazione non dice più niente: alzarlo è un gesto che vuol dire «questa è diversa
+  dalla precedente in un modo che conta».
+- **Un commit assente resta assente.** Se git non risponde — sorgenti da uno zip — il
+  campo è `null`. Lo stesso vale per un core avviato a mano: non appartiene a nessuna
+  build, e dirlo è più utile che riportare un numero preso da chissà dove.
+- **Si riparte da 0.5.0.** Contare all'indietro sarebbe finzione; `0.1.0` non era più
+  vero da mesi.
+- **Data:** 2026-08-07
+
 ## Decisioni aperte
 
 - **OA-1** — Passare a Qwen3.5-9B come LLM di default? Ha IFEval più alto e KV cache più

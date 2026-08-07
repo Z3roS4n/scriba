@@ -1,6 +1,6 @@
 {
   "name": "scriba-ui",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "description": "Interfaccia di Scriba",
   "main": "dist/main/index.js",
   "license": "MIT",
@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "confronta": "node scripts/confronta-handoff.mjs",
     "anteprima": "npm run build && node -e \"const{cpSync}=require('fs');cpSync('../.claude/project/design/handoff','scripts/anteprima/design',{recursive:true,filter:(s)=>!s.endsWith('.js')})\"",
-    "build": "npm run build:main && npm run copy:assets && npm run build:renderer",
+    "build": "npm run build:main && npm run copy:assets && npm run build:renderer && node scripts/stampa-versione.mjs",
     "start": "npm run build && electron .",
     "dev": "npm run build && electron . --dev",
     "build:core": "powershell -ExecutionPolicy Bypass -File ../scripts/build-core.ps1",

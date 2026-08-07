@@ -28,6 +28,14 @@ export class Sidecar {
   constructor(
     private readonly projectRoot: string,
     private readonly dbPath: string,
+    /**
+     * Che build è questa, così il core può dirlo in `/health`.
+     *
+     * Gliela passa chi lo avvia invece di fargliela leggere da un file suo:
+     * interfaccia e core vengono sempre dalla stessa compilazione, e due
+     * numeri letti da due posti diversi prima o poi non coincidono.
+     */
+    private readonly versione: { versione: string; commit: string | null } | null = null,
   ) {}
 
   get address(): CoreEndpoint | null {
@@ -88,6 +96,15 @@ export class Sidecar {
       // capisce che siamo ancora vivi.
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
+      env: {
+        ...process.env,
+        ...(this.versione
+          ? {
+              SCRIBA_VERSIONE: this.versione.versione,
+              ...(this.versione.commit ? { SCRIBA_COMMIT: this.versione.commit } : {}),
+            }
+          : {}),
+      },
     })
 
     this.child.stderr?.on('data', (chunk: Buffer) => {

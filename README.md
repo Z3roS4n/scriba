@@ -49,6 +49,20 @@ installi**, solo su quella su cui lo costruisci.
 L'installer non è firmato (vedi "Limiti noti"): Windows mostrerà l'avviso di
 SmartScreen alla prima apertura.
 
+Il numero di versione sta in `ui/package.json` e in nessun altro posto: da lì lo
+leggono il nome dell'installer, le proprietà del file su Windows e
+l'applicazione stessa. Per alzarlo:
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/versione.ps1 minore
+```
+
+`patch` per le correzioni, `minore` per le funzioni nuove, `maggiore` quando
+cambia il modo di usarla. Fra due build con lo stesso numero — normale durante
+lo sviluppo — a distinguerle è il commit, che `npm run build` incide nella
+build e che l'app mostra in **Impostazioni → Dati e privacy** accanto alla
+versione.
+
 In alternativa, per sviluppare o provare senza costruire l'installer:
 
 ```bash

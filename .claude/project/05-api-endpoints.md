@@ -117,6 +117,13 @@ sessioni e modelli, ed è l'unica che il ponte del renderer sa mandare
 | GET | `/search` | full-text su tutte le call |
 | WS | `/ws` | trascrizione, avanzamento, eventi |
 
+`GET /health` è l'unica rotta **senza token** — serve al processo padre per
+sapere quando il core è su — e riporta anche `versione` e `commit` della build
+da cui viene. Non li legge da un file suo: glieli passa chi lo avvia
+(`SCRIBA_VERSIONE` / `SCRIBA_COMMIT`, vedi `ui/main/sidecar.ts`), perché
+interfaccia e core escono sempre dalla stessa compilazione. Un core avviato a
+mano li lascia `null`, che è la verità: non appartiene a nessuna build.
+
 ## Convenzioni sugli errori
 
 | Codice | Quando |
