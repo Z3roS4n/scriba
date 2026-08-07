@@ -46,8 +46,10 @@ electron-builder. Il risultato è `ui/release/Scriba Setup <versione>.exe`, un
 eseguibile Windows autonomo: **non richiede Python o Node sulla macchina su cui lo
 installi**, solo su quella su cui lo costruisci.
 
-L'installer non è firmato (vedi "Limiti noti"): Windows mostrerà l'avviso di
-SmartScreen alla prima apertura.
+**L'installer non è firmato, e Windows 11 con Smart App Control attivo lo blocca** —
+non è l'avviso di SmartScreen che si salta con un clic, è un rifiuto. Vedi "Limiti noti"
+e [#57](https://github.com/Z3roS4n/scriba/issues/57). Se ti serve provarlo subito,
+`npm start` qui sotto funziona senza passare dall'installer.
 
 Il numero di versione sta in `ui/package.json` e in nessun altro posto: da lì lo
 leggono il nome dell'installer, le proprietà del file su Windows e
@@ -245,9 +247,13 @@ parlato: il campione italiano è voce reale, quello inglese è sintetico.
 Onestamente, non solo quello che manca ma anche quello che non è mai stato verificato:
 
 - **Solo Windows.** Nessun supporto macOS o Linux, né in programma.
-- **Nessuna firma del codice.** L'installer non è firmato digitalmente (scelta di
-  progetto, non una svista): Windows SmartScreen mostrerà un avviso alla prima
-  apertura.
+- **L'installer non è firmato, e su Windows 11 questo lo fa bloccare.** Non è solo
+  l'avviso di SmartScreen, che si potrebbe saltare: con **Smart App Control** attivo
+  Windows lo rifiuta e basta. Firmare richiede un certificato — a pagamento, e legato
+  a un'identità validata — oppure la pubblicazione sul Microsoft Store, che è l'unica
+  strada che elimina gli avvisi del tutto. Vedi
+  [#57](https://github.com/Z3roS4n/scriba/issues/57) per le opzioni e i costi reali.
+  Nel frattempo funziona dai sorgenti (`cd ui && npm start`).
 - **Il WER (word error rate) in italiano non è mai stato misurato.** Il modello di
   trascrizione dichiara un WER su benchmark pubblici (FLEURS), ma nessuno su questo
   progetto lo ha misurato su call italiane reali.

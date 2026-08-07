@@ -266,26 +266,75 @@ implicito).
 4. Disinstallato (`/S`): la cartella di installazione sparisce,
    `%APPDATA%\scriba-ui\data\scriba.sqlite` resta.
 
-## Nessuna firma del codice
+## Firma del codice: non c'è, e si vede
 
-Decisione di progetto presa all'inizio (progetto personale, open source):
-nessun certificato configurato in `electron-builder.yml`. Windows mostra
-l'avviso di SmartScreen alla prima apertura dell'installer — atteso, non un
-difetto. Verificato con `Get-AuthenticodeSignature` sull'installer prodotto:
+Nessun certificato configurato. Verificato con `Get-AuthenticodeSignature`:
 `NotSigned` sia per `Scriba Setup <versione>.exe` sia per `Scriba.exe` dentro
 `win-unpacked/`.
 
-**Come NON si esprime questa decisione:** con `win.signAndEditExecutable:
-false`, che è quello che c'era scritto fino alla issue dell'icona. Quel flag
-non spegne solo la firma, spegne l'intero passaggio che riscrive
-l'eseguibile — lo stesso che ci incide dentro icona, nome prodotto, versione
-e autore. Con `false` l'`.exe` restava con l'icona di Electron e senza
-identità in Gestione attività, e il campo `win.icon` poco sopra veniva
-ignorato in silenzio.
+**Non è più solo un avviso.** Su Windows 11 con **Smart App Control** attivo
+l'eseguibile viene *bloccato*, senza «esegui comunque»:
 
-Ora sta a `true` (il predefinito). electron-builder scrive icona e metadati, e
-firma **solo** se trova un certificato: non essendocene nessuno, non firma. La
-decisione di partenza è intatta, il pacchetto ha la sua faccia.
+```
+Smart App Control                    : 1 = ATTIVO (blocca)
+CodeIntegrityPolicyEnforcementStatus : 2 = enforce
+
+Start-Process : An Application Control policy has blocked this file.
+```
+
+Misurato sulla macchina di sviluppo. Da notare che anche
+`node_modules/electron/dist/electron.exe` è non firmato e gira lo stesso: Smart
+App Control pesa anche la reputazione, non solo la firma — per questo a volte
+passa e a volte no. Vedi [#57](https://github.com/Z3roS4n/scriba/issues/57).
+
+Per questo `scripts/impacchetta.mjs` **lo dice ad alta voce** quando costruisce
+senza firmare, invece di produrre in silenzio un file che verrà rifiutato
+dall'altra parte.
+
+### Le strade, con i numeri veri
+
+Dalla [pagina di Microsoft aggiornata ad aprile 2026](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/code-signing-options):
+
+| strada | costo | disponibile | avvisi |
+|---|---|---|---|
+| Microsoft Store (MSIX) | gratis | ovunque | **nessuno**: rifirma Microsoft |
+| SignPath Foundation | gratis | open source idoneo | reputazione da accumulare |
+| Azure Artifact Signing | ~10 $/mese | org. UE incluse; privati solo USA/Canada | reputazione da accumulare |
+| certificato OV | 150-300 $/anno | ovunque, token hardware | reputazione da accumulare |
+| certificato EV | 400+ $/anno | ovunque | **uguale a OV dal 2024** |
+
+Due cose che cambiano la decisione e che vale la pena non riscoprire:
+
+1. **L'EV non salta più SmartScreen.** Fino al 2024 lo faceva al primo download;
+   quel comportamento è stato tolto. Pagarne il premio solo per questo non ha
+   più senso.
+2. **Solo lo Store porta a zero avvisi.** Firmare dà un'identità stabile su cui
+   la reputazione si accumula: i primi utenti l'avviso lo vedono comunque.
+
+**Mai un certificato autofirmato.** Non toglie nessun avviso e Windows lo tratta
+peggio del non firmato, dando l'illusione che il problema sia risolto.
+
+### Come firma la build, quando ci sarà da firmare
+
+`scripts/impacchetta.mjs` sceglie da solo in base all'ambiente, e si rifiuta di
+partire se trova una configurazione a metà o due firme insieme — configurata a
+metà è peggio che non configurata, perché produrrebbe un pacchetto non firmato
+credendo di averlo firmato.
+
+- **Azure Artifact Signing**: `SCRIBA_AZURE_ENDPOINT`, `SCRIBA_AZURE_ACCOUNT`,
+  `SCRIBA_AZURE_PROFILO`, `SCRIBA_AZURE_PUBLISHER`, più le credenziali Entra
+  che legge la libreria di Azure (`AZURE_TENANT_ID`, `AZURE_CLIENT_ID`,
+  `AZURE_CLIENT_SECRET`).
+- **Certificato da una CA**: `CSC_LINK` e `CSC_KEY_PASSWORD`. Li legge
+  electron-builder da sé; lo script controlla solo che ci siano e lo dice.
+
+`win.signAndEditExecutable` resta a `true` (il predefinito). **Non è quello il
+modo di dire «non firmare»**: quel flag non spegne solo la firma, spegne
+l'intero passaggio che riscrive l'eseguibile — lo stesso che ci incide dentro
+icona, nome prodotto, versione e autore. Con `false` l'`.exe` restava con
+l'icona di Electron e senza identità in Gestione attività, e il campo
+`win.icon` poco sopra veniva ignorato in silenzio. Con `true` electron-builder
+scrive icona e metadati, e firma **solo** se trova un certificato.
 
 ## Icona
 
