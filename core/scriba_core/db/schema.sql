@@ -108,6 +108,12 @@ CREATE TABLE IF NOT EXISTS transcript_segments (
   -- le evidence che puntano qui non si rompono.
   is_final    INTEGER NOT NULL DEFAULT 0,
   revision    INTEGER NOT NULL DEFAULT 0,
+  -- Il microfono ha ripreso l'altoparlante: queste parole esistono già
+  -- sull'altra traccia, dette da chi le ha dette (vedi stt/eco.py). Restano
+  -- scritte ma fuori da riassunto, note ed export — le esclude `segments()`,
+  -- non i singoli chiamanti. Marcate invece che cancellate perché sono una
+  -- riga su tre: se il giudizio sbaglia, deve restare qualcosa da guardare.
+  eco         INTEGER NOT NULL DEFAULT 0,
   CHECK (t_end_ms >= t_start_ms)
 );
 

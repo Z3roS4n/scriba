@@ -398,6 +398,47 @@
   vero da mesi.
 - **Data:** 2026-08-07
 
+### D-019 — L'eco si giudica due volte, perché dal vivo non si può sapere
+- **Contesto:** il filtro eco lasciava passare **una riga del microfono su tre**. Non
+  per una soglia sbagliata: rifacendo il giudizio fuori linea sulle sei call registrate,
+  la misura segnala il 34,5 % delle righe confrontate con l'altoparlante lì accanto e lo
+  **0,2 %** confrontate con quello di dieci minuti prima, dove eco non ce ne può essere.
+  Fra segnale e falso positivo ci sono due ordini di grandezza: il criterio funziona.
+- **La causa era il momento.** Una frase dell'altoparlante entrava nel filtro solo
+  chiudendosi — dopo una pausa, o dopo venticinque secondi. L'eco sul microfono si chiude
+  molto prima, perché è più smorzato e il VAD lo spezza a ogni avvallamento. Delle righe
+  sopravvissute, la frase che le spiegava si è chiusa **dopo** nel 97-100 % dei casi.
+- **Scelta:** due giudizi, non uno. Dal vivo si annotano anche le **ipotesi provvisorie**
+  dell'altoparlante, così la finestra cieca si stringe a quello che l'altro non ha ancora
+  detto; a call finita `eco.ripassa` rigiudica tutto, quando ogni frase esiste per intero.
+  Il criterio è lo stesso in entrambi i momenti (`_spiegata_da`): due regole divergenti
+  darebbero trascrizioni diverse a seconda di quando le si guarda.
+- **Misurato sul rimedio, sulle stesse sei call:** 352 righe recuperate su 1737 (20,3 %),
+  e **zero** falsi positivi nel controllo — le stesse righe del microfono confrontate con
+  la traccia dell'altoparlante di un'altra call, stessa lingua e stesse persone.
+- **Non si può chiudere del tutto.** Dal vivo resta impossibile riconoscere l'eco di una
+  frase non ancora pronunciata per intero: è il ripasso a coprirlo, e per questo non è un
+  di più ma la metà del rimedio.
+- **Data:** 2026-08-07
+
+### D-020 — Una riga di eco si marca, non si cancella
+- **Contesto:** con D-019 le righe riconosciute passano da poche a **una su tre**.
+  Cancellarne una su tre in silenzio significa che, quando il giudizio sbaglia, non se ne
+  accorge più nessuno — e il difetto precedente era rimasto invisibile per sei call.
+- **Scelta:** `transcript_segments.eco`. La riga resta scritta; a tenerla fuori è
+  `Store.segments()`, che la esclude se non la si chiede. Analisi, note, export,
+  rifinitura e diarizzazione passano tutte di lì e non devono ricordarsi di filtrare:
+  l'esclusione si scrive **una volta sola**, nel punto che nessuno può scavalcare.
+- **Tranne una schermata.** La trascrizione le chiede (`includi_eco=True`) e le mostra
+  sbiadite, etichettate «ripresa» e mai «Io», nascoste dietro un comando che dice quante
+  sono. Nasconderle anche lì sarebbe cancellarle con un altro nome.
+- **Resta cancellato** solo il segmento che si chiude senza testo: quello non è niente,
+  e come riga bianca sarebbe soltanto rumore.
+- **Sulle call già registrate non cambia niente:** la colonna nasce a 0 e nessuno le
+  ripassa da solo. Le righe di eco che sono in quelle trascrizioni ci sono davvero, e
+  dire di no sarebbe un valore di comodo.
+- **Data:** 2026-08-07
+
 ## Decisioni aperte
 
 - **OA-1** — Passare a Qwen3.5-9B come LLM di default? Ha IFEval più alto e KV cache più

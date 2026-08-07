@@ -90,6 +90,79 @@ def test_una_frase_rimasta_aperta_non_viene_mangiata_da_quella_dopo(
     assert any("rimasta aperta" in r.message for r in caplog.records)
 
 
+class TestEco:
+    """Quando il microfono riprende l'altoparlante (#59).
+
+    Il difetto non era il criterio, era il momento: la frase dell'altoparlante
+    entrava nel filtro solo chiudendosi, e l'eco sul microfono si chiude prima.
+    """
+
+    def test_l_ipotesi_provvisoria_dell_altro_basta_a_riconoscerlo(
+        self, recorder: Recorder
+    ) -> None:
+        # L'altro sta ancora parlando: la sua frase non si chiudera' prima di
+        # venti secondi. Aspettarla vuol dire giudicare al buio.
+        recorder._handle_event(
+            TranscriptEvent(
+                "loopback", 157_200, 160_000, "Ok, quindi ora io devo dividere,", is_final=False
+            )
+        )
+        recorder._handle_event(
+            TranscriptEvent("mic", 158_400, 160_800, "Quindi ora io devo dividere.", is_final=True)
+        )
+        # Resta la riga dell'altoparlante, che e' di chi l'ha detta. Quella del
+        # microfono no: e' la stessa frase, tornata indietro.
+        assert [s.source for s in recorder.store.segments(recorder.session_id)] == ["loopback"]
+
+    def test_la_riga_resta_scritta_ma_marcata(self, recorder: Recorder) -> None:
+        # Una riga su tre e' eco: cancellarne una su tre in silenzio vorrebbe
+        # dire che un giudizio sbagliato non lo vede piu' nessuno.
+        recorder._handle_event(
+            TranscriptEvent("loopback", 1_000, 4_000, "il preventivo di Clotilde", is_final=True)
+        )
+        recorder._handle_event(
+            TranscriptEvent("mic", 2_000, 5_000, "il preventivo di Clotilde", is_final=True)
+        )
+        tutte = recorder.store.segments(recorder.session_id, includi_eco=True)
+        assert [(s.source, s.eco) for s in tutte] == [("loopback", False), ("mic", True)]
+
+    def test_il_ripasso_prende_quello_che_dal_vivo_era_impossibile(
+        self, recorder: Recorder
+    ) -> None:
+        # Nessun provvisorio dall'altoparlante: il microfono chiude per primo e
+        # dal vivo non c'e' modo di saperlo. A call finita invece si sa.
+        recorder._handle_event(
+            TranscriptEvent("mic", 158_400, 160_800, "Quindi ora io devo dividere.", is_final=True)
+        )
+        recorder._handle_event(
+            TranscriptEvent(
+                "loopback", 157_200, 183_100, "Ok. Quindi ora io devo dividere, poi vediamo.",
+                is_final=True,
+            )
+        )
+        assert len(righe(recorder)) == 2
+
+        marcate = recorder._ripassa_eco(recorder.session_id)
+        assert marcate == 1
+        assert [s.source for s in recorder.store.segments(recorder.session_id)] == ["loopback"]
+
+    def test_il_ripasso_non_tocca_una_conversazione_vera(self, recorder: Recorder) -> None:
+        recorder._handle_event(
+            TranscriptEvent(
+                "loopback", 1_000, 5_000,
+                "secondo me dovremmo rimandare la migrazione a settembre", is_final=True,
+            )
+        )
+        recorder._handle_event(
+            TranscriptEvent(
+                "mic", 6_000, 9_000,
+                "non sono d'accordo, settembre e' troppo tardi per il cliente", is_final=True,
+            )
+        )
+        assert recorder._ripassa_eco(recorder.session_id) == 0
+        assert len(righe(recorder)) == 2
+
+
 def test_le_due_tracce_non_si_disturbano(recorder: Recorder) -> None:
     # Microfono e loopback hanno ognuno la propria frase in corso: il
     # provvisorio dell'uno non deve chiudere quello dell'altro.

@@ -101,6 +101,10 @@ class Segment:
     # Com'era il testo prima che il glossario correggesse i nomi propri. None
     # quando non è stato corretto niente — cioè quasi sempre.
     testo_originale: str | None = None
+    # Riconosciuta come il ritorno dell'altoparlante sul microfono: le stesse
+    # parole ci sono già sull'altra traccia, dette da chi le ha dette. Resta
+    # scritta ma fuori da analisi, note ed export (vedi `stt/eco.py`).
+    eco: bool = False
 
 
 class Store:
@@ -197,6 +201,7 @@ class Store:
         self._migra_colonna_diarizzata_at(conn)
         self._migra_colonna_cliente(conn)
         self._migra_colonna_testo_originale(conn)
+        self._migra_colonna_eco(conn)
         self._migra_uuid_task(conn)
         row = conn.execute("SELECT MAX(version) AS v FROM schema_version").fetchone()
         if row is None or row["v"] is None:
@@ -251,6 +256,21 @@ class Store:
         colonne = {r["name"] for r in conn.execute("PRAGMA table_info(transcript_segments)")}
         if "testo_originale" not in colonne:
             conn.execute("ALTER TABLE transcript_segments ADD COLUMN testo_originale TEXT")
+
+    @staticmethod
+    def _migra_colonna_eco(conn: sqlite3.Connection) -> None:
+        """Aggiunge `transcript_segments.eco` ai database di prima del ripasso.
+
+        Come le tre sopra. Resta 0 su tutto ciò che è già stato trascritto: le
+        righe di eco che sono in quelle call ci sono davvero, e questa colonna
+        non le riconosce da sola — dire di no è la risposta esatta, non un
+        valore di comodo.
+        """
+        colonne = {r["name"] for r in conn.execute("PRAGMA table_info(transcript_segments)")}
+        if "eco" not in colonne:
+            conn.execute(
+                "ALTER TABLE transcript_segments ADD COLUMN eco INTEGER NOT NULL DEFAULT 0"
+            )
 
     @staticmethod
     def _migra_uuid_task(conn: sqlite3.Connection) -> None:
@@ -690,14 +710,33 @@ class Store:
             )
 
     def elimina_segmento(self, segment_id: int) -> None:
-        """Toglie un segmento riconosciuto come eco dell'altoparlante.
+        """Toglie un segmento che non ha prodotto testo.
 
-        Si cancella invece di correggere l'attribuzione perché quelle parole
-        esistono già sull'altra traccia, dette da chi le ha davvero dette:
-        tenerle due volte raddoppierebbe la frase nel riassunto.
+        Solo quello: una frase che si è chiusa vuota non è niente, e lasciarla
+        nella trascrizione come riga bianca sarebbe rumore. L'eco invece si
+        marca, non si cancella (`marca_eco`).
         """
         with self.tx() as conn:
             conn.execute("DELETE FROM transcript_segments WHERE id = ?", (segment_id,))
+
+    def marca_eco(self, segment_id: int) -> None:
+        """Segna un segmento come ritorno dell'altoparlante sul microfono.
+
+        Non si cancella. Quelle parole esistono già sull'altra traccia, dette
+        da chi le ha dette davvero, quindi vanno tenute fuori da riassunto,
+        note ed export — e `segments()` le esclude da sola. Ma sono una riga su
+        tre: buttarne via una su tre senza lasciarne traccia significherebbe
+        che, se il giudizio sbaglia, non se ne accorge più nessuno.
+
+        `is_final` va a 1 insieme: il provvisorio riconosciuto come eco non
+        riceverà mai il suo definitivo, e resterebbe lì a sembrare una frase
+        ancora in corso.
+        """
+        with self.tx() as conn:
+            conn.execute(
+                "UPDATE transcript_segments SET eco = 1, is_final = 1 WHERE id = ?",
+                (segment_id,),
+            )
 
     def set_audio_paths(self, session_id: int, mic: str | None, loopback: str | None) -> None:
         with self.tx() as conn:
@@ -706,7 +745,15 @@ class Store:
                 (mic, loopback, session_id),
             )
 
-    def segments(self, session_id: int, *, only_final: bool = False) -> list[Segment]:
+    def segments(
+        self, session_id: int, *, only_final: bool = False, includi_eco: bool = False
+    ) -> list[Segment]:
+        # Le righe di eco restano fuori se non si chiedono. È l'unico posto in
+        # cui questa esclusione si può scrivere una volta sola: analisi, note,
+        # export, rifinitura e diarizzazione passano tutte di qui, e nessuna
+        # deve ricordarsi di filtrare. Le chiede solo chi mostra la
+        # trascrizione, per farle vedere per quello che sono.
+        #
         # Il LEFT JOIN è per costruzione: finché nessuno ha diarizzato la
         # sessione, speaker_id sui segmenti punta comunque a 'io'/'altri' (lo
         # imposta già add_segment), quindi la voce c'è sempre — solo `nome_reale`
@@ -715,7 +762,7 @@ class Store:
         # deve sparire dai risultati: da qui il LEFT invece di un JOIN semplice.
         sql = """
             SELECT t.id, t.session_id, t.source, t.t_start_ms, t.t_end_ms, t.testo,
-                   t.is_final, t.revision, t.confidence, t.testo_originale,
+                   t.is_final, t.revision, t.confidence, t.testo_originale, t.eco,
                    sp.id AS speaker_id, sp.label AS speaker_label,
                    sp.nome_reale AS speaker_nome_reale
               FROM transcript_segments t
@@ -724,6 +771,8 @@ class Store:
         """
         if only_final:
             sql += " AND t.is_final = 1"
+        if not includi_eco:
+            sql += " AND t.eco = 0"
         sql += " ORDER BY t.t_start_ms, t.id"
         return [
             Segment(
@@ -740,6 +789,7 @@ class Store:
                 speaker_label=r["speaker_label"],
                 speaker_nome_reale=r["speaker_nome_reale"],
                 testo_originale=r["testo_originale"],
+                eco=bool(r["eco"]),
             )
             for r in self.conn.execute(sql, (session_id,))
         ]

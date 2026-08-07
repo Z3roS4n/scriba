@@ -51,11 +51,13 @@ const Riga = memo(function Riga({ s, citata }: { s: Segmento; citata: boolean })
   return (
     // data-t serve a ritrovare la riga quando si clicca un minuto altrove nella finestra.
     <div
-      className={`line ${s.source === 'mic' ? 'line--me' : 'line--other'} ${citata ? 'is-cited' : ''}`}
+      className={`line ${s.source === 'mic' ? 'line--me' : 'line--other'} ${citata ? 'is-cited' : ''} ${s.eco ? 'line--eco' : ''}`}
       data-t={s.t_start_ms}
     >
       <span className="line__t">{tempo(s.t_start_ms)}</span>
-      <span className="line__who">{chi}</span>
+      {/* Non "Io": e' proprio il punto. Queste parole le ha dette l'altro, e
+          la riga esiste solo per poterlo verificare. */}
+      <span className="line__who">{s.eco ? 'ripresa' : chi}</span>
       {/* Provvisorio: colore fioco, MAI corsivo (rallenta la lettura periferica). Alla
           chiusura della frase si toglie solo la classe, la riga non si smonta. */}
       <span className={`line__text ${s.is_final ? '' : 'is-provisional'}`}>
@@ -256,13 +258,21 @@ export const Trascrizione = forwardRef<
 
   const citateSet = useMemo(() => new Set(citate), [citate])
 
+  // Le righe in cui il microfono ha ripreso l'altoparlante restano nascoste,
+  // ma si possono guardare. Sono gia' fuori da riassunto, note ed export: qui
+  // non si decide niente, si da' modo di controllare che il giudizio fosse
+  // giusto. Cancellarle e' l'unica cosa che non si fa — sono una riga su tre.
+  const [mostraEco, setMostraEco] = useState(false)
+  const quantiEco = useMemo(() => segmenti.filter((s) => s.eco).length, [segmenti])
+
   const righe = useMemo(() => {
+    const parlato = mostraEco ? segmenti : segmenti.filter((s) => !s.eco)
     const elementi: Array<{ chiave: string; t: number; seg?: Segmento; scatto?: Scatto }> = [
-      ...segmenti.map((s) => ({ chiave: `s${s.id}`, t: s.t_start_ms, seg: s })),
+      ...parlato.map((s) => ({ chiave: `s${s.id}`, t: s.t_start_ms, seg: s })),
       ...scatti.map((s) => ({ chiave: `i${s.id}`, t: s.t_ms, scatto: s })),
     ]
     return elementi.sort((a, b) => a.t - b.t)
-  }, [segmenti, scatti])
+  }, [segmenti, scatti, mostraEco])
 
   const vaiA = useCallback((t_ms: number) => {
     const el = corpo.current
@@ -371,6 +381,20 @@ export const Trascrizione = forwardRef<
         <span className="legend">
           <i className="me" />Io<i className="other" />Altri
         </span>
+        {/* Compare solo quando c'e' qualcosa da mostrare: su una call senza
+            eco questo comando non ha niente da dire, e un interruttore che non
+            fa mai niente insegna a non guardarlo. */}
+        {quantiEco > 0 && (
+          <button
+            className="btn btn--eco"
+            onClick={() => setMostraEco((v) => !v)}
+            title="Righe in cui il microfono ha ripreso l'altoparlante. Sono escluse da riassunto, note ed export."
+          >
+            {mostraEco
+              ? 'Nascondi le ripetizioni'
+              : `${quantiEco === 1 ? '1 riga ripresa' : `${quantiEco} righe riprese`} dall’altoparlante`}
+          </button>
+        )}
       </div>
 
       {/* Compare solo finche' resta almeno una voce senza nome: una volta

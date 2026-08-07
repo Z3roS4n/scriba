@@ -25,6 +25,7 @@ from .audio.writer import TrackWriter
 from .db.store import Store
 from .session import SessionClock, State
 from .settings import Settings
+from .stt import eco as eco_mod
 from .stt import glossario
 from .stt.base import TranscriptEvent
 from .stt.eco import FiltroEco, soglia_per_livello
@@ -261,7 +262,11 @@ class Recorder:
         # provvisori il testo cambia a ogni ipotesi, e una correzione che
         # compare e sparisce mentre si sta leggendo è peggio del nome sbagliato.
         # Si fa prima di tutto il resto: il filtro eco confronta i testi delle
-        # due tracce, e vanno confrontati nella stessa forma.
+        # due tracce, e conviene che siano nella stessa forma — dal vivo non
+        # sempre lo sono, perché confronta anche le ipotesi provvisorie
+        # dell'altoparlante, che il glossario non ha ancora toccato. Costa
+        # qualche nome che non coincide su una riga; il ripasso a fine call
+        # lavora su definitivi da entrambe le parti e lì la forma è la stessa.
         originale: str | None = None
         if ev.is_final and ev.text and self._glossario:
             corretto, cambi = glossario.correggi(
@@ -292,17 +297,21 @@ class Recorder:
             aperto = None
 
         # Quello che esce dalle casse viene annotato, così se torna indietro dal
-        # microfono lo si riconosce.
+        # microfono lo si riconosce. Anche i provvisori: aspettare che la frase
+        # dell'altoparlante si chiuda vuol dire giudicarne l'eco prima di
+        # sapere cosa l'ha causato, ed è ciò che ne lasciava passare una su tre
+        # (#59). Resta una finestra cieca — quello che l'altro non ha ancora
+        # detto — e a quella pensa il ripasso in `stop`.
+        eco = False
         if ev.source == "loopback":
-            if ev.is_final and ev.text:
+            if ev.text:
                 self._eco.registra_uscita(ev.t_start_ms, ev.text)
         elif ev.is_final and ev.text and self._eco.e_eco(ev.t_start_ms, ev.text):
             # Il microfono ha ripreso l'altoparlante: non sono parole di chi
             # registra. Attribuirgliele significa invertire chi ha detto cosa
             # nel riassunto, che è peggio di perdere una riga.
-            self._scarta_aperto(ev.source)
+            eco = True
             self._echi_scartati += 1
-            return
 
         # Definitivo senza testo: la frase si è chiusa senza produrre niente.
         # Il provvisorio va tolto, non lasciato lì come riga vuota.
@@ -324,6 +333,7 @@ class Recorder:
             )
             self._open_segments[ev.source] = _Aperto(seg_id, ev.t_start_ms, ev.text)
         else:
+            seg_id = aperto.id
             self.store.refine_segment(
                 aperto.id,
                 ev.text,
@@ -335,6 +345,13 @@ class Recorder:
         if ev.is_final:
             self._open_segments.pop(ev.source, None)
 
+        if eco:
+            # Scritta e marcata, non cancellata: sta fuori da riassunto, note
+            # ed export (la esclude `Store.segments`) ma resta guardabile. Chi
+            # legge la trascrizione deve poter controllare che sia davvero eco.
+            self.store.marca_eco(seg_id)
+            return
+
         if self._on_event is not None:
             self._on_event(ev)
 
@@ -343,6 +360,26 @@ class Recorder:
         aperto = self._open_segments.pop(source, None)
         if aperto is not None:
             self.store.elimina_segmento(aperto.id)
+
+    def _ripassa_eco(self, session_id: int) -> int:
+        """Rigiudica l'eco a call finita, e marca quello che dal vivo era sfuggito.
+
+        Non solleva: è l'ultimo gesto di una registrazione andata a buon fine,
+        e una call intera non si perde perché il ripasso è inciampato.
+        """
+        try:
+            righe = self.store.segments(session_id, only_final=True)
+            mic = [s for s in righe if s.source == "mic"]
+            loopback = [s for s in righe if s.source == "loopback"]
+            if not mic or not loopback:
+                return 0
+            ids = eco_mod.ripassa(mic, loopback, soglia=self._eco.soglia)
+            for seg_id in ids:
+                self.store.marca_eco(seg_id)
+            return len(ids)
+        except Exception:  # pragma: no cover - il ripasso non fa perdere la call
+            log.exception("Ripasso dell'eco non riuscito sulla sessione %d.", session_id)
+            return 0
 
     # ------------------------------------------------------------ screenshot
 
@@ -421,9 +458,14 @@ class Recorder:
                 str(percorsi["mic"]) if percorsi.get("mic") else None,
                 str(percorsi["loopback"]) if percorsi.get("loopback") else None,
             )
+            # Ora che ogni frase dell'altoparlante esiste per intero, il
+            # giudizio sull'eco si può rifare con tutto davanti. Dal vivo non
+            # era possibile: la frase che spiega l'eco si chiude quasi sempre
+            # dopo l'eco stesso, ed è così che ne passava una su tre (#59).
+            self._echi_scartati += self._ripassa_eco(session_id)
             if self._echi_scartati:
                 log.info(
-                    "Scartate %d frasi in cui il microfono aveva ripreso l'altoparlante.",
+                    "Marcate %d frasi in cui il microfono aveva ripreso l'altoparlante.",
                     self._echi_scartati,
                 )
             if self._nomi_corretti:

@@ -180,6 +180,15 @@ export interface Segmento {
    * sostituisce.
    */
   speaker?: { id: number; label: string; nome_reale: string | null } | null
+  /**
+   * Il microfono ha ripreso l'altoparlante: queste parole ci sono già sulla
+   * traccia degli altri, dette da chi le ha dette.
+   *
+   * Sono già escluse da riassunto, note ed export. Arrivano fino a qui perché
+   * la trascrizione è l'unico posto in cui si può controllare che il giudizio
+   * fosse giusto — nasconderle ovunque sarebbe cancellarle con un altro nome.
+   */
+  eco?: boolean
 }
 
 export interface Scatto {

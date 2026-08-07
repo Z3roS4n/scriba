@@ -45,6 +45,15 @@ viene**, anche dopo che il segmento da cui viene è stato rifinito.
   l'ultima: quella dal vivo è l'unica che nessun automatismo ha già riscritto.
   Senza, la correzione non sarebbe né verificabile né annullabile — e l'app sta
   mettendo in bocca a qualcuno parole che il modello non ha sentito.
+- `eco` (aggiunto per migrazione) segna le righe in cui il microfono ha ripreso
+  l'altoparlante: le stesse parole ci sono già sull'altra traccia, dette da chi le
+  ha dette. **Non si cancellano**, sono una riga su tre e un giudizio sbagliato
+  deve restare guardabile (D-020). A tenerle fuori è `Store.segments()`, che le
+  esclude se non le si chiede: analisi, note, export, rifinitura e diarizzazione
+  passano tutte di lì e non filtrano niente per conto loro. Le chiede solo la
+  schermata della trascrizione, per mostrarle sbiadite e mai attribuite a «Io».
+  Nasce a 0 su tutto ciò che è già stato trascritto — quelle righe di eco ci sono
+  davvero, e dire di no sarebbe un valore di comodo.
 - `t_start_ms` / `t_end_ms` sono l'orologio della **call**, e da #45 il file audio lo
   rispetta: i buchi di consegna vengono riempiti di silenzio, quindi il secondo 900
   del file è il secondo 900 della call. Resta uno scarto proporzionale di ~0.2% —

@@ -38,7 +38,7 @@ token sarebbe raggiungibile da qualunque pagina web aperta nel browser.
 | POST | `/session/start` · `/stop` · `/pause` · `/resume` | ciclo della registrazione |
 | POST | `/session/screenshot` | aggancia uno scatto all'istante della call |
 | GET | `/sessions` | elenco, con cliente e conteggio task |
-| GET | `/sessions/{id}/segments` | la trascrizione |
+| GET | `/sessions/{id}/segments` | la trascrizione, comprese le righe di eco |
 | POST | `/sessions/{id}/elimina` | |
 
 ### Analisi
@@ -50,6 +50,12 @@ token sarebbe raggiungibile da qualunque pagina web aperta nel browser.
 | GET | `/analisi/stato` | fasi dell'analisi in corso |
 | GET | `/sessions/{id}/note` | le note di lavoro scritte durante la call |
 | POST | `/tasks/{id}` | correzione manuale di una task |
+
+`/sessions/{id}/segments` è **l'unica** rotta che restituisce anche le righe
+marcate come eco, con `eco: true` accanto al testo. Tutto il resto — riassunto,
+note, export — le vede già escluse da `Store.segments()`. Arrivano fin qui perché
+la trascrizione è l'unico posto in cui si può controllare che il giudizio fosse
+giusto: nasconderle anche lì sarebbe cancellarle con un altro nome (D-020).
 
 `/sessions/{id}/note` restituisce tutte le note **e** l'ultima a parte: ognuna
 riscrive la precedente incorporandola, quindi è quella da mostrare. Non passa da
