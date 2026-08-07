@@ -26,6 +26,13 @@ export interface ScribaApi {
   /** Stato del core. Senza token, di proposito. */
   endpoint(): Promise<{ port: number } | null>
   paths(): Promise<{ dataDir: string; screenshotDir: string }>
+  /** Versione, commit e data della build. `commit` è null se git non ha risposto. */
+  versione(): Promise<{
+    versione: string
+    commit: string | null
+    pulito: boolean | null
+    costruito_il: string | null
+  }>
 
   get<T>(path: string): Promise<RispostaCore<T>>
   post<T>(path: string, body?: unknown): Promise<RispostaCore<T>>

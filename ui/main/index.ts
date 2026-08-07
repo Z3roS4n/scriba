@@ -18,6 +18,35 @@ import { Sidecar } from './sidecar'
 const PROJECT_ROOT = resolve(app.getAppPath(), '..')
 const DATA_DIR = join(app.getPath('userData'), 'data')
 const SCREENSHOT_DIR = join(DATA_DIR, 'screenshots')
+
+/**
+ * Che build è questa.
+ *
+ * Il numero viene da `package.json` attraverso `app.getVersion()`, che è la
+ * stessa fonte che usa electron-builder per il nome dell'installer: non ce
+ * n'è una seconda da tenere allineata. Il commit lo scrive `npm run build`
+ * dentro `dist/versione.json` — durante lo sviluppo si fanno molte build con
+ * lo stesso numero, ed è proprio lì che serve sapere quale si sta usando.
+ *
+ * Se il file non c'è (build fatta prima che esistesse questo passaggio, o
+ * sorgenti scompattati da uno zip) restano solo versione e nome. Un commit
+ * inventato sarebbe peggio di un commit assente.
+ */
+function versioneApp(): { versione: string; commit: string | null; pulito: boolean | null; costruito_il: string | null } {
+  const vuota = { versione: app.getVersion(), commit: null, pulito: null, costruito_il: null }
+  try {
+    const grezzo = readFileSync(join(app.getAppPath(), 'dist', 'versione.json'), 'utf8')
+    const d = JSON.parse(grezzo)
+    return {
+      versione: app.getVersion(),
+      commit: typeof d.commit === 'string' ? d.commit : null,
+      pulito: typeof d.pulito === 'boolean' ? d.pulito : null,
+      costruito_il: typeof d.costruito_il === 'string' ? d.costruito_il : null,
+    }
+  } catch {
+    return vuota
+  }
+}
 /**
  * L'icona dell'applicazione, dove sta sia in sviluppo che pacchettizzata.
  *
@@ -50,7 +79,7 @@ const SCREENSHOT_HOTKEYS = [
   'Alt+Shift+S',
 ]
 
-const sidecar = new Sidecar(PROJECT_ROOT, join(DATA_DIR, 'scriba.sqlite'))
+const sidecar = new Sidecar(PROJECT_ROOT, join(DATA_DIR, 'scriba.sqlite'), versioneApp())
 
 const cartellaRisorse = __dirname.replace(/[\\/]main$/, '')
 const overlay = new Overlay(cartellaRisorse, join(DATA_DIR, 'overlay.json'))
@@ -620,6 +649,7 @@ function registerIpc(): void {
   })
 
   ipcMain.handle('app:paths', () => ({ dataDir: DATA_DIR, screenshotDir: SCREENSHOT_DIR }))
+  ipcMain.handle('app:versione', () => versioneApp())
 
   // Comandi della barra del titolo: le finestre sono senza cornice, quindi
   // ridurre, ingrandire e chiudere vanno rifatti a mano. Agiscono sulla

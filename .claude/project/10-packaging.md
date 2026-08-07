@@ -43,6 +43,30 @@ ha di serie) lo script lo installa al volo.
 Output finale: `ui/release/Scriba Setup <versione>.exe` (~180 MB, installer
 NSIS non firmato, per-utente — non richiede privilegi di amministratore).
 
+## Versione: una sola, in `ui/package.json`
+
+Da lì la leggono electron-builder (nome dell'artefatto, proprietà del file su
+Windows, chiave di disinstallazione), il processo principale via
+`app.getVersion()`, e — attraverso l'ambiente del sidecar — il core, che la
+riporta in `/health`. Una seconda copia da qualche parte vorrebbe dire vederle
+divergere, e il modo in cui questo tipo di errore si scopre è leggere un log e
+non sapere a quale build appartiene.
+
+Si alza con `scripts/versione.ps1` (`patch` | `minore` | `maggiore`, oppure un
+numero esatto), che riscrive **solo quel campo** con una regex invece di
+riserializzare il JSON: `ConvertTo-Json` riordinerebbe le chiavi e il diff
+diventerebbe l'intero file.
+
+**Non si alza a ogni build.** Durante lo sviluppo se ne fanno molte con lo
+stesso numero, ed è proprio lì che serve distinguerle: a farlo è il commit, che
+`npm run build` scrive in `dist/versione.json` insieme alla data e a un flag
+`pulito` che dice se l'albero aveva modifiche non salvate. Se git non risponde
+il commit resta `null` — un valore inventato sarebbe peggio di uno assente.
+
+Per anni la versione è stata `0.1.0` su una ventina di installer diversi (#48):
+il numero è ripartito da `0.5.0`, che riflette dov'è il prodotto invece di dove
+era il primo giorno.
+
 ## Struttura dei file di packaging
 
 | File | Cosa fa |

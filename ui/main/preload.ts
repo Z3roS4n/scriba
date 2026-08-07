@@ -64,6 +64,13 @@ const api = {
   endpoint: (): Promise<{ port: number } | null> => ipcRenderer.invoke('core:endpoint'),
 
   paths: (): Promise<{ dataDir: string; screenshotDir: string }> => ipcRenderer.invoke('app:paths'),
+  /** Versione, commit e data della build: serve a distinguere due installazioni. */
+  versione: (): Promise<{
+    versione: string
+    commit: string | null
+    pulito: boolean | null
+    costruito_il: string | null
+  }> => ipcRenderer.invoke('app:versione'),
 
   get: <T>(path: string): Promise<Risposta<T>> => ipcRenderer.invoke('core:request', path),
 

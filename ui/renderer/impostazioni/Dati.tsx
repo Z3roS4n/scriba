@@ -8,7 +8,7 @@
  * intero modale.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import type { Sessione, VoceDati } from '../tipi'
 import { dimensione } from '../tipi'
@@ -17,6 +17,47 @@ import { Modal } from './Modal'
 const FRASE_CONFERMA = 'ELIMINA'
 
 type Passo = 'chiusa' | 'elenco' | 'conferma'
+
+/**
+ * Che build si sta usando.
+ *
+ * Sta qui e non in un «Informazioni» a parte perché è la stessa domanda di
+ * «dove stanno i miei dati»: la si fa quando qualcosa non torna. Il commit
+ * accanto al numero non è pignoleria — durante lo sviluppo si fanno molte
+ * build con lo stesso numero, ed è l'unica cosa che le distingue.
+ */
+function Versione() {
+  const [v, setV] = useState<{
+    versione: string
+    commit: string | null
+    pulito: boolean | null
+    costruito_il: string | null
+  } | null>(null)
+
+  useEffect(() => {
+    window.scriba.versione().then(setV)
+  }, [])
+
+  if (!v) return null
+  const quando = v.costruito_il ? new Date(v.costruito_il) : null
+  return (
+    <div className="row">
+      <div className="row__text">
+        <b>Versione</b>
+        <span>
+          {quando && !Number.isNaN(quando.getTime())
+            ? `Compilata il ${quando.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}.`
+            : 'Data di compilazione non disponibile.'}
+          {v.pulito === false && ' Contiene modifiche non salvate in nessun commit.'}
+        </span>
+      </div>
+      <span className="pathrow__size">
+        {v.versione}
+        {v.commit ? ` · ${v.commit}${v.pulito === false ? '+' : ''}` : ''}
+      </span>
+    </div>
+  )
+}
 
 export function SezioneDati({
   voci,
@@ -61,6 +102,7 @@ export function SezioneDati({
     <>
       <div className="settings__head">Dati e privacy</div>
       <div className="settings__body">
+        <Versione />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', margin: 'var(--sp-7) 0 18px' }}>
           {voci.map((v) => (
             <div className="pathrow" key={v.chiave}>

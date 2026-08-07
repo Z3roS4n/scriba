@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import re
 import secrets
 import threading
@@ -562,6 +563,14 @@ def create_app(
             # Presente solo se all'avvio il database era illeggibile: dice dove
             # sono finiti i file messi da parte e da quale backup si è ripartiti.
             "db_danneggiato": state.get("db_danneggiato"),
+            # Da che build viene questo processo. Non la legge da un file suo:
+            # gliela passa chi lo avvia (`SCRIBA_VERSIONE`/`SCRIBA_COMMIT` in
+            # ui/main/sidecar.ts), perché interfaccia e core escono sempre dalla
+            # stessa compilazione e due numeri letti da due posti diversi prima
+            # o poi non coincidono. Avviato a mano, restano None — che è la
+            # verità: quel core non appartiene a nessuna build.
+            "versione": os.environ.get("SCRIBA_VERSIONE"),
+            "commit": os.environ.get("SCRIBA_COMMIT"),
         }
 
     @app.get("/session/state", dependencies=[Depends(check_token)])

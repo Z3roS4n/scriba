@@ -428,3 +428,33 @@ class TestRecorder:
         assert segmenti[0].is_final
         assert segmenti[0].revision == 1
         rec.stop()
+
+
+class TestVersioneNelloStatoDiSalute:
+    """Da che build viene questo core.
+
+    Non la legge da un file suo: gliela passa chi lo avvia. Interfaccia e core
+    escono dalla stessa compilazione, e due numeri letti da due posti diversi
+    prima o poi non coincidono — che è esattamente il problema che questo
+    campo esiste per risolvere.
+    """
+
+    def test_dice_versione_e_commit(self, tmp_path: Path, monkeypatch) -> None:
+        monkeypatch.setenv("SCRIBA_VERSIONE", "0.5.0")
+        monkeypatch.setenv("SCRIBA_COMMIT", "abc1234")
+        app = create_app(db_path=tmp_path / "v.sqlite", token=TOKEN, engine_factory=FakeEngine)
+        with TestClient(app) as c:
+            corpo = c.get("/health").json()
+        assert corpo["versione"] == "0.5.0"
+        assert corpo["commit"] == "abc1234"
+
+    def test_avviato_a_mano_non_inventa_niente(self, tmp_path: Path, monkeypatch) -> None:
+        # Un core lanciato da riga di comando non appartiene a nessuna build, e
+        # dirlo è più utile che riportare un numero preso da chissà dove.
+        monkeypatch.delenv("SCRIBA_VERSIONE", raising=False)
+        monkeypatch.delenv("SCRIBA_COMMIT", raising=False)
+        app = create_app(db_path=tmp_path / "v2.sqlite", token=TOKEN, engine_factory=FakeEngine)
+        with TestClient(app) as c:
+            corpo = c.get("/health").json()
+        assert corpo["versione"] is None
+        assert corpo["commit"] is None
