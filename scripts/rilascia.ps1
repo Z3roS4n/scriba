@@ -38,8 +38,11 @@ param(
     # l'applicazione costringe chi arriva a compilarsela. Resta **non firmato**,
     # e questo va detto nel changelog, non nascosto.
     [switch]$SenzaInstaller,
-    # Salta i controlli sullo stato del repository. Per riprovare una
-    # pubblicazione fallita a meta', non per pubblicare da un albero sporco.
+    # Salta i controlli sullo stato del repository (ramo, albero pulito,
+    # allineamento con origin). **Non serve** per riprendere una pubblicazione
+    # caduta a meta': quella si riprende rilanciando il comando cosi' com'e', e
+    # lo script riusa il tag invece di riposarlo. Serve per i casi in cui si sa
+    # cosa si sta facendo e il repository non e' nello stato canonico.
     [switch]$Forza
 )
 
@@ -112,7 +115,18 @@ if (-not $atteso) {
     throw "La voce $versione non ha nessuna sezione con voci. Attese: '### Breaking changes', '### New features', '### Fixes'."
 }
 
-$precedente = (git -C $radice tag --list 'v*' --sort=-v:refname | Select-Object -First 1)
+# L'ultima versione **rilasciata**, non l'ultimo tag posato. Non sono la stessa
+# cosa: se una pubblicazione cade dopo il tag e prima della release — e' successo,
+# la chiamata a GitHub non e' arrivata — resta in giro un tag che non corrisponde
+# a niente. Contandolo, al secondo tentativo lo scatto risulterebbe 'nessuno' e
+# lo script si fermerebbe proprio quando gli si sta chiedendo di riprendere (#67).
+$precedente = (& gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>$null)
+if ($LASTEXITCODE -ne 0 -or -not $precedente) {
+    # Senza rete o senza release precedenti si ripiega sui tag: meglio un
+    # controllo su una base imperfetta che nessun controllo.
+    $precedente = (git -C $radice tag --list 'v*' --sort=-v:refname |
+        Where-Object { $_ -ne $tag } | Select-Object -First 1)
+}
 if ($precedente) {
     $p = $precedente.TrimStart('v').Split('.')
     $n = $versione.Split('.')
@@ -146,17 +160,37 @@ $(if ($SenzaInstaller) { "L'installer non è allegato: si costruisce dai sorgent
 $fileDescrizione = Join-Path ([System.IO.Path]::GetTempPath()) "scriba-release-$versione.md"
 [System.IO.File]::WriteAllText($fileDescrizione, $descrizione, (New-Object System.Text.UTF8Encoding($false)))
 
-git -C $radice tag -a $tag -m "Scriba $versione"
+# Il tag puo' gia' esserci da un tentativo caduto a meta': in quel caso non e'
+# un errore, e' lo stato che si sta riprendendo. Va pero' controllato che punti
+# a questo commit, perche' un tag rimasto su un commit vecchio pubblicherebbe
+# codice diverso da quello che si ha davanti.
+$suDiEsso = (git -C $radice rev-list -n 1 $tag 2>$null)
+if ($LASTEXITCODE -eq 0 -and $suDiEsso) {
+    $qui = (git -C $radice rev-parse HEAD).Trim()
+    if ($suDiEsso.Trim() -ne $qui) {
+        throw "Il tag $tag esiste gia' e punta a $($suDiEsso.Substring(0,7)), non a $($qui.Substring(0,7)). Cancellalo (git tag -d $tag; git push origin :refs/tags/$tag) o pubblica da li'."
+    }
+    Write-Host "  il tag $tag c'era gia' su questo commit: riprendo"
+} else {
+    git -C $radice tag -a $tag -m "Scriba $versione"
+    if ($LASTEXITCODE -ne 0) { throw "Non sono riuscito a posare il tag $tag." }
+}
 git -C $radice push --quiet origin $tag
+if ($LASTEXITCODE -ne 0) { throw "Non sono riuscito a spingere il tag $tag su origin." }
 
 $argomenti = @('release', 'create', $tag, '--title', "Scriba $versione", '--notes-file', $fileDescrizione)
 if (-not $SenzaInstaller) { $argomenti += $installer }
 
 & gh @argomenti
 if ($LASTEXITCODE -ne 0) {
-    # Il tag e' gia' su origin: si dice come riprendere invece di lasciare uno
-    # stato a meta' senza spiegazione.
-    throw "gh release create non e' riuscito. Il tag $tag e' gia' pubblicato: rilancia con -Forza dopo aver risolto."
+    # Si dice **in che stato e' rimasta**, non si indovina la causa. La prima
+    # volta questo messaggio dava la colpa al tag mentre era caduta la rete, e
+    # mandava a cercare nel posto sbagliato (#67).
+    throw @"
+gh release create non e' riuscito (uscita $LASTEXITCODE). L'errore vero e' quello stampato qui sopra.
+Stato: il tag $tag e' su origin, la release NO. L'installer e' pronto in $installer.
+Risolto il guasto, rilancia lo stesso comando: il tag viene riusato, non riposato.
+"@
 }
 Remove-Item $fileDescrizione -ErrorAction SilentlyContinue
 Write-Host "pubblicata: https://github.com/Z3roS4n/scriba/releases/tag/$tag"
