@@ -181,3 +181,57 @@ if (perse.length) {
   process.exit(1)
 }
 console.log('Tutte ritrovate identiche: nessuna frase è stata cambiata traducendo.')
+
+/* ------------------------------------------------------------------ inglese
+ *
+ * Il tipo garantisce che ogni chiave italiana abbia una riga inglese. Non
+ * garantisce che quella riga sia inglese: copiare l'italiano compila, e
+ * l'errore si vede solo mettendo l'applicazione in inglese e guardando quella
+ * schermata — cioè quasi mai.
+ *
+ * E poi i segnaposto. `{n} righe` tradotto «{righe} lines» compila lo stesso,
+ * e in inglese esce la parola `{righe}` scritta com'è, fra graffe, dentro
+ * l'interfaccia.
+ */
+const inglese = catalogo.slice(catalogo.indexOf('const en:'))
+const en = new Map(
+  [...inglese.matchAll(/'([a-z][a-z_0-9]*\.[a-z_0-9]+)':\s*\n?\s*'((?:[^'\\]|\\.)*)'/g)].map((m) => [
+    m[1],
+    m[2].replace(/\\'/g, "'"),
+  ]),
+)
+
+/** Uguali in tutte e due le lingue perché sono nomi propri, tasti o prestiti. */
+const UGUALI_APPOSTA = new Set([
+  'top.nome',
+  'ovl.nome',
+  'arc2.esc',
+  'ras2.esc',
+  'sez.export',
+  'exp.titolo',
+  'azione.screenshot',
+  'call.senza_titolo',
+  'ntipo.url',
+])
+
+const segnaposti = (s) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort()
+const copiate = []
+const buchi = []
+for (const [chiave, valore] of voci) {
+  const t = en.get(chiave)
+  if (t === undefined) continue
+  if (t === valore && !UGUALI_APPOSTA.has(chiave)) copiate.push(`${chiave} — ${valore.slice(0, 56)}`)
+  const [a, b] = [segnaposti(valore).join(','), segnaposti(t).join(',')]
+  if (a !== b) buchi.push(`${chiave} — it {${a}} vs en {${b}}`)
+}
+
+if (copiate.length) {
+  console.error(`\n${copiate.length} righe inglesi sono ancora l'italiano:`)
+  for (const c of copiate) console.error('   ' + c)
+}
+if (buchi.length) {
+  console.error(`\n${buchi.length} con segnaposto diversi — in una delle due lingue resta scritto fra graffe:`)
+  for (const b of buchi) console.error('   ' + b)
+}
+if (copiate.length || buchi.length) process.exit(1)
+console.log(`${en.size} righe inglesi: tradotte davvero, e con gli stessi segnaposto.`)
