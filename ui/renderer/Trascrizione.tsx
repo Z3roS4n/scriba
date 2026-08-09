@@ -309,7 +309,7 @@ export const Trascrizione = forwardRef<
   // di chi non e' stato assegnato a nessun cluster: rinominarlo come se fosse
   // una persona sarebbe fuorviante) e non gia' battezzate.
   const vociDaNominare = useMemo(
-    () => voci.filter((v) => v.label.startsWith('Voce ') && !v.nome_reale),
+    () => voci.filter((v) => v.numero != null && !v.nome_reale),
     [voci],
   )
 
@@ -427,7 +427,7 @@ export const Trascrizione = forwardRef<
               {t('tra.registra')}
             </button>
             {scorciatoiaStriscia && (
-              <span className="state__hint">oppure {scorciatoiaStriscia} per la striscia</span>
+              <span className="state__hint">{t('tra3.oppure_striscia', { tasto: scorciatoiaStriscia })}</span>
             )}
           </div>
         </div>
@@ -504,8 +504,8 @@ export const Trascrizione = forwardRef<
               >
                 <span className={`chev${mostraEco ? ' is-open' : ''}`} />
                 <span>
-                  <b className="num">{quantiEco === 1 ? '1 riga' : `${quantiEco} righe`}</b>{' '}
-                  {quantiEco === 1 ? 'ripresa' : 'riprese'} dall’altoparlante
+                  <b className="num">{t(quantiEco === 1 ? 'tra3.riga_1' : 'tra3.righe_n', { n: quantiEco })}</b>{' '}
+                  {t(quantiEco === 1 ? 'tra3.ripresa' : 'tra3.riprese')}
                 </span>
                 <span className="echo__hint">{t('tra.eco_nota')}</span>
               </button>
@@ -533,8 +533,8 @@ export const Trascrizione = forwardRef<
                 quella frase non ha senso, quindi si tace il conteggio invece
                 di dire "0 righe nuove". */}
             {righeNuove === 0
-              ? 'Torna al presente'
-              : `Torna al presente · ${righeNuove === 1 ? '1 riga nuova' : `${righeNuove} righe nuove`}`}
+              ? t('tra3.torna')
+              : `${t('tra3.torna')} · ${t(righeNuove === 1 ? 'tra3.nuova_1' : 'tra3.nuove_n', { n: righeNuove })}`}
           </button>
         </div>
       )}

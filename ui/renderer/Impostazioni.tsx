@@ -151,7 +151,7 @@ export function Impostazioni() {
     setErrore(null)
     const r = await window.scriba.post('/settings', patch)
     if (!r.ok) {
-      setErrore(`Impostazione non salvata (${r.status}).`)
+      setErrore(t('imp2.non_salvata', { n: r.status }))
       return false
     }
     const fresca = await window.scriba.get<ImpostazioniT>('/settings')
@@ -181,7 +181,7 @@ export function Impostazioni() {
     setErrore(null)
     const r = await window.scriba.post('/settings', { llm: { provider: p.id, api_key: chiave } })
     if (!r.ok) {
-      setErrore(`Chiave non salvata (${r.status}).`)
+      setErrore(t('imp2.chiave', { n: r.status }))
       return false
     }
     const [pr, fresca] = await Promise.all([
@@ -205,7 +205,7 @@ export function Impostazioni() {
   const eliminaAudio = useCallback(async (): Promise<boolean> => {
     const r = await window.scriba.post('/dati/elimina-audio')
     if (!r.ok) {
-      setErrore(`Audio non eliminato (${r.status}).`)
+      setErrore(t('imp2.audio', { n: r.status }))
       return false
     }
     const dt = await window.scriba.get<VoceDati[]>('/dati')
@@ -216,7 +216,7 @@ export function Impostazioni() {
   const eliminaCall = useCallback(async (id: number): Promise<boolean> => {
     const r = await window.scriba.post(`/sessions/${id}/elimina`)
     if (!r.ok) {
-      setErrore(`Call non eliminata (${r.status}).`)
+      setErrore(t('imp2.call', { n: r.status }))
       return false
     }
     const dt = await window.scriba.get<VoceDati[]>('/dati')

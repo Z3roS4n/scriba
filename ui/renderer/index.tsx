@@ -215,7 +215,7 @@ function App() {
         titolo: titolo.trim() || null,
         consenso_confermato: consenso,
       })
-      if (!r.ok) mostraAvviso(`Avvio non riuscito (${r.status}).`)
+      if (!r.ok) mostraAvviso(t('idx2.avvio', { n: r.status }))
     },
     [mostraAvviso],
   )
@@ -227,7 +227,7 @@ function App() {
 
   const ferma = useCallback(async () => {
     const r = await window.scriba.post('/session/stop')
-    if (!r.ok) mostraAvviso(`Arresto non riuscito (${r.status}).`)
+    if (!r.ok) mostraAvviso(t('idx2.arresto', { n: r.status }))
   }, [mostraAvviso])
 
   const esporta = useCallback(async () => {
@@ -244,7 +244,7 @@ function App() {
         await window.scriba.mostraFile(r.body.percorso)
         mostraAvviso(`Esportato in ${r.body.percorso}`)
       } else {
-        mostraAvviso(`Export non riuscito (${r.status}).`)
+        mostraAvviso(t('idx2.export', { n: r.status }))
       }
     } finally {
       setEsportando(false)
@@ -360,7 +360,7 @@ function App() {
         } else if (ev.type === 'modello') {
           const e = ev as Extract<EventoCore, { type: 'modello' }>
           setModello(e.stato)
-          if (e.stato === 'errore') mostraAvviso(`Modello non caricato: ${e.dettaglio ?? ''}`)
+          if (e.stato === 'errore') mostraAvviso(t('idx2.modello', { d: e.dettaglio ?? '' }))
         } else if (ev.type === 'diarizzazione') {
           const e = ev as Extract<EventoCore, { type: 'diarizzazione' }>
           // Solo "fatto": e' l'unico momento in cui `speaker` sui segmenti
@@ -375,7 +375,7 @@ function App() {
       }),
 
       window.scriba.on('screenshot:ignorato', () =>
-        mostraAvviso('Screenshot non salvato: nessuna registrazione in corso.'),
+        mostraAvviso(t('idx2.scatto_senza_call')),
       ),
     ]
 
@@ -568,9 +568,7 @@ function App() {
           // Prima dell'avviso normale: se ci sono tutti e due, questo è quello
           // che cambia cosa l'utente sta guardando.
           <div className="notice notice--rosso">
-            Il database non si leggeva e Scriba è ripartito
-            {dbDanneggiato.ripristinato ? ' da un backup' : ' da vuoto'}: le call registrate dopo
-            non compaiono più. I file originali non sono stati cancellati.
+            {t(dbDanneggiato.ripristinato ? 'idx2.db_da_backup' : 'idx2.db_da_vuoto')}
             <span className="notice__spacer" />
             <button
               type="button"

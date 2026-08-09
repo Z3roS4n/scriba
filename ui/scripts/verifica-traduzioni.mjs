@@ -67,6 +67,10 @@ const ORIGINI = {
   // piu': è la traversata più facile da fare a memoria.
   'ril_esito.': 'core/scriba_core/detect/call.py',
   'ril_perche.': 'core/scriba_core/detect/call.py',
+  'idx2.': 'ui/renderer/index.tsx',
+  'imp2.': 'ui/renderer/Impostazioni.tsx',
+  'ras3.': 'ui/renderer/Rassegna.tsx',
+  'tra3.': 'ui/renderer/Trascrizione.tsx',
   'ril2.': 'ui/renderer/impostazioni/Rilevamento.tsx',
 }
 
@@ -81,6 +85,15 @@ const COMPOSTE = new Set([
   // `microfono {p.picco > 0 ? … : 'muto'}`: la parola stava fra i tag, lo
   // stato dentro l'espressione. In inglese l'una senza l'altra non si traduce.
   'ril2.mic_muto',
+  // «…è ripartito {da un backup | da vuoto}: le call registrate dopo…». Il
+  // ternario stava in mezzo alla frase: le due frasi intere non sono mai
+  // esistite, ma ognuna delle tre parti sì.
+  'idx2.db_da_backup',
+  'idx2.db_da_vuoto',
+  // `{n === 1 ? 'ripresa' : 'riprese'} dall'altoparlante`: singolare e plurale
+  // dentro l'espressione, il complemento fuori.
+  'tra3.ripresa',
+  'tra3.riprese',
 ])
 
 /** Il commit da cui parte il ramo: prima di qualunque traduzione. */

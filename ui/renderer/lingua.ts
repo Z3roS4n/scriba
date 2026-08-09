@@ -935,7 +935,7 @@ const it = {
   'ril_esito.escluso':
     'escluso',
   'ril_perche.ignorato':
-    'è nell'elenco dei processi da ignorare',
+    'è nell\'elenco dei processi da ignorare',
   'ril_perche.sessione_vecchia':
     'ha una sessione microfono aperta ma non ha mai dato segnale: sembra una sessione vecchia, non una registrazione in corso',
   'ril_perche.senza_audio':
@@ -977,7 +977,57 @@ const it = {
   'ril2.ultimo_motivo':
     'Ultimo motivo: {m}',
   'ril2.sonda_zitta':
-    'L'ultima lettura è di {s}s fa, e ne dovrebbe arrivare una ogni {ogni}s: la sonda ha smesso di riferire.',
+    'L\'ultima lettura è di {s}s fa, e ne dovrebbe arrivare una ogni {ogni}s: la sonda ha smesso di riferire.',
+
+  // --- finestra principale, dentro le espressioni --------
+  'idx2.avvio':
+    'Avvio non riuscito ({n}).',
+  'idx2.arresto':
+    'Arresto non riuscito ({n}).',
+  'idx2.export':
+    'Export non riuscito ({n}).',
+  'idx2.modello':
+    'Modello non caricato: {d}',
+  'idx2.scatto_senza_call':
+    'Screenshot non salvato: nessuna registrazione in corso.',
+  'idx2.db_da_backup':
+    'Il database non si leggeva e Scriba è ripartito da un backup: le call registrate dopo non compaiono più. I file originali non sono stati cancellati.',
+  'idx2.db_da_vuoto':
+    'Il database non si leggeva e Scriba è ripartito da vuoto: le call registrate dopo non compaiono più. I file originali non sono stati cancellati.',
+  'imp2.non_salvata':
+    'Impostazione non salvata ({n}).',
+  'imp2.chiave':
+    'Chiave non salvata ({n}).',
+  'imp2.audio':
+    'Audio non eliminato ({n}).',
+  'imp2.call':
+    'Call non eliminata ({n}).',
+  'ras3.nessun_resp':
+    'nessun responsabile',
+  'ras3.nessuna_scad':
+    'nessuna scadenza',
+  'ras3.core_ha_risposto':
+    'Il core ha risposto {n}.',
+  'ras3.non_salvato':
+    'Non sono riuscito a salvare: {d}',
+  'ras3.dedotta':
+    'Dedotta dal contesto, non da una frase precisa.',
+  'tra3.oppure_striscia':
+    'oppure {tasto} per la striscia',
+  'tra3.riga_1':
+    '1 riga',
+  'tra3.righe_n':
+    '{n} righe',
+  'tra3.ripresa':
+    'ripresa dall’altoparlante',
+  'tra3.riprese':
+    'riprese dall’altoparlante',
+  'tra3.torna':
+    'Torna al presente',
+  'tra3.nuova_1':
+    '1 riga nuova',
+  'tra3.nuove_n':
+    '{n} righe nuove',
 } as const
 
 export type Chiave = keyof typeof it
@@ -1875,6 +1925,55 @@ const en: Record<Chiave, string> = {
     'Last reason: {m}',
   'ril2.sonda_zitta':
     'The last reading is {s}s old, and one should arrive every {ogni}s: the probe has stopped reporting.',
+
+  'idx2.avvio':
+    'Starting did not work ({n}).',
+  'idx2.arresto':
+    'Stopping did not work ({n}).',
+  'idx2.export':
+    'The export did not work ({n}).',
+  'idx2.modello':
+    'Model not loaded: {d}',
+  'idx2.scatto_senza_call':
+    'Screenshot not saved: nothing is being recorded.',
+  'idx2.db_da_backup':
+    'The database could not be read and Scriba restarted from a backup: calls recorded after it are gone from the list. The original files have not been deleted.',
+  'idx2.db_da_vuoto':
+    'The database could not be read and Scriba restarted empty: calls recorded after it are gone from the list. The original files have not been deleted.',
+  'imp2.non_salvata':
+    'Setting not saved ({n}).',
+  'imp2.chiave':
+    'Key not saved ({n}).',
+  'imp2.audio':
+    'Audio not deleted ({n}).',
+  'imp2.call':
+    'Call not deleted ({n}).',
+  'ras3.nessun_resp':
+    'nobody in charge',
+  'ras3.nessuna_scad':
+    'no deadline',
+  'ras3.core_ha_risposto':
+    'The core answered {n}.',
+  'ras3.non_salvato':
+    'I could not save it: {d}',
+  'ras3.dedotta':
+    'Worked out from the context, not from one exact sentence.',
+  'tra3.oppure_striscia':
+    'or {tasto} for the strip',
+  'tra3.riga_1':
+    '1 line',
+  'tra3.righe_n':
+    '{n} lines',
+  'tra3.ripresa':
+    'picked up from the speakers',
+  'tra3.riprese':
+    'picked up from the speakers',
+  'tra3.torna':
+    'Back to now',
+  'tra3.nuova_1':
+    '1 new line',
+  'tra3.nuove_n':
+    '{n} new lines',
 }
 
 const CATALOGHI = { it, en } as const

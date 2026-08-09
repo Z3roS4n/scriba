@@ -24,18 +24,23 @@ const PRIORITA = ['bassa', 'media', 'alta', 'critica'] as const
 const CHI: Record<Segmento['source'], string> = { mic: 'Io', loopback: 'Altri' }
 
 /** «14 ago 2026»: solo per la scadenza risolta, mai per i minuti della call. */
-function dataEstesa(iso: string): string {
+function dataEstesa(iso: string, locale: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }).replace('.', '')
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' }).replace('.', '')
 }
 
 /** Stessa logica del chip scadenza in Analisi.tsx: data risolta, detta a voce
  * ma non risolta, o assente. Duplicata invece che importata perché lì è
  * privata del modulo — vedi la nota nel rapporto finale. */
-function testoScadenza(t: Pick<Task, 'due_date' | 'due_raw'>): string | null {
-  if (t.due_date) return `${dataEstesa(t.due_date)}${t.due_raw ? ` · «${t.due_raw}»` : ''}`
-  if (t.due_raw) return `solo a voce: «${t.due_raw}»`
+function testoScadenza(
+  task: Pick<Task, 'due_date' | 'due_raw'>,
+  tr: Traduci,
+  locale: string,
+): string | null {
+  if (task.due_date)
+    return `${dataEstesa(task.due_date, locale)}${task.due_raw ? ` · «${task.due_raw}»` : ''}`
+  if (task.due_raw) return tr('pan.solo_a_voce', { q: task.due_raw })
   return null
 }
 
@@ -59,6 +64,7 @@ function valoreCampo(
   t: Task,
   chiave: ChiaveCampo,
   tr: Traduci,
+  locale: string,
 ): { testo: string; mancante: boolean } {
   switch (chiave) {
     case 'titolo':
@@ -66,10 +72,10 @@ function valoreCampo(
     case 'assignee_text':
       return t.assignee_text
         ? { testo: t.assignee_text, mancante: false }
-        : { testo: 'nessun responsabile', mancante: true }
+        : { testo: tr('ras3.nessun_resp'), mancante: true }
     case 'due_date': {
-      const s = testoScadenza(t)
-      return s ? { testo: s, mancante: false } : { testo: 'nessuna scadenza', mancante: true }
+      const s = testoScadenza(t, tr, locale)
+      return s ? { testo: s, mancante: false } : { testo: tr('ras3.nessuna_scad'), mancante: true }
     }
     case 'priorita':
       return t.priorita
@@ -249,7 +255,7 @@ export function Rassegna(props: {
         const dettaglio =
           typeof (r.body as { detail?: unknown } | null)?.detail === 'string'
             ? (r.body as { detail: string }).detail
-            : `Il core ha risposto ${r.status}.`
+            : t('ras3.core_ha_risposto', { n: r.status })
         setErroreSalva(dettaglio)
         return
       }
@@ -396,7 +402,7 @@ export function Rassegna(props: {
 
                 <div className="rev__fields">
                   {CAMPI.map(({ chiave, etichetta, prova }) => {
-                    const { testo, mancante } = valoreCampo(taskCorrente, chiave, tr)
+                    const { testo, mancante } = valoreCampo(taskCorrente, chiave, tr, locale)
                     const prove = taskCorrente.evidence.filter((e) => e.supports === prova)
                     const inModifica = editando === chiave
 
@@ -472,7 +478,7 @@ export function Rassegna(props: {
                             lontana: chi ha appena salvato sta guardando qui. */}
                         {inModifica && erroreSalva && (
                           <RiquadroInline
-                            testo={`Non sono riuscito a salvare: ${erroreSalva}`}
+                            testo={t('ras3.non_salvato', { d: erroreSalva })}
                             azioni={[{ etichetta: 'Riprova', onClick: () => salva() }]}
                           />
                         )}
@@ -484,7 +490,7 @@ export function Rassegna(props: {
                                 {tempo(pr.t_ms)}
                               </button>
                               <p className={`rf__q${pr.quote ? '' : ' is-empty'}`}>
-                                {pr.quote ?? 'Dedotta dal contesto, non da una frase precisa.'}
+                                {pr.quote ?? t('ras3.dedotta')}
                               </p>
                             </div>
                           ))
