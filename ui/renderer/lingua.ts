@@ -822,6 +822,76 @@ const it = {
     'Serve una colonna di tipo',
   'ntn2.campi_su_notion':
     '{n} campi su Notion',
+
+  // --- database remoto, dentro le espressioni --------
+  'db2.modo.diretta':
+    'Diretta',
+  'db2.modo.pooling_transazione':
+    'Pooling (transazione)',
+  'db2.modo.pooling_sessione':
+    'Pooling (sessione)',
+  'db2.modo_nota.diretta':
+    'Porta 5432 sul server vero. Su Supabase spesso risponde solo in IPv6.',
+  'db2.modo_nota.pooling_transazione':
+    'Porta 6543. Gli statement preparati si spengono da soli: senza, il secondo invio fallisce.',
+  'db2.modo_nota.pooling_sessione':
+    'Il pooler sulla 5432. Ripiego quando la diretta non è raggiungibile in IPv4.',
+  'db2.non_riuscito':
+    'Non è riuscito.',
+  'db2.gia_sincronizzato':
+    'Era già tutto sincronizzato.',
+  'db2.inviate':
+    '{n} call inviate ({righe} righe)',
+  'db2.fallite':
+    ', {n} non riuscite: {errore}',
+  'db2.scollegare':
+    'Scollegare il database? I dati già scritti là fuori restano dove sono.',
+  'db2.intro':
+    'Tiene una copia delle call su un PostgreSQL — Supabase, o qualunque altro. Scegli tu in quale schema scrivere e quali dati mandare.',
+  'db2.attivo':
+    'Attivo',
+  'db2.spento':
+    'Spento',
+  'db2.invio':
+    'Invio…',
+  'db2.sincronizza_tutto':
+    'Sincronizza tutto',
+  'db2.lascialo_vuoto':
+    '— lascialo vuoto per non cambiare quello già salvato.',
+  'db2.provo':
+    'Provo…',
+  'db2.prova':
+    'Prova',
+  'db2.creo':
+    'Creo…',
+  'db2.crea_collega':
+    'Crea e collega',
+  'db2.collego':
+    'Collego…',
+  'db2.collega':
+    'Collega',
+  'db2.voluminosa':
+    '— può essere grande',
+  'db2.quale_tabella':
+    '— quale tabella? —',
+
+  // --- dati, dentro le espressioni --------
+  'dat2.compilata':
+    'Compilata il {data}.',
+  'dat2.senza_data':
+    'Data di compilazione non disponibile.',
+  'dat2.sporco':
+    'Contiene modifiche non salvate in nessun commit.',
+  'dat2.call_del':
+    'Call del {data}',
+  'dat2.eliminare':
+    'Eliminare «{titolo}»?',
+  'dat2.questa_call':
+    'questa call',
+  'dat2.scrivi_per_confermare':
+    'Non si torna indietro. Scrivi {parola} per confermare.',
+  'dat2.parola':
+    'ELIMINA',
 } as const
 
 export type Chiave = keyof typeof it
@@ -1567,6 +1637,74 @@ const en: Record<Chiave, string> = {
     'It needs a column of type',
   'ntn2.campi_su_notion':
     '{n} fields on Notion',
+
+  'db2.modo.diretta':
+    'Direct',
+  'db2.modo.pooling_transazione':
+    'Pooling (transaction)',
+  'db2.modo.pooling_sessione':
+    'Pooling (session)',
+  'db2.modo_nota.diretta':
+    'Port 5432 on the real server. On Supabase it often answers over IPv6 only.',
+  'db2.modo_nota.pooling_transazione':
+    'Port 6543. Prepared statements turn themselves off: without that, the second send fails.',
+  'db2.modo_nota.pooling_sessione':
+    'The pooler on 5432. The fallback when the direct one cannot be reached over IPv4.',
+  'db2.non_riuscito':
+    'It did not work.',
+  'db2.gia_sincronizzato':
+    'Everything was already in sync.',
+  'db2.inviate':
+    '{n} calls sent ({righe} rows)',
+  'db2.fallite':
+    ', {n} failed: {errore}',
+  'db2.scollegare':
+    'Disconnect the database? The data already written out there stays where it is.',
+  'db2.intro':
+    'It keeps a copy of your calls on a PostgreSQL — Supabase, or any other. You choose which schema to write to and which data to send.',
+  'db2.attivo':
+    'On',
+  'db2.spento':
+    'Off',
+  'db2.invio':
+    'Sending…',
+  'db2.sincronizza_tutto':
+    'Sync everything',
+  'db2.lascialo_vuoto':
+    '— leave it empty to keep the one already saved.',
+  'db2.provo':
+    'Trying…',
+  'db2.prova':
+    'Try it',
+  'db2.creo':
+    'Creating…',
+  'db2.crea_collega':
+    'Create and connect',
+  'db2.collego':
+    'Connecting…',
+  'db2.collega':
+    'Connect',
+  'db2.voluminosa':
+    '— it can be big',
+  'db2.quale_tabella':
+    '— which table? —',
+
+  'dat2.compilata':
+    'Built on {data}.',
+  'dat2.senza_data':
+    'Build date not available.',
+  'dat2.sporco':
+    'It contains changes not saved in any commit.',
+  'dat2.call_del':
+    'Call of {data}',
+  'dat2.eliminare':
+    'Delete “{titolo}”?',
+  'dat2.questa_call':
+    'this call',
+  'dat2.scrivi_per_confermare':
+    'There is no going back. Type {parola} to confirm.',
+  'dat2.parola':
+    'DELETE',
 }
 
 const CATALOGHI = { it, en } as const

@@ -13,9 +13,8 @@ import { useEffect, useState } from 'react'
 import type { Sessione, VoceDati } from '../tipi'
 import { dimensione } from '../tipi'
 import { Modal } from './Modal'
-import { useT } from '../lingua'
+import { useLocale, useT } from '../lingua'
 
-const FRASE_CONFERMA = 'ELIMINA'
 
 type Passo = 'chiusa' | 'elenco' | 'conferma'
 
@@ -41,6 +40,7 @@ function Versione() {
   }, [])
 
   if (!v) return null
+  const locale = useLocale()
   const quando = v.costruito_il ? new Date(v.costruito_il) : null
   return (
     <div className="row">
@@ -48,9 +48,11 @@ function Versione() {
         <b>{t('dat.versione')}</b>
         <span>
           {quando && !Number.isNaN(quando.getTime())
-            ? `Compilata il ${quando.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}.`
-            : 'Data di compilazione non disponibile.'}
-          {v.pulito === false && ' Contiene modifiche non salvate in nessun commit.'}
+            ? t('dat2.compilata', {
+                data: quando.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }),
+              })
+            : t('dat2.senza_data')}
+          {v.pulito === false && ` ${t('dat2.sporco')}`}
         </span>
       </div>
       <span className="pathrow__size">
@@ -75,6 +77,7 @@ export function SezioneDati({
   caricaSessioni: () => Promise<Sessione[]>
 }) {
   const t = useT()
+  const locale = useLocale()
   const [confermaAudio, setConfermaAudio] = useState(false)
   const [passo, setPasso] = useState<Passo>('chiusa')
   const [sessioni, setSessioni] = useState<Sessione[]>([])
@@ -185,7 +188,7 @@ export function SezioneDati({
                     setPasso('conferma')
                   }}
                 >
-                  {s.titolo ?? `Call del ${new Date(s.started_at).toLocaleDateString('it-IT')}`}
+                  {s.titolo ?? t('dat2.call_del', { data: new Date(s.started_at).toLocaleDateString(locale) })}
                 </button>
               ))
             )}
@@ -201,15 +204,15 @@ export function SezioneDati({
       {passo === 'conferma' && sessioneScelta && (
         <Modal onChiudi={chiudi}>
           <div className="modal__head">
-            <h2>Eliminare «{sessioneScelta.titolo ?? 'questa call'}»?</h2>
-            <p>Non si torna indietro. Scrivi {FRASE_CONFERMA} per confermare.</p>
+            <h2>{t('dat2.eliminare', { titolo: sessioneScelta.titolo ?? t('dat2.questa_call') })}</h2>
+            <p>{t('dat2.scrivi_per_confermare', { parola: t('dat2.parola') })}</p>
           </div>
           <div className="modal__field">
             <input
               className="textfield textfield--md"
               value={testoConferma}
               autoFocus
-              placeholder={FRASE_CONFERMA}
+              placeholder={t('dat2.parola')}
               onChange={(e) => setTestoConferma(e.target.value)}
             />
           </div>
@@ -219,7 +222,7 @@ export function SezioneDati({
             </button>
             <button
               className="btn btn--danger"
-              disabled={testoConferma.trim() !== FRASE_CONFERMA || eliminando}
+              disabled={testoConferma.trim() !== t('dat2.parola') || eliminando}
               onClick={confermaEliminazione}
             >
               {t('dat.elimina_def')}

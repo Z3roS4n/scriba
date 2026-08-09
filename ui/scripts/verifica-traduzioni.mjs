@@ -57,6 +57,9 @@ const ORIGINI = {
   'idx.': 'ui/renderer/index.tsx',
   'arc2.': 'ui/renderer/Archivio.tsx',
   'ras2.': 'ui/renderer/Rassegna.tsx',
+  'db2.': 'ui/renderer/impostazioni/DatabaseRemoto.tsx',
+  'dat2.': 'ui/renderer/impostazioni/Dati.tsx',
+  'ntipo.': 'ui/renderer/impostazioni/Notion.tsx',
   'ril2.': 'ui/renderer/impostazioni/Rilevamento.tsx',
 }
 
