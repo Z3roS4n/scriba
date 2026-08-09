@@ -83,10 +83,21 @@ $tag = "v$versione"
 # controlli che possono rispondere in modo diverso sono il difetto: se serve
 # cambiare questa regola, si cambia qui e basta.
 #
-# Tre esiti, tutti espliciti:
-$suDiEsso = (git -C $radice rev-list -n 1 $tag 2>$null)
+# Tre esiti, tutti espliciti.
+#
+# L'esistenza si chiede a `tag --list`, che su un tag assente non stampa
+# niente, **non** a `rev-list ... 2>$null`: in PowerShell 5.1 la redirezione
+# dello stderr di un comando nativo avvolge ogni riga in un ErrorRecord, e con
+# $ErrorActionPreference = 'Stop' quello diventa un'eccezione terminante. Cioe'
+# nel caso normale — tag assente, la stragrande maggioranza dei rilasci — lo
+# script moriva sulla riga che serviva a scoprire che il tag non c'era.
+$suDiEsso = $null
+if (git -C $radice tag --list $tag) {
+    # Adesso rev-list non puo' fallire, e infatti non si reindirizza niente.
+    $suDiEsso = (git -C $radice rev-list -n 1 $tag).Trim()
+}
 $riusoIlTag = $false
-if ($LASTEXITCODE -eq 0 -and $suDiEsso) {
+if ($suDiEsso) {
     $qui = (git -C $radice rev-parse HEAD).Trim()
     if ($suDiEsso.Trim() -ne $qui) {
         # C'e', ma su un altro commit: pubblicare adesso spedirebbe codice
@@ -145,7 +156,13 @@ if (-not $atteso) {
 # la chiamata a GitHub non e' arrivata — resta in giro un tag che non corrisponde
 # a niente. Contandolo, al secondo tentativo lo scatto risulterebbe 'nessuno' e
 # lo script si fermerebbe proprio quando gli si sta chiedendo di riprendere (#67).
-$precedente = (& gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>$null)
+#
+# Niente `2>$null` su gh, per lo stesso motivo di sopra: la redirezione
+# trasformerebbe il suo messaggio d'errore in un'eccezione terminante, e il
+# ripiego qui sotto — scritto apposta per quando gh non risponde — non
+# verrebbe mai eseguito. Se gh ha da lamentarsi lo stampa, e va bene che si
+# veda: dice perche' il controllo sta usando una base peggiore.
+$precedente = (& gh release list --limit 1 --json tagName --jq '.[0].tagName')
 if ($LASTEXITCODE -ne 0 -or -not $precedente) {
     # Senza rete o senza release precedenti si ripiega sui tag: meglio un
     # controllo su una base imperfetta che nessun controllo.
