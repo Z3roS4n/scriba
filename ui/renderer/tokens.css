@@ -2,6 +2,35 @@
    Palette M's Works. Tema chiaro (default) e tema scuro.
    Applicare data-theme="dark" su <html> per il tema scuro. */
 
+/* Montserrat viaggia dentro il pacchetto, non arriva dalla rete: Scriba deve
+   funzionare offline, e un font scaricato sarebbe una schermata che cambia
+   aspetto a seconda della connessione.
+
+   È **un file solo**, non quattro. Google lo serve come font variabile: lo
+   stesso .woff2 copre tutta l'asse dei pesi, quindi 400, 700, 800 e 900 —
+   quelli che il design usa — escono tutti da qui, e in 37 KB invece dei ~120
+   che servirebbero a quattro file statici. `font-weight: 100 900` dichiara
+   l'intervallo che la faccia copre davvero: scriverci un peso solo farebbe
+   sintetizzare il grassetto al browser invece di usare quello vero.
+
+   Sottoinsieme latino. Le sei lingue che Scriba trascrive ci stanno tutte
+   dentro (compresa la œ francese, esplicitamente nell'intervallo). Un nome
+   proprio con caratteri fuori intervallo cade sul font di ripiego per quei
+   soli caratteri, che è il comportamento voluto di `unicode-range`.
+
+   La licenza sta accanto al file, in font/OFL.txt, e va nel pacchetto con
+   lui: la SIL OFL 1.1 lo richiede, non è una cortesia. */
+@font-face {
+  font-family: "Montserrat";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("font/montserrat-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
   /* superfici */
   --page:#E9E9EC; --win:#FFFFFF; --chrome:#F7F7F8; --panel:#FBFBFC; --subhead:#F3F3F5;

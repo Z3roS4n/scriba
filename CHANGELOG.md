@@ -7,6 +7,20 @@ Each entry is split into three sections, and the highest one present decides
 the version bump: **Breaking changes** (major), **New features** (minor),
 **Fixes** (patch). A section with nothing in it is left out.
 
+## 0.6.3 — 9 August 2026
+
+### Fixes
+
+- **Scriba can finally carry a font of its own.** Three things prevented it,
+  and none of them failed loudly: the pages' CSP disallowed fonts even local
+  ones, the build copied six files by name and so would never have brought a
+  folder along, and the files were not there. The result would have been an
+  app starting in the fallback typeface and looking fine. Montserrat now
+  travels inside the installer with its SIL OFL licence, and the build **stops**
+  if a font or image declared in a stylesheet does not make it into the
+  package. Nothing looks different yet: the typeface comes into use with the
+  new design. ([#81](https://github.com/Z3roS4n/scriba/issues/81))
+
 ## 0.6.2 — 9 August 2026
 
 ### Fixes
