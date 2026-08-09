@@ -354,6 +354,49 @@ class TestAnalisi:
         assert r.json()["stato"] == "confirmed"
         assert r.json()["needs_review"] == 0
 
+    def test_una_priorita_fuori_elenco_viene_rifiutata_dicendo_quali_valgono(
+        self, client: TestClient
+    ) -> None:
+        """Non basta che la scrittura fallisca: deve fallire dicendo perché.
+
+        Lo schema ha `CHECK (priorita IN (...))`, ma un CHECK violato esce come
+        errore di database — un 500 che non nomina il campo e non elenca i
+        valori. L'interfaccia lo trattava come «non è andata» e non mostrava
+        niente, quindi bastava scrivere «Alta» con la maiuscola per veder
+        sparire la propria modifica (#71).
+        """
+        client.post(auth("/session/start"), json={})
+        session_id = client.get(auth("/session/state")).json()["session_id"]
+        store = client.app.state.store
+        task_id = store.add_task(session_id, "Preparare i mockup")
+        client.post(auth("/session/stop"))
+
+        r = client.post(auth(f"/tasks/{task_id}"), json={"priorita": "Alta"})
+        assert r.status_code == 400
+        dettaglio = r.json()["detail"]
+        assert "Alta" in dettaglio
+        # I quattro valori vanno scritti nel messaggio: chi lo legge deve poter
+        # correggere senza andare a cercare lo schema.
+        for valore in ("bassa", "media", "alta", "critica"):
+            assert valore in dettaglio
+
+    def test_le_quattro_priorita_valide_passano(self, client: TestClient) -> None:
+        client.post(auth("/session/start"), json={})
+        session_id = client.get(auth("/session/state")).json()["session_id"]
+        store = client.app.state.store
+        task_id = store.add_task(session_id, "Preparare i mockup")
+        client.post(auth("/session/stop"))
+
+        for valore in ("bassa", "media", "alta", "critica"):
+            r = client.post(auth(f"/tasks/{task_id}"), json={"priorita": valore})
+            assert r.status_code == 200, valore
+            assert r.json()["priorita"] == valore
+
+        # E «nessuna priorità» resta possibile: la colonna ammette NULL.
+        r = client.post(auth(f"/tasks/{task_id}"), json={"priorita": None})
+        assert r.status_code == 200
+        assert r.json()["priorita"] is None
+
     def test_le_evidence_accompagnano_le_task(self, client: TestClient) -> None:
         client.post(auth("/session/start"), json={})
         session_id = client.get(auth("/session/state")).json()["session_id"]

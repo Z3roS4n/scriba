@@ -286,6 +286,23 @@ function App() {
           })
         } else if (ev.type === 'session_started') {
           const e = ev as Extract<EventoCore, { type: 'session_started' }>
+          // La periferica scelta nelle impostazioni poteva non esserci più
+          // (cuffie staccate, scheda cambiata). Il core ripiega sul
+          // predefinito e lo dice; qui non lo leggeva nessuno, e chi
+          // registrava dal microfono sbagliato lo scopriva a call finita,
+          // quando non si rifà (#73).
+          if (e.fallback && Object.keys(e.fallback).length > 0) {
+            const nome = (s: string) => e.devices?.[s] ?? 'quello predefinito'
+            const parti = Object.keys(e.fallback).map((s) =>
+              s === 'mic'
+                ? `il microfono scelto non c'è più: sto registrando la tua voce con «${nome('mic')}»`
+                : `il dispositivo audio scelto non c'è più: sto registrando gli altri con «${nome('loopback')}»`,
+            )
+            // Maiuscola sulla prima, e il punto alla fine: sono frasi, non voci
+            // di elenco, e le legge qualcuno che sta entrando in riunione.
+            const testo = parti.join('; ')
+            mostraAvviso(`${testo.charAt(0).toUpperCase()}${testo.slice(1)}.`)
+          }
           setRegistrando(true)
           setSessioneCorrente(e.session_id)
           setSessioneVista(e.session_id)
@@ -515,25 +532,35 @@ function App() {
 
   return (
     <div className="win">
-      {/* display:contents, non un ternario: se si smontasse qui la topbar non
-          perderebbe stato che conti, ma tenerla nello stesso schema di visibilita'
-          del corpo (sotto) rende esplicito che rassegna e archivio sostituiscono
-          tutto. */}
-      <div style={{ display: aTuttaFinestra ? 'none' : 'contents' }}>
-        <Topbar
-          corePronto={corePronto}
-          modello={modello}
-          registrando={registrando}
-          trascorsi={trascorsi}
-          sessioneVista={sessioneVista}
-          esportando={esportando}
-          schermi={schermi}
-          onScreenshot={(idSchermo) => window.scriba.screenshot(idSchermo)}
-          onArchivio={() => setArchivioAperto(true)}
-          onEsporta={esporta}
-          onRegistra={apriDialogoRegistra}
-          onFerma={ferma}
-        />
+      {/* La barra in alto resta sempre, anche con rassegna o archivio aperti.
+          In una finestra senza cornice questa barra E' la cornice: porta
+          riduci, ingrandisci e chiudi (Topbar.tsx, .wincontrols). Nasconderla
+          insieme al corpo lasciava senza un modo di chiudere la finestra col
+          mouse finche' non si usciva dal piano (#74).
+
+          I piani si aprono sotto: sono fratelli di .win__body dentro la stessa
+          colonna flex, e portano gia' la loro barra con il titolo e l'uscita. */}
+      <Topbar
+        corePronto={corePronto}
+        modello={modello}
+        registrando={registrando}
+        trascorsi={trascorsi}
+        sessioneVista={sessioneVista}
+        esportando={esportando}
+        schermi={schermi}
+        onScreenshot={(idSchermo) => window.scriba.screenshot(idSchermo)}
+        onArchivio={() => setArchivioAperto(true)}
+        onEsporta={esporta}
+        onRegistra={apriDialogoRegistra}
+        onFerma={ferma}
+      />
+
+      {/* Anche gli avvisi restano. Non parlano della call che si sta
+          guardando: dicono che il core non e' partito, che il modello non si
+          e' caricato, che la scorciatoia della striscia e' occupata. Sparivano
+          aprendo l'archivio, e uno che arrivava mentre il piano era aperto non
+          lo vedeva nessuno. */}
+      <>
         {dbDanneggiato && (
           // Prima dell'avviso normale: se ci sono tutti e due, questo è quello
           // che cambia cosa l'utente sta guardando.
@@ -555,7 +582,7 @@ function App() {
           </div>
         )}
         {avviso && <Barra testo={avviso.testo} azione={avviso.azione} onChiudi={() => setAvviso(null)} />}
-      </div>
+      </>
 
       {/* Anche qui display:none e non uno smontaggio: e' quello che permette al
           pannello analisi di ritrovare da solo la task su cui si era fermato

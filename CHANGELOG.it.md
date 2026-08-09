@@ -7,6 +7,41 @@ Ogni voce è divisa in tre sezioni, ed è la più alta presente a decidere lo
 scatto di versione: **Cambiamenti che rompono** (maggiore), **Funzioni nuove**
 (minore), **Correzioni** (patch). Una sezione senza voci si lascia fuori.
 
+## 0.6.2 — 9 agosto 2026
+
+### Correzioni
+
+- **La nota di lavoro si vede durante la call.** Era montata solo nei rami del
+  pannello che durante una registrazione non vengono mai raggiunti: la
+  funzione esisteva, si aggiornava, e non la si poteva guardare proprio nel
+  momento per cui è fatta. Aveva perfino un messaggio d'attesa scritto per
+  quel momento — «La prima arriva dopo i primi dieci minuti di call» — che
+  nessuno poteva aver letto. ([#70](https://github.com/Z3roS4n/scriba/issues/70))
+- **La priorità di una task non si perde più.** Si scriveva a mano, e
+  qualunque cosa diversa da `bassa`, `media`, `alta` o `critica` — bastava la
+  maiuscola — faceva fallire la scrittura: il campo tornava com'era, senza
+  dire niente. Ora i quattro valori si scelgono, il core rifiuta gli altri
+  spiegando quali valgono, e un salvataggio che non riesce lo dice nel punto
+  in cui si è premuto, tenendo il testo scritto. Vale per tutti e quattro i
+  campi, non solo per la priorità.
+  ([#71](https://github.com/Z3roS4n/scriba/issues/71))
+- **Il costo dell'analisi è scritto in dollari, perché in dollari è.** Il
+  pannello ci appendeva un `€` senza convertire niente: un numero sbagliato di
+  poco e sempre nella stessa direzione, cioè di quelli che rileggendo non si
+  notano mai. ([#72](https://github.com/Z3roS4n/scriba/issues/72))
+- **Se il microfono scelto non c'è più, Scriba lo dice.** Quando la periferica
+  scelta nelle impostazioni è stata scollegata, la registrazione ripiega su
+  quella predefinita: il core lo segnalava da sempre e l'interfaccia non lo
+  ascoltava. Ora compare un avviso col nome del dispositivo che sta davvero
+  registrando. ([#73](https://github.com/Z3roS4n/scriba/issues/73))
+- **Con l'archivio o la rassegna aperti la finestra si comanda ancora.**
+  Sparivano riduci, ingrandisci e chiudi: in una finestra senza cornice quella
+  barra è la cornice, e restava solo Alt+F4. Insieme a loro sparivano gli
+  avvisi, che non parlano della call guardata ma del core che non è partito o
+  del modello che non si è caricato — e uno che arrivava mentre il piano era
+  aperto non lo vedeva nessuno.
+  ([#74](https://github.com/Z3roS4n/scriba/issues/74))
+
 ## 0.6.1 — 8 agosto 2026
 
 ### Correzioni
