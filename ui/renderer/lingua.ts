@@ -162,6 +162,44 @@ const it = {
   'arch.periodo.90': 'Ultimi 3 mesi',
   'arch.periodo.365': 'Ultimo anno',
   'data.oggi': 'oggi',
+  // --- database remoto ---------------------------------------------------
+  'db.titolo': 'Database remoto',
+  'db.esce': 'La trascrizione, se la includi, esce da questo computer.',
+  'db.in_chiaro':
+    'L’indirizzo è salvato in chiaro: la cifratura di Windows non ha risposto quando è stato collegato. Chi legge quel file entra nel database.',
+  'db.collegato': 'Collegato',
+  'db.scollega': 'Scollega',
+  'db.cosa_manda': 'Cosa viene mandato',
+  'db.cambia': 'Cambia',
+  'db.auto': 'Sincronizza da sola a fine analisi',
+  'db.auto_nota':
+    'Una registrazione in corso non aspetta mai il database: se la rete manca, si riprova dopo.',
+  'db.pregresso': 'Il pregresso',
+  'db.pregresso_nota':
+    'Manda tutte le call non ancora sincronizzate. Si può rifare quante volte si vuole.',
+  'db.indirizzo': 'Indirizzo',
+  'db.come': 'Come ci si collega',
+  'db.prova': 'Prova il collegamento',
+  'db.prova_nota':
+    'Non salva niente: si collega, chiede la versione e gli schemi, e riferisce.',
+  'db.schema': 'In quale schema scrivere',
+  'db.schema_nota':
+    'Gli schemi di sistema non sono in elenco: non sarebbero una scelta sensata.',
+  'db.tabelle': 'Le tabelle',
+  'db.tabelle_nota': 'Le crea Scriba, oppure gliele indichi tu se ce le hai già.',
+  'db.creale': 'Creale tu',
+  'db.ce_le_ho': 'Ce le ho già',
+  'db.avanti': 'Avanti',
+  'db.indietro': 'Indietro',
+  'db.quali_dati': 'Quali dati mandare',
+  'db.quali_dati_nota': 'Quello che non spunti non esce da questo computer.',
+  'db.ddl': 'Cosa verrà eseguito',
+  'db.ddl_nota':
+    'Nessun DROP, nessun ALTER: su un database che è tuo si aggiunge, non si sistema d’ufficio.',
+  'db.chiave_nota_1': 'I campi con',
+  'db.chiave_nota_2':
+    'servono a riconoscere una riga già inviata: senza, ogni sincronizzazione ne aggiungerebbe di nuove.',
+  'db.prefisso': 'Prefisso dei nomi delle tabelle',
 } as const
 
 export type Chiave = keyof typeof it
@@ -280,6 +318,42 @@ const en: Record<Chiave, string> = {
   'arch.periodo.90': 'Last 3 months',
   'arch.periodo.365': 'Last year',
   'data.oggi': 'today',
+  'db.titolo': 'Remote database',
+  'db.esce': 'The transcript, if you include it, leaves this computer.',
+  'db.in_chiaro':
+    'The address is stored in the clear: Windows encryption did not answer when it was connected. Whoever reads that file gets into the database.',
+  'db.collegato': 'Connected',
+  'db.scollega': 'Disconnect',
+  'db.cosa_manda': 'What gets sent',
+  'db.cambia': 'Change',
+  'db.auto': 'Sync by itself when an analysis finishes',
+  'db.auto_nota':
+    'A recording in progress never waits for the database: if the network is down, it retries later.',
+  'db.pregresso': 'The backlog',
+  'db.pregresso_nota':
+    'Sends every call not yet synced. You can run it as many times as you like.',
+  'db.indirizzo': 'Address',
+  'db.come': 'How to connect',
+  'db.prova': 'Test the connection',
+  'db.prova_nota':
+    'Saves nothing: it connects, asks for the version and the schemas, and reports back.',
+  'db.schema': 'Which schema to write to',
+  'db.schema_nota': 'System schemas are not listed: they would not be a sensible choice.',
+  'db.tabelle': 'The tables',
+  'db.tabelle_nota': 'Scriba creates them, or you point it at yours if you already have them.',
+  'db.creale': 'Create them',
+  'db.ce_le_ho': 'I already have them',
+  'db.avanti': 'Next',
+  'db.indietro': 'Back',
+  'db.quali_dati': 'Which data to send',
+  'db.quali_dati_nota': 'Anything you leave unticked does not leave this computer.',
+  'db.ddl': 'What will be run',
+  'db.ddl_nota':
+    'No DROP, no ALTER: on a database that is yours you add, you do not tidy up after anyone.',
+  'db.chiave_nota_1': 'Fields marked',
+  'db.chiave_nota_2':
+    'identify a row already sent: without them every sync would add new ones.',
+  'db.prefisso': 'Table name prefix',
 }
 
 const CATALOGHI = { it, en } as const

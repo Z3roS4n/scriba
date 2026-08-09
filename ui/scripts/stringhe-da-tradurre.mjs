@@ -62,6 +62,12 @@ function daLeggere(s) {
   if (/^[a-z]+:\/\//.test(p)) return false // url
   // Un nodo di testo JSX non contiene parentesi, uguali o punti e virgola.
   if (/[(){}\[\];=]/.test(p)) return false
+  // Un percorso puntato senza spazi e' codice: `window.scriba.post`, non una
+  // frase. Una frase italiana con un punto ha comunque degli spazi.
+  if (!/\s/.test(p) && p.includes('.')) return false
+  // I nomi di tipo che compaiono nei generici. Elenco corto e dichiarato: e'
+  // meno peggio di una regola furba che un giorno scarta un'etichetta vera.
+  if (/^(Promise|Record|Array|Set|Map|Partial|Omit|Pick)$/.test(p)) return false
   if (/(const|let|return|useState|function|import|export)/.test(p)) return false
   return true
 }

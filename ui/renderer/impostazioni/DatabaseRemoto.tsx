@@ -25,6 +25,7 @@ import type {
   TabellaModello,
 } from '../tipi'
 import { Select } from '../Select'
+import { useT } from '../lingua'
 
 const MODALITA: Array<{ id: string; etichetta: string; nota: string }> = [
   { id: 'diretta', etichetta: 'Diretta', nota: 'Porta 5432 sul server vero. Su Supabase spesso risponde solo in IPv6.' },
@@ -35,6 +36,7 @@ const MODALITA: Array<{ id: string; etichetta: string; nota: string }> = [
 type Passo = 'connessione' | 'schema' | 'tabelle' | 'mappa' | 'collegato'
 
 export function SezioneDatabaseRemoto() {
+  const t = useT()
   const [stato, setStato] = useState<StatoDatabaseRemoto | null>(null)
   const [modelloDati, setModelloDati] = useState<TabellaModello[]>([])
   const [passo, setPasso] = useState<Passo>('connessione')
@@ -233,12 +235,12 @@ export function SezioneDatabaseRemoto() {
 
   return (
     <>
-      <div className="settings__head">Database remoto</div>
+      <div className="settings__head">{t('db.titolo')}</div>
       <div className="settings__body">
         <p className="vis__nota">
           Tiene una copia delle call su un PostgreSQL — Supabase, o qualunque altro. Scegli tu in
           quale schema scrivere e quali dati mandare.{' '}
-          <b>La trascrizione, se la includi, esce da questo computer.</b>
+          <b>{t('db.esce')}</b>
         </p>
 
         {errore && (
@@ -250,8 +252,7 @@ export function SezioneDatabaseRemoto() {
         {stato?.segreto_in_chiaro && (
           <div className="alert alert--inline">
             <p>
-              L'indirizzo è salvato in chiaro: la cifratura di Windows non ha risposto quando è
-              stato collegato. Chi legge quel file entra nel database.
+              {t('db.in_chiaro')}
             </p>
           </div>
         )}
@@ -261,7 +262,7 @@ export function SezioneDatabaseRemoto() {
           <>
             <div className="row">
               <div className="row__t">
-                <b>Collegato</b>
+                <b>{t('db.collegato')}</b>
                 <span style={{ fontFamily: 'var(--font-code)' }}>
                   {stato.server?.utente}@{stato.server?.host}:{stato.server?.porta}/
                   {stato.server?.database} · schema {stato.schema} ·{' '}
@@ -269,13 +270,13 @@ export function SezioneDatabaseRemoto() {
                 </span>
               </div>
               <button className="btn" onClick={scollega}>
-                Scollega
+                {t('db.scollega')}
               </button>
             </div>
 
             <div className="row">
               <div className="row__t">
-                <b>Cosa viene mandato</b>
+                <b>{t('db.cosa_manda')}</b>
                 <span>
                   {Object.entries(stato.tabelle)
                     .map(([k, v]) => `${modelloDati.find((t) => t.chiave === k)?.etichetta ?? k} → ${v.nome}`)
@@ -283,14 +284,14 @@ export function SezioneDatabaseRemoto() {
                 </span>
               </div>
               <button className="btn" onClick={() => setPasso('connessione')}>
-                Cambia
+                {t('db.cambia')}
               </button>
             </div>
 
             <div className="row">
               <div className="row__t">
-                <b>Sincronizza da sola a fine analisi</b>
-                <span>Una registrazione in corso non aspetta mai il database: se la rete manca, si riprova dopo.</span>
+                <b>{t('db.auto')}</b>
+                <span>{t('db.auto_nota')}</span>
               </div>
               <button
                 className={`switch ${stato.automatico ? 'is-on' : ''}`}
@@ -307,8 +308,8 @@ export function SezioneDatabaseRemoto() {
 
             <div className="row">
               <div className="row__t">
-                <b>Il pregresso</b>
-                <span>Manda tutte le call non ancora sincronizzate. Si può rifare quante volte si vuole.</span>
+                <b>{t('db.pregresso')}</b>
+                <span>{t('db.pregresso_nota')}</span>
               </div>
               <button className="btn" disabled={occupato} onClick={sincronizzaTutto}>
                 {occupato ? 'Invio…' : 'Sincronizza tutto'}
@@ -324,7 +325,7 @@ export function SezioneDatabaseRemoto() {
           <>
             <div className="row">
               <div className="row__t">
-                <b>Indirizzo</b>
+                <b>{t('db.indirizzo')}</b>
                 <span>
                   <code>postgresql://utente:password@host:5432/database</code>
                   {stato?.collegato && ' — lascialo vuoto per non cambiare quello già salvato.'}
@@ -354,7 +355,7 @@ export function SezioneDatabaseRemoto() {
 
             <div className="row">
               <div className="row__t">
-                <b>Come ci si collega</b>
+                <b>{t('db.come')}</b>
                 <span>{MODALITA.find((m) => m.id === modalita)?.nota}</span>
               </div>
               <Select
@@ -366,8 +367,8 @@ export function SezioneDatabaseRemoto() {
 
             <div className="row">
               <div className="row__t">
-                <b>Prova il collegamento</b>
-                <span>Non salva niente: si collega, chiede la versione e gli schemi, e riferisce.</span>
+                <b>{t('db.prova')}</b>
+                <span>{t('db.prova_nota')}</span>
               </div>
               <button className="btn" disabled={occupato || !url.trim()} onClick={provaConnessione}>
                 {occupato ? 'Provo…' : 'Prova'}
@@ -382,8 +383,8 @@ export function SezioneDatabaseRemoto() {
             <p className="vis__nota">Collegato a {versione.split(',')[0]}.</p>
             <div className="row">
               <div className="row__t">
-                <b>In quale schema scrivere</b>
-                <span>Gli schemi di sistema non sono in elenco: non sarebbero una scelta sensata.</span>
+                <b>{t('db.schema')}</b>
+                <span>{t('db.schema_nota')}</span>
               </div>
               <Select
                 opzioni={schemi.map((s) => ({ id: s, etichetta: s }))}
@@ -393,22 +394,22 @@ export function SezioneDatabaseRemoto() {
             </div>
             <div className="row">
               <div className="row__t">
-                <b>Le tabelle</b>
-                <span>Le crea Scriba, oppure gliele indichi tu se ce le hai già.</span>
+                <b>{t('db.tabelle')}</b>
+                <span>{t('db.tabelle_nota')}</span>
               </div>
               <div className="picker">
                 <button className={strada === 'crea' ? 'is-on' : ''} onClick={() => setStrada('crea')}>
-                  Creale tu
+                  {t('db.creale')}
                 </button>
                 <button className={strada === 'mappa' ? 'is-on' : ''} onClick={() => setStrada('mappa')}>
-                  Ce le ho già
+                  {t('db.ce_le_ho')}
                 </button>
               </div>
             </div>
             <div className="row">
               <div className="row__t" />
               <button className="btn" disabled={occupato || !schema} onClick={vaiAlleTabelle}>
-                Avanti
+                {t('db.avanti')}
               </button>
             </div>
           </>
@@ -419,8 +420,8 @@ export function SezioneDatabaseRemoto() {
           <>
             <div className="row">
               <div className="row__t">
-                <b>Quali dati mandare</b>
-                <span>Quello che non spunti non esce da questo computer.</span>
+                <b>{t('db.quali_dati')}</b>
+                <span>{t('db.quali_dati_nota')}</span>
               </div>
               {strada === 'crea' && (
                 <input
@@ -428,7 +429,7 @@ export function SezioneDatabaseRemoto() {
                   style={{ maxWidth: 140 }}
                   value={prefisso}
                   onChange={(e) => setPrefisso(e.target.value)}
-                  title="Prefisso dei nomi delle tabelle"
+                  title={t('db.prefisso')}
                 />
               )}
             </div>
@@ -467,15 +468,15 @@ export function SezioneDatabaseRemoto() {
               <>
                 <div className="row">
                   <div className="row__t">
-                    <b>Cosa verrà eseguito</b>
-                    <span>Nessun DROP, nessun ALTER: su un database che è tuo si aggiunge, non si sistema d'ufficio.</span>
+                    <b>{t('db.ddl')}</b>
+                    <span>{t('db.ddl_nota')}</span>
                   </div>
                 </div>
                 <pre className="ddl">{ddl.map((p) => p.sql).join(';\n\n')}</pre>
                 <div className="row">
                   <div className="row__t" />
                   <button className="btn" onClick={() => setPasso('schema')}>
-                    Indietro
+                    {t('db.indietro')}
                   </button>
                   <button
                     className="btn btn--rec"
@@ -523,13 +524,12 @@ export function SezioneDatabaseRemoto() {
                     </div>
                   ))}
                 <p className="vis__nota">
-                  I campi con <b>*</b> servono a riconoscere una riga già inviata: senza, ogni
-                  sincronizzazione ne aggiungerebbe di nuove.
+                  {t('db.chiave_nota_1')} <b>*</b> {t('db.chiave_nota_2')}
                 </p>
                 <div className="row">
                   <div className="row__t" />
                   <button className="btn" onClick={() => setPasso('schema')}>
-                    Indietro
+                    {t('db.indietro')}
                   </button>
                   <button className="btn btn--rec" disabled={occupato} onClick={collegaMappa}>
                     {occupato ? 'Collego…' : 'Collega'}
