@@ -9,8 +9,8 @@
 import { useEffect, useState } from 'react'
 
 import type { Dispositivo, Impostazioni } from '../tipi'
-import type { OpzioneSelect } from './Select'
-import { Select } from './Select'
+import type { OpzioneSelect } from '../Select'
+import { Select } from '../Select'
 
 /** Non c'è una rotta che elenchi le lingue: è un insieme piccolo e fisso, a
  *  differenza dei dispositivi audio che dipendono dalla macchina. */

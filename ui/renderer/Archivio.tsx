@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { giornoBreve, tempo, type Cliente, type Sessione, type StatoSessione } from './tipi'
+import { Select } from './Select'
 
 /** Le voci del filtro stato. 'analyzing' non c'è: non è mai salvato nel
  *  database — vive solo nello stato del processo — quindi non si può filtrare. */
@@ -273,41 +274,28 @@ export function Archivio(props: {
             onChange={(e) => setTesto(e.target.value)}
           />
         </div>
-        {/* Restano <select> nativi: il design li vieta (regola 21) e Select.tsx
-            esiste gia', ma sostituirli e' un lavoro suo — gli otto della
-            finestra insieme, non tre qui e cinque altrove. Intanto prendono la
-            veste di `.filter` invece di restare senza. */}
-        <select className="filter" value={cliente} onChange={(e) => setCliente(e.target.value)}>
-          <option value="">Tutti i clienti</option>
-          <option value={SENZA_CLIENTE}>Senza cliente</option>
-          {clienti.map((c) => (
-            <option key={c.id} value={String(c.id)}>
-              {c.nome}
-            </option>
-          ))}
-        </select>
-        <select
-          className="filter"
-          value={stato}
-          onChange={(e) => setStato(e.target.value as StatoSessione | '')}
-        >
-          {STATI.map((s) => (
-            <option key={s.valore} value={s.valore}>
-              {s.etichetta}
-            </option>
-          ))}
-        </select>
-        <select
-          className="filter"
-          value={giorni === null ? '' : String(giorni)}
-          onChange={(e) => setGiorni(e.target.value === '' ? null : Number(e.target.value))}
-        >
-          {PERIODI.map((p) => (
-            <option key={p.etichetta} value={p.giorni === null ? '' : String(p.giorni)}>
-              {p.etichetta}
-            </option>
-          ))}
-        </select>
+        <Select
+          opzioni={[
+            { id: '', etichetta: 'Tutti i clienti' },
+            { id: SENZA_CLIENTE, etichetta: 'Senza cliente' },
+            ...clienti.map((c) => ({ id: String(c.id), etichetta: c.nome })),
+          ]}
+          selezionato={cliente}
+          onScegli={setCliente}
+        />
+        <Select
+          opzioni={STATI.map((s) => ({ id: s.valore, etichetta: s.etichetta }))}
+          selezionato={stato}
+          onScegli={(v) => setStato(v as StatoSessione | '')}
+        />
+        <Select
+          opzioni={PERIODI.map((p) => ({
+            id: p.giorni === null ? '' : String(p.giorni),
+            etichetta: p.etichetta,
+          }))}
+          selezionato={giorni === null ? '' : String(giorni)}
+          onScegli={(v) => setGiorni(v === '' ? null : Number(v))}
+        />
         <button className={`filter${raggruppa ? ' is-on' : ''}`} onClick={() => setRaggruppa((v) => !v)}>
           <span className="sq" />
           Raggruppa per cliente
@@ -361,19 +349,17 @@ export function Archivio(props: {
                       cui uno ha davanti le call non attribuite tutte insieme, e
                       farlo call per call dalla scheda vuol dire non farlo mai
                       (regola 49). */}
-                  <select
-                    className="arow__c"
-                    value={c.client_id != null ? String(c.client_id) : ''}
-                    onChange={(e) => assegna(c.id, e.target.value)}
-                    title="Cliente di questa call"
-                  >
-                    <option value="">Senza cliente</option>
-                    {clienti.map((cl) => (
-                      <option key={cl.id} value={String(cl.id)}>
-                        {cl.nome}
-                      </option>
-                    ))}
-                  </select>
+                  <span className="arow__c">
+                    <Select
+                      opzioni={[
+                        { id: '', etichetta: 'Senza cliente' },
+                        ...clienti.map((cl) => ({ id: String(cl.id), etichetta: cl.nome })),
+                      ]}
+                      selezionato={c.client_id != null ? String(c.client_id) : ''}
+                      onScegli={(v) => assegna(c.id, v)}
+                      larghezza={200}
+                    />
+                  </span>
                   <span className="arow__m num">{giornoBreve(c.started_at)}</span>
                   <span className="arow__m num">{c.durata_ms != null ? tempo(c.durata_ms) : '—'}</span>
                   <span className="arow__s">

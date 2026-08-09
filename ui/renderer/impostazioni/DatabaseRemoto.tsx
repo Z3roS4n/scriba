@@ -24,6 +24,7 @@ import type {
   StatoDatabaseRemoto,
   TabellaModello,
 } from '../tipi'
+import { Select } from '../Select'
 
 const MODALITA: Array<{ id: string; etichetta: string; nota: string }> = [
   { id: 'diretta', etichetta: 'Diretta', nota: 'Porta 5432 sul server vero. Su Supabase spesso risponde solo in IPv6.' },
@@ -356,13 +357,11 @@ export function SezioneDatabaseRemoto() {
                 <b>Come ci si collega</b>
                 <span>{MODALITA.find((m) => m.id === modalita)?.nota}</span>
               </div>
-              <select className="filter" value={modalita} onChange={(e) => setModalita(e.target.value)}>
-                {MODALITA.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.etichetta}
-                  </option>
-                ))}
-              </select>
+              <Select
+                opzioni={MODALITA.map((m) => ({ id: m.id, etichetta: m.etichetta }))}
+                selezionato={modalita}
+                onScegli={setModalita}
+              />
             </div>
 
             <div className="row">
@@ -386,13 +385,11 @@ export function SezioneDatabaseRemoto() {
                 <b>In quale schema scrivere</b>
                 <span>Gli schemi di sistema non sono in elenco: non sarebbero una scelta sensata.</span>
               </div>
-              <select className="filter" value={schema} onChange={(e) => setSchema(e.target.value)}>
-                {schemi.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+              <Select
+                opzioni={schemi.map((s) => ({ id: s, etichetta: s }))}
+                selezionato={schema}
+                onScegli={setSchema}
+              />
             </div>
             <div className="row">
               <div className="row__t">
@@ -453,18 +450,15 @@ export function SezioneDatabaseRemoto() {
                   <span>{t.descrizione}</span>
                 </div>
                 {strada === 'mappa' && scelte.includes(t.chiave) && (
-                  <select
-                    className="filter"
-                    value={mappa[t.chiave]?.nome ?? ''}
-                    onChange={(e) => caricaColonne(t.chiave, e.target.value)}
-                  >
-                    <option value="">— quale tabella? —</option>
-                    {tabelleRemote.map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
-                    ))}
-                  </select>
+                  <Select
+                    opzioni={[
+                      { id: '', etichetta: '— quale tabella? —' },
+                      ...tabelleRemote.map((n) => ({ id: n, etichetta: n })),
+                    ]}
+                    selezionato={mappa[t.chiave]?.nome ?? ''}
+                    onScegli={(v) => caricaColonne(t.chiave, v)}
+                    larghezza={240}
+                  />
                 )}
               </div>
             ))}
@@ -508,25 +502,22 @@ export function SezioneDatabaseRemoto() {
                             {c.chiave_naturale && ' *'}
                           </span>
                           <span className="cli__meta">{c.descrizione}</span>
-                          <select
-                            className="filter"
-                            value={mappa[k]?.colonne[c.chiave] ?? ''}
-                            onChange={(e) =>
+                          <Select
+                            opzioni={[
+                              { id: '', etichetta: '— non mandare —' },
+                              ...c.ammesse.map((n) => ({ id: n, etichetta: n })),
+                            ]}
+                            selezionato={mappa[k]?.colonne[c.chiave] ?? ''}
+                            onScegli={(v) =>
                               setMappa((prec) => {
                                 const colonneOra = { ...(prec[k]?.colonne ?? {}) }
-                                if (e.target.value) colonneOra[c.chiave] = e.target.value
+                                if (v) colonneOra[c.chiave] = v
                                 else delete colonneOra[c.chiave]
                                 return { ...prec, [k]: { ...prec[k], colonne: colonneOra } }
                               })
                             }
-                          >
-                            <option value="">— non mandare —</option>
-                            {c.ammesse.map((n) => (
-                              <option key={n} value={n}>
-                                {n}
-                              </option>
-                            ))}
-                          </select>
+                            larghezza={240}
+                          />
                         </div>
                       ))}
                     </div>

@@ -972,3 +972,26 @@ select.arow__c:hover { border-color:var(--line); }
   color:var(--fg-body); background:var(--bg-quiet); border:1px solid var(--line);
   padding:var(--sp-4); overflow-x:auto; white-space:pre; max-height:280px;
 }
+
+/* ---------- selettore a comparsa — oltre il handoff ------------------------
+   Il design vieta i <select> nativi (regola 21) ma non disegna il controllo
+   che li sostituisce: nelle due sezioni che disegna non ce n'è nessuno.
+   Derivato con quello che il sistema ha già — il grilletto è `.filter`, lo
+   stesso dei filtri dell'archivio, e il menù è un piano bordato e piatto.
+   Nessuna ombra: le superfici che galleggiano si staccano con lo scrim, non
+   con un'elevazione (regola 19). */
+.sel { position:relative; display:inline-flex; }
+.pop {
+  position:absolute; top:calc(100% + 4px); left:0; z-index:20;
+  min-width:100%; max-height:280px; overflow-y:auto;
+  background:var(--bg-win); border:1px solid var(--line-strong);
+  display:flex; flex-direction:column;
+}
+.pop__voce {
+  display:block; width:100%; text-align:left;
+  padding:var(--sp-2) var(--sp-3);
+  font-size:var(--fs-sm); color:var(--fg-body); white-space:nowrap;
+}
+.pop__voce:hover { background:var(--bg-quiet); color:var(--fg); }
+.pop__voce.is-on { background:var(--act); color:var(--act-fg); font-weight:var(--w-bold); }
+.pop__vuoto { padding:var(--sp-2) var(--sp-3); font-size:var(--fs-sm); color:var(--fg-3); }

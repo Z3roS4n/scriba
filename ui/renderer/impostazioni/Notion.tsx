@@ -25,7 +25,7 @@ import type {
   StatoNotion,
 } from '../tipi'
 import { Modal } from './Modal'
-import { Select } from './Select'
+import { Select } from '../Select'
 
 const ETICHETTE_TIPO: Record<string, string> = {
   title: 'titolo',
