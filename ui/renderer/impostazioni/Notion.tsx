@@ -27,6 +27,7 @@ import type {
 import { Modal } from './Modal'
 import { Select } from '../Select'
 import { useT } from '../lingua'
+// gia importato
 
 const ETICHETTE_TIPO: Record<string, string> = {
   title: 'titolo',
@@ -299,7 +300,7 @@ export function SezioneNotion() {
           )}
           <div className="modal__foot">
             <button className="btn" onClick={chiudi}>
-              Annulla
+              {t('ntn2.annulla')}
             </button>
             <button
               className="btn"
@@ -405,7 +406,7 @@ export function SezioneNotion() {
           <div className="modal__foot">
             <span className="modal__hint">{Object.keys(mappa).length} campi su Notion</span>
             <button className="btn" onClick={chiudi}>
-              Annulla
+              {t('ntn2.annulla')}
             </button>
             <button className="btn btn--primary" disabled={lavorando} onClick={salvaMappatura}>
               {lavorando ? 'Sto salvando…' : 'Salva'}

@@ -39,6 +39,8 @@ const ORIGINI = {
   'ovl.': 'ui/renderer/overlay.tsx',
   'cli.': 'ui/renderer/impostazioni/Clienti.tsx',
   'dlg.': 'ui/renderer/Dialoghi.tsx',
+  'pan.': 'ui/renderer/Analisi.tsx',
+  'tra2.': 'ui/renderer/impostazioni/Trascrizione.tsx',
 }
 
 /** Il commit da cui parte il ramo: prima di qualunque traduzione. */

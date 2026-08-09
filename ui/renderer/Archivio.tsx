@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { giornoBreve, tempo, type Cliente, type Sessione, type StatoSessione } from './tipi'
 import { Select } from './Select'
 import { useLocale, useT, type Chiave } from './lingua'
+// gia importato
 
 /** Le voci del filtro stato. 'analyzing' non c'è: non è mai salvato nel
  *  database — vive solo nello stato del processo — quindi non si può filtrare. */
@@ -70,6 +71,7 @@ function conPunti(n: number, locale: string): string {
  * il resto messo insieme.
  */
 function PannelloIa({ call }: { call: Sessione[] }) {
+  const t = useT()
   const locale = useLocale()
   const [conTrascrizione, setConTrascrizione] = useState(false)
   const [peso, setPeso] = useState<{ token_stimati: number; call: number } | null>(null)
@@ -120,8 +122,7 @@ function PannelloIa({ call }: { call: Sessione[] }) {
           {call.length} {call.length === 1 ? 'call' : 'call'} in un documento solo
         </b>
         <span>
-          Ogni citazione accanto a ciò che sostiene, e detto chiaro quali impegni una fonte non
-          ce l'hanno. Da incollare in un modello.
+          {t('arc2.ia_nota')}
         </span>
       </div>
 
@@ -132,7 +133,7 @@ function PannelloIa({ call }: { call: Sessione[] }) {
       >
         {conTrascrizione ? '✓' : ''}
       </button>
-      <span className="ia__voce">Trascrizione integrale</span>
+      <span className="ia__voce">{t('arc2.integrale')}</span>
 
       {peso && <span className="ia__peso">~{conPunti(peso.token_stimati, locale)} token</span>}
 
@@ -143,7 +144,7 @@ function PannelloIa({ call }: { call: Sessione[] }) {
       {esito && <span className="ia__esito">{esito}</span>}
       {percorso && (
         <button className="btn btn--sm" onClick={() => window.scriba.mostraFile(percorso)}>
-          Mostra
+          {t('arc2.mostra')}
         </button>
       )}
     </div>
@@ -157,10 +158,10 @@ export function Archivio(props: {
   /** Ricarica l'elenco clienti: i conteggi cambiano appena si assegna una call. */
   onClientiCambiati: () => void
 }) {
+  const t = useT()
   const { clienti, onApri, onEsci, onClientiCambiati } = props
 
   const [testo, setTesto] = useState('')
-  const t = useT()
   const locale = useLocale()
   const [cliente, setCliente] = useState<string>('')
   const [stato, setStato] = useState<StatoSessione | ''>('')
@@ -263,7 +264,7 @@ export function Archivio(props: {
         </span>
         <span className="plane__spacer" />
         <button className="esc" onClick={onEsci}>
-          <span className="key">Esc</span>
+          <span className="key">{t('arc2.esc')}</span>
           {t('arch.esci')}
         </button>
       </div>

@@ -10,6 +10,7 @@
 import type { Schermo } from './scriba'
 import { useT } from './lingua'
 import { tempo } from './tipi'
+// gia importato
 
 /** Rispecchia lo stato dell'evento `modello` del core: non serve un tipo condiviso per due file. */
 export type StatoModello = 'in_attesa' | 'caricamento' | 'pronto' | 'errore'
@@ -64,7 +65,7 @@ export function Topbar(props: {
 
   return (
     <header className="topbar">
-      <span className="brand">Scriba</span>
+      <span className="brand">{t('top.nome')}</span>
 
       <div className={`status ${registrando ? 'is-recording' : ''}`}>
         <span className={`sq ${registrando ? 'sq--rec' : 'sq--hollow'}`} />

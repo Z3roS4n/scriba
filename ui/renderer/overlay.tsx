@@ -182,7 +182,7 @@ function App() {
         {registrando ? (
           <span className="overlay__timer">{tempo(trascorsi)}</span>
         ) : (
-          <span style={{ fontSize: 'var(--fs-md)' }}>Scriba</span>
+          <span style={{ fontSize: 'var(--fs-md)' }}>{t('ovl.nome')}</span>
         )}
         {scattoRecente && <span className="overlay__flash">{t('ovl.salvato')}</span>}
         <div className="overlay__spacer" />

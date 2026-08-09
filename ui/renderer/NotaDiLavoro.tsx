@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { tempo } from './tipi'
+import { useT } from './lingua'
 
 interface Nota {
   id: number
@@ -84,6 +85,7 @@ export function NotaDiLavoro({
   sessionId: number | null
   registrando: boolean
 }) {
+  const t = useT()
   const [dati, setDati] = useState<Risposta | null>(null)
   const [inCorso, setInCorso] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
@@ -129,8 +131,8 @@ export function NotaDiLavoro({
   return (
     <div className="nota">
       <div className="nota__testa">
-        <span className="label">NOTA DI LAVORO</span>
-        {inCorso && <span className="nota__stato">sto aggiornando…</span>}
+        <span className="label">{t('not.titolo')}</span>
+        {inCorso && <span className="nota__stato">{t('not.aggiorno')}</span>}
         {!inCorso && ultima?.scope_end_ms != null && (
           <span className="nota__stato">fino a {tempo(ultima.scope_end_ms)}</span>
         )}

@@ -28,6 +28,7 @@ import { SezioneRilevamento } from './impostazioni/Rilevamento'
 import { SezioneScorciatoie } from './impostazioni/Scorciatoie'
 import { SezioneTrascrizione } from './impostazioni/Trascrizione'
 import { useT, type Chiave } from './lingua'
+// gia importato
 
 type Sezione =
   | 'motore'
@@ -59,9 +60,10 @@ const NAV: { id: Sezione; chiave: Chiave }[] = [
 ]
 
 function Topbar() {
+  const t = useT()
   return (
     <header className="topbar">
-      <span className="brand">Impostazioni</span>
+      <span className="brand">{t('imp.titolo')}</span>
       <div className="topbar__spacer" />
       <div className="wincontrols">
         <button onClick={() => window.scriba.finestra.riduci()}>—</button>
@@ -72,8 +74,8 @@ function Topbar() {
 }
 
 export function Impostazioni() {
-  const [sezione, setSezione] = useState<Sezione>('motore')
   const t = useT()
+  const [sezione, setSezione] = useState<Sezione>('motore')
   const [impostazioni, setImpostazioni] = useState<ImpostazioniT | null>(null)
   const [providers, setProviders] = useState<Provider[]>([])
   const [dispositivi, setDispositivi] = useState<Dispositivi | null>(null)
@@ -241,7 +243,7 @@ export function Impostazioni() {
         <div className="win__body">
           <div className="settings__main">
             <div className="settings__body">
-              <p>Caricamento delle impostazioni…</p>
+              <p>{t('imp.carico')}</p>
             </div>
           </div>
         </div>
@@ -257,7 +259,7 @@ export function Impostazioni() {
           <span>{errore}</span>
           <div className="notice__spacer" />
           <button className="btn btn--sm" onClick={() => setErrore(null)}>
-            Chiudi
+            {t('imp.chiudi')}
           </button>
         </div>
       )}

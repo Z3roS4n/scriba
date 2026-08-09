@@ -9,6 +9,7 @@
 
 import type { Task } from './tipi'
 import { tempo } from './tipi'
+import { useT } from './lingua'
 
 /** Come va scritto il campo sopra la citazione: maiuscolo, come sul chip. */
 const ETICHETTA_CAMPO: Record<string, string> = {
@@ -29,11 +30,12 @@ export function PannelloProve({
   onVaiA: (t_ms: number) => void
   onChiudi: () => void
 }) {
+  const t = useT()
   return (
     <aside className="evidence">
       <div className="evidence__head">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span className="label">PROVE</span>
+          <span className="label">{t('prv.titolo')}</span>
           <button className="btn--link" onClick={onChiudi} aria-label="Chiudi le prove">
             ✕
           </button>
@@ -56,7 +58,7 @@ export function PannelloProve({
           </div>
         ))}
         <p className="ev__note">
-          Ogni campo della task viene da una di queste frasi. Se una prova non regge, il campo va corretto.
+          {t('prv.nota')}
         </p>
       </div>
     </aside>

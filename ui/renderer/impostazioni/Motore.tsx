@@ -10,6 +10,7 @@
 import { useState } from 'react'
 
 import type { Provider } from '../tipi'
+import { useT } from '../lingua'
 
 /** A chi va la trascrizione, per completare la frase del rischio. Il core dice
  *  solo *se* esce (`esce_dal_computer`), non *a chi*: il nome del fornitore
@@ -29,6 +30,7 @@ export function SezioneMotore({
   onScegli: (p: Provider) => void
   onSalvaChiave: (p: Provider, chiave: string) => Promise<boolean>
 }) {
+  const t = useT()
   const [inserendo, setInserendo] = useState<string | null>(null)
   const [chiave, setChiave] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -46,9 +48,9 @@ export function SezioneMotore({
 
   return (
     <>
-      <div className="settings__head">Motore di analisi</div>
+      <div className="settings__head">{t('mot.titolo')}</div>
       <div className="settings__body">
-        <p>Chi legge la trascrizione e ne ricava riassunto, punti salienti e task. Se ne può usare uno solo alla volta.</p>
+        <p>{t('mot.titolo_nota')}</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
           {providers.map((p) => {
             // Non c'è un campo dedicato per "manca la chiave": si deduce dal
@@ -89,8 +91,7 @@ export function SezioneMotore({
                 {p.in_avvio && (
                   <div className="engine__need" onClick={(e) => e.stopPropagation()}>
                     <span>
-                      Il modello si sta caricando in memoria. Diventa selezionabile da solo appena risponde:
-                      non serve riaprire questa finestra.
+                      {t('mot.in_caricamento')}
                     </span>
                   </div>
                 )}
@@ -118,7 +119,7 @@ export function SezioneMotore({
                           }}
                         />
                         <button className="btn btn--sm btn--primary" disabled={salvando || !chiave.trim()} onClick={() => salva(p)}>
-                          Salva
+                          {t('mot.salva')}
                         </button>
                         <button
                           className="btn btn--sm"
@@ -127,12 +128,12 @@ export function SezioneMotore({
                             setChiave('')
                           }}
                         >
-                          Annulla
+                          {t('mot.annulla')}
                         </button>
                       </>
                     ) : (
                       <>
-                        Serve una chiave API
+                        {t('mot.serve_chiave')}
                         <button
                           className="btn btn--sm"
                           onClick={() => {
@@ -140,7 +141,7 @@ export function SezioneMotore({
                             setChiave('')
                           }}
                         >
-                          Inserisci la chiave
+                          {t('mot.inserisci')}
                         </button>
                       </>
                     )}

@@ -6,6 +6,7 @@
 
 import type { Impostazioni } from '../tipi'
 import { SezioneNotion } from './Notion'
+import { useT } from '../lingua'
 
 const FORMATI = [
   { id: 'markdown', etichetta: 'Markdown' },
@@ -23,30 +24,27 @@ export function SezioneExport({
   onCambia: (patch: Partial<Impostazioni>) => void
   onCambiaCartella: () => void
 }) {
+  const t = useT()
   const esp = impostazioni.export ?? { cartella: null, formato: 'markdown' as const }
 
   return (
     <>
-      <div className="settings__head">Export</div>
+      <div className="settings__head">{t('exp.titolo')}</div>
       <div className="settings__body">
         <div className="row">
           <div className="row__t">
-            <b>Cartella predefinita</b>
+            <b>{t('exp.cartella')}</b>
             <span style={{ fontFamily: 'var(--font-code)' }}>{esp.cartella ?? 'Non ancora scelta'}</span>
           </div>
           <button className="btn" onClick={onCambiaCartella}>
-            Cambia
+            {t('exp.cambia')}
           </button>
         </div>
         <div className="row">
           <div className="row__t">
-            <b>Formato</b>
+            <b>{t('exp.formato')}</b>
             <span>
-              Il markdown contiene anche i minuti delle prove. Il testo è la trascrizione pulita,
-              il JSON porta tutto — comprese le prove — in una forma per un programma. «Per l'IA»
-              mette ogni citazione accanto a ciò che sostiene, invece di un riferimento da
-              incrociare, e dice quali impegni una fonte non ce l'hanno: è fatto per essere
-              incollato in un modello. Per esportarne più di una insieme c'è l'archivio.
+              {t('exp.formato_nota')}
             </span>
           </div>
           <div className="picker">

@@ -14,6 +14,7 @@ import type { KeyboardEvent as TastoEvento } from 'react'
 
 import type { Impostazioni } from '../tipi'
 import { scorciatoiaLeggibile } from '../tipi'
+import { useT } from '../lingua'
 
 const PREDEFINITE: Record<Voce['chiave'], string> = {
   scorciatoia_overlay: 'Alt+R',
@@ -61,6 +62,7 @@ export function SezioneScorciatoie({
   impostazioni: Impostazioni
   onCambia: (patch: Partial<Impostazioni>) => Promise<boolean>
 }) {
+  const t = useT()
   const [catturando, setCatturando] = useState<Voce['chiave'] | null>(null)
   const [conflitti, setConflitti] = useState<Partial<Record<Voce['chiave'], boolean>>>({})
 
@@ -89,11 +91,10 @@ export function SezioneScorciatoie({
 
   return (
     <>
-      <div className="settings__head">Scorciatoie</div>
+      <div className="settings__head">{t('sco.titolo')}</div>
       <div className="settings__body">
         <p>
-          Si premono, non si scrivono: clicca il campo e digita la combinazione. Se è già presa da un’altra
-          applicazione lo diciamo subito, perché Windows la rifiuta in silenzio.
+          {t('sco.titolo_nota')}
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
           {VOCI.map((v) => {
@@ -115,13 +116,12 @@ export function SezioneScorciatoie({
                     {catturando === v.chiave ? 'Premi i tasti…' : scorciatoiaLeggibile(valore)}
                   </button>
                   <button className="btn btn--sm" onClick={() => applica(v.chiave, PREDEFINITE[v.chiave])}>
-                    Ripristina
+                    {t('sco.ripristina')}
                   </button>
                 </div>
                 {inConflitto && (
                   <p className="shortcut__conflict">
-                    Già usata da un’altra applicazione. Windows la rifiuta in silenzio: finché non la cambi, il
-                    tasto non fa niente.
+                    {t('sco.gia_usata')}
                   </p>
                 )}
               </div>

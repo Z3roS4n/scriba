@@ -13,6 +13,7 @@ import { RiquadroInline } from './Dialoghi'
 import { etichettaValore, useLocale, useT, type Chiave, type Traduci } from './lingua'
 import type { Analisi, CampoProva, Segmento, Sessione, Task } from './tipi'
 import { dataBreve, tempo } from './tipi'
+// gia importato
 
 /** I soli valori che lo schema accetta per la priorità
  *  (`CHECK (priorita IN (...))`, schema.sql). Si sceglie fra questi invece di
@@ -115,6 +116,7 @@ export function Rassegna(props: {
   indiceIniziale: number
   onEsci: (indiceCorrente: number) => void
 }): React.ReactElement {
+  const t = useT()
   const { sessione, segmenti, indiceIniziale, onEsci } = props
 
   const tr = useT()
@@ -331,7 +333,7 @@ export function Rassegna(props: {
         {/* Si esce con Esc, e il tasto è scritto: una scorciatoia esiste solo
             se qualcuno sa che c'è. Il clic fa la stessa cosa. */}
         <button className="esc" onClick={esci}>
-          <span className="key">Esc</span>
+          <span className="key">{t('ras2.esc')}</span>
           {tr('ras.esci')}
         </button>
       </div>

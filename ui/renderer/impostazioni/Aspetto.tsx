@@ -13,6 +13,7 @@
 import type { Impostazioni } from '../tipi'
 import { linguaValida, useT, type Lingua } from '../lingua'
 import { applica, temaValido, type Tema } from '../tema'
+// gia importato
 
 const TEMI: Array<{ id: Tema; etichetta: string }> = [
   { id: 'scuro', etichetta: 'Scuro' },
@@ -58,7 +59,7 @@ export function SezioneAspetto({
 
   return (
     <>
-      <div className="settings__head">Aspetto</div>
+      <div className="settings__head">{t('asp.titolo')}</div>
       <div className="settings__body">
         <div className="row">
           <div className="row__t">
@@ -80,11 +81,9 @@ export function SezioneAspetto({
 
         <div className="row">
           <div className="row__t">
-            <b>Tema</b>
+            <b>{t('asp.tema')}</b>
             <span>
-              «Come il sistema» segue Windows, anche quando cambia da solo al tramonto. Vale
-              subito, senza riavviare. La striscia di trascrizione resta scura in ogni caso: sta
-              sopra la finestra della riunione, e lì il bianco abbaglia.
+              {t('asp.tema_nota')}
             </span>
           </div>
           <div className="picker">

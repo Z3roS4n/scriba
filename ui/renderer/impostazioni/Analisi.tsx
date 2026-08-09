@@ -9,6 +9,7 @@
  */
 
 import type { Impostazioni } from '../tipi'
+import { useT } from '../lingua'
 
 /** Minuti fra una nota e l'altra. Sotto i cinque il modello lavorerebbe quasi
  *  di continuo sulla stessa macchina che sta trascrivendo dal vivo. */
@@ -21,37 +22,37 @@ export function SezioneAnalisi({
   impostazioni: Impostazioni
   onCambia: (patch: Partial<Impostazioni>) => void
 }) {
+  const t = useT()
   return (
     <>
-      <div className="settings__head">Analisi</div>
+      <div className="settings__head">{t('ana.titolo')}</div>
       <div className="settings__body">
         <div className="row">
           <div className="row__t">
-            <b>Quando analizzare</b>
-            <span>A fine call parte da sola e la trovi pronta. A richiesta decidi tu di volta in volta.</span>
+            <b>{t('ana.quando')}</b>
+            <span>{t('ana.quando_nota')}</span>
           </div>
           <div className="picker">
             <button
               className={impostazioni.analisi_automatica ? 'is-on' : ''}
               onClick={() => onCambia({ analisi_automatica: true })}
             >
-              A fine call
+              {t('ana.fine_call')}
             </button>
             <button
               className={!impostazioni.analisi_automatica ? 'is-on' : ''}
               onClick={() => onCambia({ analisi_automatica: false })}
             >
-              A richiesta
+              {t('ana.richiesta')}
             </button>
           </div>
         </div>
         <div className="row row--risk">
           <div className="row__t">
-            <b>Note incrementali durante la call</b>
-            <span>Un riassunto parziale ogni dieci minuti, mentre si parla.</span>
+            <b>{t('ana.note')}</b>
+            <span>{t('ana.note_nota')}</span>
             <span className="row__risk">
-              Con un motore in rete significa mandare fuori la trascrizione più volte durante la riunione, non una
-              sola volta alla fine.
+              {t('ana.note_rete')}
             </span>
           </div>
           <button
@@ -66,10 +67,9 @@ export function SezioneAnalisi({
         {impostazioni.note_incrementali && (
           <div className="row">
             <div className="row__t">
-              <b>Ogni quanto</b>
+              <b>{t('ana.ogni_quanto')}</b>
               <span>
-                Su una call più corta dell’intervallo non ne esce nessuna: è il motivo più
-                comune per cui sembra che non funzionino.
+                {t('ana.ogni_quanto_nota')}
               </span>
             </div>
             <div className="picker">

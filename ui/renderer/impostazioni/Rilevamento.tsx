@@ -16,6 +16,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import type { DiagnosticaRilevamento, Impostazioni, ProcessoVisto } from '../tipi'
 import { useT } from '../lingua'
+// gia importato
 
 /** Il colore dell'esito. Solo «riunione» è verde: il resto è informazione. */
 const CLASSE_ESITO: Record<string, string> = {
@@ -87,7 +88,7 @@ function Diagnostica() {
     <>
       <div className="row">
         <div className="row__t">
-          <b>Cosa sta vedendo adesso</b>
+          <b>{t('ril2.vede')}</b>
           <span>{t('ril.aggiorna')}</span>
         </div>
         <button className="btn" onClick={() => setAperto(false)}>

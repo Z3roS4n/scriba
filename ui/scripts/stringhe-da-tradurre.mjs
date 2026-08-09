@@ -31,7 +31,7 @@
  */
 
 import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { basename, join } from 'node:path'
+import { join, relative, sep } from 'node:path'
 
 const RADICE = 'renderer'
 const TUTTE = process.argv.includes('--tutte')
@@ -95,7 +95,11 @@ for (const percorso of file(RADICE)) {
     if (daLeggere(m[1])) trovate.push(m[1])
   }
 
-  if (trovate.length) perFile.set(basename(percorso), trovate)
+  // La chiave e' il percorso, non il nome: `Analisi.tsx` e `Trascrizione.tsx`
+  // esistono sia nella radice che in impostazioni/, e con il solo nome uno dei
+  // due sovrascriveva l'altro nella mappa — un file spariva dal conteggio e
+  // l'altro sembrava peggiorato di colpo.
+  if (trovate.length) perFile.set(relative(RADICE, percorso).replaceAll(sep, '/'), trovate)
 }
 
 const totale = [...perFile.values()].reduce((n, v) => n + v.length, 0)

@@ -156,11 +156,11 @@ function SchedeTask({
         <div className="review">
           <div>
             <div className="review__n num">{daConfermare}</div>
-            <div className="review__t">task da confermare</div>
+            <div className="review__t">{tr('pan.da_confermare')}</div>
           </div>
           {daConfermare > 5 && (
             <button className="btn btn--primary btn--sm" onClick={() => onRassegna(0)}>
-              Passa in rassegna
+              {tr('pan.rassegna')}
             </button>
           )}
         </div>
@@ -226,7 +226,7 @@ function SchedeTask({
                         onImposta(t, 'confirmed')
                       }}
                     >
-                      Conferma
+                      {tr('pan.conferma')}
                     </button>
                     <button
                       className="btn btn--sm"
@@ -235,7 +235,7 @@ function SchedeTask({
                         onImposta(t, 'rejected')
                       }}
                     >
-                      Scarta
+                      {tr('pan.scarta')}
                     </button>
                     <button
                       className="btn btn--quiet btn--sm"
@@ -244,7 +244,7 @@ function SchedeTask({
                         onRassegna(tasks.findIndex((x) => x.id === t.id))
                       }}
                     >
-                      Modifica
+                      {tr('pan.modifica')}
                     </button>
                   </>
                 )}
@@ -266,7 +266,7 @@ function SchedeTask({
                       onImposta(t, 'proposed')
                     }}
                   >
-                    Annulla
+                    {tr('pan.annulla')}
                   </button>
                 </div>
               )}
@@ -330,6 +330,7 @@ function ControlloDiarizzazione({
   onAnnullaConferma: () => void
   onAvvia: () => void
 }) {
+  const t = useT()
   const inCorsoQui = stato?.fase === 'in_corso' && stato.sessionId === sessione.id
   const inCorsoAltrove =
     stato?.fase === 'in_corso_altrove' || (stato?.fase === 'in_corso' && stato.sessionId !== sessione.id)
@@ -341,8 +342,7 @@ function ControlloDiarizzazione({
     // "Voce 2" non diventa mai un nome.
     return (
       <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg-3)', margin: 0 }}>
-        Distinguere le voci dentro «altri» non è disponibile: manca pyannote.audio, non incluso nel
-        pacchetto. Va installato a parte.
+        {t('pan.no_pyannote')}
       </p>
     )
   }
@@ -350,7 +350,7 @@ function ControlloDiarizzazione({
   if (disponibile !== true) return null
 
   if (giaDiarizzata) {
-    return <span className="chip chip--quiet">voci distinte</span>
+    return <span className="chip chip--quiet">{t('pan.voci_distinte')}</span>
   }
 
   if (inCorsoQui) {
@@ -380,22 +380,21 @@ function ControlloDiarizzazione({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', maxWidth: 320 }}>
         <div className="kv">
           <div className="kv__row">
-            <span>Durata stimata</span>
+            <span>{t('pan.durata_stimata')}</span>
             <b>
               {min}-{max} min
             </b>
           </div>
         </div>
         <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg-3)', margin: 0 }}>
-          Misurati davvero su questa macchina. Gira in locale: nessun dato esce dal computer. Puoi
-          chiudere la finestra, il lavoro continua e lo ritrovi finito.
+          {t('pan.misurati')}
         </p>
         <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
           <button className="btn btn--primary btn--sm" onClick={onAvvia}>
-            Avvia
+            {t('pan.avvia')}
           </button>
           <button className="btn btn--sm" onClick={onAnnullaConferma}>
-            Annulla
+            {t('pan.annulla')}
           </button>
         </div>
       </div>
@@ -407,7 +406,7 @@ function ControlloDiarizzazione({
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}>
         <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--red)' }}>{erroreQui.messaggio}</span>
         <button className="btn btn--sm" onClick={onChiediConferma}>
-          Riprova
+          {t('pan.riprova')}
         </button>
       </div>
     )
@@ -415,7 +414,7 @@ function ControlloDiarizzazione({
 
   return (
     <button className="btn btn--sm" onClick={onChiediConferma}>
-      Distingui le voci
+      {t('pan.distingui')}
     </button>
   )
 }
@@ -446,6 +445,7 @@ export function PannelloAnalisi({
    * quando si sospetta che sia finita ma potrebbe essere passato un evento. */
   onRicaricaSegmenti: () => void
 }) {
+  const t = useT()
   const [analisi, setAnalisi] = useState<Analisi | null>(null)
   const [scheda, setScheda] = useState<'sum' | 'high' | 'task'>('sum')
   const [inCorso, setInCorso] = useState(false)
@@ -732,9 +732,9 @@ export function PannelloAnalisi({
     return (
       <section className="side">
         <div className="pad">
-          <span className="label">ANALISI</span>
+          <span className="label">{t('pan.label')}</span>
           <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-2)' }}>
-            Seleziona una call per vederne l'analisi.
+            {t('pan.scegli_call')}
           </p>
         </div>
       </section>
@@ -757,9 +757,9 @@ export function PannelloAnalisi({
               e questa colonna durante la registrazione non deve chiamare
               l'attenzione. Ma spenta non vuol dire vuota. */}
           <NotaDiLavoro sessionId={sessione.id} registrando={registrando} />
-          <span className="label">ANALISI</span>
+          <span className="label">{t('pan.label')}</span>
           <p style={{ fontSize: 'var(--fs-md)', lineHeight: 1.6, color: 'var(--fg-2)' }}>
-            Si fa a call finita. Riassunto, punti salienti e task su tutta la registrazione, non a pezzi.
+            {t('pan.a_call_finita')}
           </p>
           {providerAttivo?.esce_dal_computer && (
             <div className="callout callout--inline">
@@ -775,7 +775,7 @@ export function PannelloAnalisi({
     return (
       <section className="side">
         <div className="pad">
-          <span className="label">ANALISI IN CORSO</span>
+          <span className="label">{t('pan.label_in_corso')}</span>
           <div className="progress">
             <i></i>
           </div>
@@ -792,13 +792,13 @@ export function PannelloAnalisi({
             ))}
           </div>
           <div className="kv">
-            <p style={{ fontSize: 'var(--fs-ui)', color: 'var(--fg-body)' }}>Puoi chiudere la finestra.</p>
+            <p style={{ fontSize: 'var(--fs-ui)', color: 'var(--fg-body)' }}>{t('pan.puoi_chiudere')}</p>
             <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg-2)' }}>
-              Il lavoro continua e lo ritrovi finito. Ti avvisiamo quando è pronto.
+              {t('pan.lavoro_continua')}
             </p>
           </div>
           <button className="btn" style={{ alignSelf: 'flex-start' }} onClick={interrompi}>
-            Interrompi
+            {t('pan.interrompi')}
           </button>
         </div>
       </section>
@@ -811,7 +811,7 @@ export function PannelloAnalisi({
         <div className="side__head">
           <div className="side__eyebrow">
             <span className="thread" />
-            <span className="label">Analisi</span>
+            <span className="label">{t('pan.titolo')}</span>
           </div>
         </div>
         <div className="side__body">
@@ -848,8 +848,8 @@ export function PannelloAnalisi({
     return (
       <section className="side">
         <div className="pad">
-          <span className="label">ANALISI</span>
-          <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-2)' }}>Carico l'analisi…</p>
+          <span className="label">{t('pan.label')}</span>
+          <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-2)' }}>{t('pan.carico')}</p>
         </div>
       </section>
     )
@@ -880,24 +880,24 @@ export function PannelloAnalisi({
               che ha qualcosa da dire, e a call appena finita e' quello che
               c'e' finche' il riassunto non arriva. */}
           <NotaDiLavoro sessionId={sessione.id} registrando={registrando} />
-          <span className="label">ANALISI</span>
+          <span className="label">{t('pan.label')}</span>
           <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-body)' }}>
-            Questa call non è ancora stata analizzata.
+            {t('pan.non_analizzata')}
           </p>
           <button className="btn btn--primary btn--block" onClick={analizza} disabled={registrando}>
-            Analizza la call
+            {t('pan.analizza')}
           </button>
           <div className="kv">
             <div className="kv__row">
-              <span>Motore</span>
+              <span>{t('pan.motore')}</span>
               <b>{providerAttivo?.etichetta ?? '—'}</b>
             </div>
             <div className="kv__row">
-              <span>Durata stimata</span>
+              <span>{t('pan.durata_stimata')}</span>
               <b>{minutiStimati != null ? `circa ${minutiStimati} min` : '—'}</b>
             </div>
             <div className="kv__row">
-              <span>Costo stimato</span>
+              <span>{t('pan.costo')}</span>
               <b>{costoTesto}</b>
             </div>
           </div>
@@ -952,10 +952,10 @@ export function PannelloAnalisi({
       <div className="side__head">
         <div className="side__eyebrow">
           <span className="thread" />
-          <span className="label">Analisi</span>
+          <span className="label">{t('pan.titolo')}</span>
           <div className="side__actions">
             <button className="btn btn--sm" onClick={analizza} disabled={registrando}>
-              Rianalizza
+              {t('pan.rianalizza')}
             </button>
           </div>
         </div>
@@ -974,13 +974,13 @@ export function PannelloAnalisi({
 
       <div className="tabs" role="tablist">
           <button className={`tab${scheda === 'sum' ? ' is-on' : ''}`} onClick={() => setScheda('sum')}>
-            Riassunto
+            {t('pan.riassunto')}
           </button>
           <button className={`tab${scheda === 'high' ? ' is-on' : ''}`} onClick={() => setScheda('high')}>
-            Punti salienti<span className="tab__n num">{salienti.length}</span>
+            {t('pan.salienti')}<span className="tab__n num">{salienti.length}</span>
           </button>
           <button className={`tab${scheda === 'task' ? ' is-on' : ''}`} onClick={() => setScheda('task')}>
-            Task<span className="tab__n num">{tasks.length}</span>
+            {t('pan.task')}<span className="tab__n num">{tasks.length}</span>
           </button>
       </div>
 
@@ -1042,7 +1042,7 @@ export function PannelloAnalisi({
       <div className="side__body" hidden={scheda !== 'task'}>
         {tasks.length === 0 ? (
           <p className="sum__p" style={{ padding: 'var(--sp-5) var(--sp-6)' }}>
-            Nessun impegno individuato.
+            {t('pan.nessun_impegno')}
           </p>
         ) : (
           <SchedeTask

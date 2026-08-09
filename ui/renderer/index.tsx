@@ -22,6 +22,7 @@ import { useSchermi } from './schermi'
 import { useTema } from './tema'
 import { scorciatoiaLeggibile, type Cliente, type DbDanneggiato, type EventoCore, type Scatto, type Segmento, type Sessione, type Task } from './tipi'
 import { ContestoLingua, useLingua } from './lingua'
+import { useT } from './lingua'
 
 interface Avviso {
   testo: string
@@ -29,6 +30,7 @@ interface Avviso {
 }
 
 function App() {
+  const t = useT()
   const [corePronto, setCorePronto] = useState(false)
   const [modello, setModello] = useState<StatoModello>('in_attesa')
   const [registrando, setRegistrando] = useState(false)
@@ -575,7 +577,7 @@ function App() {
               className="btn btn--sm"
               onClick={() => window.scriba.apriCartella(dbDanneggiato.quarantena)}
             >
-              Apri la cartella
+              {t('idx.apri_cartella')}
             </button>
             <button type="button" className="btn--link" onClick={() => setDbDanneggiato(null)}>
               ✕

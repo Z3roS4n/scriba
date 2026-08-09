@@ -12,6 +12,7 @@
 
 import type { Disco, Modello } from '../tipi'
 import { dataBreve, dimensione } from '../tipi'
+import { useT } from '../lingua'
 
 function tempoRimanente(secondi: number): string {
   if (secondi < 60) return `${Math.round(secondi)} s rimanenti`
@@ -57,19 +58,20 @@ export function SezioneModelli({
   onFerma: (id: string) => void
   onApriCartella: () => void
 }) {
+  const t = useT()
   const percentualeUsata = disco
     ? Math.min(100, Math.round(((disco.totale_bytes - disco.libero_bytes) / Math.max(1, disco.totale_bytes)) * 100))
     : 0
 
   return (
     <>
-      <div className="settings__head">Modelli locali</div>
+      <div className="settings__head">{t('mod.titolo')}</div>
       <div className="settings__body">
         {disco && (
           <div className="disk">
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-md)' }}>
-                <span style={{ color: 'var(--fg-2)' }}>Spazio su disco</span>
+                <span style={{ color: 'var(--fg-2)' }}>{t('mod.spazio')}</span>
                 <span style={{ color: 'var(--fg-body)' }}>
                   {dimensione(disco.libero_bytes)} liberi di {dimensione(disco.totale_bytes)}
                 </span>
@@ -79,7 +81,7 @@ export function SezioneModelli({
               </div>
             </div>
             <button className="btn" onClick={onApriCartella}>
-              Apri la cartella
+              {t('mod.apri_cartella')}
             </button>
           </div>
         )}
@@ -100,8 +102,7 @@ export function SezioneModelli({
         </div>
 
         <p>
-          Un download si può sospendere e riprendere: riparte da dove si era fermato, anche dopo aver chiuso
-          l’applicazione. A fine scaricamento il file viene verificato, e l’esito si vede qui.
+          {t('mod.download_nota')}
         </p>
       </div>
     </>
@@ -125,6 +126,7 @@ function RigaModello({
   onAvvia: () => void
   onFerma: () => void
 }) {
+  const t = useT()
   const percentualeScaricata = m.size_bytes > 0 ? Math.round((m.scaricati_bytes / m.size_bytes) * 100) : 0
   const mancano = disco ? Math.max(0, m.size_bytes - disco.libero_bytes) : null
 
@@ -138,37 +140,37 @@ function RigaModello({
 
         {m.stato === 'non_installato' && (
           <button className="btn btn--sm btn--primary" onClick={onScarica}>
-            Scarica
+            {t('mod.scarica')}
           </button>
         )}
         {m.stato === 'in_download' && (
           <button className="btn btn--sm" onClick={onSospendi}>
-            Sospendi
+            {t('mod.sospendi')}
           </button>
         )}
         {m.stato === 'in_pausa' && (
           <button className="btn btn--sm" onClick={onScarica}>
-            Riprendi
+            {t('mod.riprendi')}
           </button>
         )}
         {m.stato === 'installato' && m.uso === 'analisi' && (
           <button className="btn btn--sm" onClick={onAvvia}>
-            Avvia
+            {t('mod.avvia')}
           </button>
         )}
         {m.stato === 'installato' && (
           <button className="btn btn--sm" onClick={onElimina}>
-            Elimina
+            {t('mod.elimina')}
           </button>
         )}
         {(m.stato === 'in_uso' || m.stato === 'in_avvio') && (
           <button className="btn btn--sm" onClick={onFerma}>
-            Ferma
+            {t('mod.ferma')}
           </button>
         )}
         {(m.stato === 'spazio_insufficiente' || m.stato === 'errore') && (
           <button className="btn btn--sm" onClick={onScarica}>
-            Scarica
+            {t('mod.scarica')}
           </button>
         )}
       </div>

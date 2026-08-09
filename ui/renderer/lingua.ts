@@ -408,6 +408,288 @@ const it = {
     'No grazie',
   'dlg.torna':
     'torna alla prossima call',
+  // --- Modelli -------------------------------------
+  'mod.titolo':
+    'Modelli locali',
+  'mod.spazio':
+    'Spazio su disco',
+  'mod.apri_cartella':
+    'Apri la cartella',
+  'mod.download_nota':
+    'Un download si può sospendere e riprendere: riparte da dove si era fermato, anche dopo aver chiuso l’applicazione. A fine scaricamento il file viene verificato, e l’esito si vede qui.',
+  'mod.scarica':
+    'Scarica',
+  'mod.sospendi':
+    'Sospendi',
+  'mod.riprendi':
+    'Riprendi',
+  'mod.avvia':
+    'Avvia',
+  'mod.elimina':
+    'Elimina',
+  'mod.ferma':
+    'Ferma',
+
+  // --- Trascrizione --------------------------------
+  'tra.nessuna_call':
+    'Nessuna call',
+  'tra.mai_registrato':
+    'Non hai ancora registrato niente',
+  'tra.mai_registrato_nota':
+    'Avvia la registrazione quando entri in una call. Sentirai il tuo microfono e l’audio del computer, così la trascrizione contiene tutti.',
+  'tra.registra':
+    'Registra',
+  'tra.io':
+    'Io',
+  'tra.altri':
+    'Altri',
+  'tra.nomina_voci':
+    'DAI UN NOME ALLE VOCI',
+  'tra.in_ascolto':
+    'In ascolto. Nessuno ha ancora parlato.',
+  'tra.nessuna_trascrizione':
+    'Nessuna trascrizione per questa call.',
+  'tra.eco_nota':
+    'tenute fuori da riassunto, note ed export',
+  'tra.scatto_alt':
+    'Schermata condivisa al minuto {t}',
+
+  // --- Analisi -------------------------------------
+  'ana.titolo':
+    'Analisi',
+  'ana.quando':
+    'Quando analizzare',
+  'ana.quando_nota':
+    'A fine call parte da sola e la trovi pronta. A richiesta decidi tu di volta in volta.',
+  'ana.fine_call':
+    'A fine call',
+  'ana.richiesta':
+    'A richiesta',
+  'ana.note':
+    'Note incrementali durante la call',
+  'ana.note_nota':
+    'Un riassunto parziale ogni dieci minuti, mentre si parla.',
+  'ana.note_rete':
+    'Con un motore in rete significa mandare fuori la trascrizione più volte durante la riunione, non una sola volta alla fine.',
+  'ana.ogni_quanto':
+    'Ogni quanto',
+  'ana.ogni_quanto_nota':
+    'Su una call più corta dell’intervallo non ne esce nessuna: è il motivo più comune per cui sembra che non funzionino.',
+
+  // --- Motore --------------------------------------
+  'mot.titolo':
+    'Motore di analisi',
+  'mot.titolo_nota':
+    'Chi legge la trascrizione e ne ricava riassunto, punti salienti e task. Se ne può usare uno solo alla volta.',
+  'mot.in_caricamento':
+    'Il modello si sta caricando in memoria. Diventa selezionabile da solo appena risponde: non serve riaprire questa finestra.',
+  'mot.salva':
+    'Salva',
+  'mot.annulla':
+    'Annulla',
+  'mot.serve_chiave':
+    'Serve una chiave API',
+  'mot.inserisci':
+    'Inserisci la chiave',
+
+  // --- overlay -------------------------------------
+  'ovl.nome':
+    'Scriba',
+
+  // --- Rifinitura ----------------------------------
+  'rif.interrompi':
+    'Interrompi',
+  'rif.gia_in_corso':
+    'C’è già una rifinitura in corso, su un’altra call.',
+  'rif.rifai':
+    'Rifai',
+  'rif.durata':
+    'Durata stimata',
+  'rif.rifai_trascrizione':
+    'Rifai la trascrizione',
+
+  // --- Archivio ------------------------------------
+  'arc2.ia_nota':
+    "Ogni citazione accanto a ciò che sostiene, e detto chiaro quali impegni una fonte non ce l'hanno. Da incollare in un modello.",
+  'arc2.integrale':
+    'Trascrizione integrale',
+  'arc2.mostra':
+    'Mostra',
+  'arc2.esc':
+    'Esc',
+
+  // --- Export --------------------------------------
+  'exp.titolo':
+    'Export',
+  'exp.cartella':
+    'Cartella predefinita',
+  'exp.cambia':
+    'Cambia',
+  'exp.formato':
+    'Formato',
+  'exp.formato_nota':
+    "Il markdown contiene anche i minuti delle prove. Il testo è la trascrizione pulita, il JSON porta tutto — comprese le prove — in una forma per un programma. «Per l'IA» mette ogni citazione accanto a ciò che sostiene, invece di un riferimento da incrociare, e dice quali impegni una fonte non ce l'hanno: è fatto per essere incollato in un modello. Per esportarne più di una insieme c'è l'archivio.",
+
+  // --- index ---------------------------------------
+  'idx.apri_cartella':
+    'Apri la cartella',
+
+  // --- Scorciatoie ---------------------------------
+  'sco.titolo':
+    'Scorciatoie',
+  'sco.titolo_nota':
+    'Si premono, non si scrivono: clicca il campo e digita la combinazione. Se è già presa da un’altra applicazione lo diciamo subito, perché Windows la rifiuta in silenzio.',
+  'sco.ripristina':
+    'Ripristina',
+  'sco.gia_usata':
+    'Già usata da un’altra applicazione. Windows la rifiuta in silenzio: finché non la cambi, il tasto non fa niente.',
+
+  // --- Aspetto -------------------------------------
+  'asp.titolo':
+    'Aspetto',
+  'asp.tema':
+    'Tema',
+  'asp.tema_nota':
+    '«Come il sistema» segue Windows, anche quando cambia da solo al tramonto. Vale subito, senza riavviare. La striscia di trascrizione resta scura in ogni caso: sta sopra la finestra della riunione, e lì il bianco abbaglia.',
+
+  // --- Notion --------------------------------------
+  'ntn2.annulla':
+    'Annulla',
+
+  // --- Impostazioni --------------------------------
+  'imp.titolo':
+    'Impostazioni',
+  'imp.carico':
+    'Caricamento delle impostazioni…',
+  'imp.chiudi':
+    'Chiudi',
+
+  // --- Prove ---------------------------------------
+  'prv.titolo':
+    'PROVE',
+  'prv.nota':
+    'Ogni campo della task viene da una di queste frasi. Se una prova non regge, il campo va corretto.',
+
+  // --- NotaDiLavoro --------------------------------
+  'not.titolo':
+    'NOTA DI LAVORO',
+  'not.aggiorno':
+    'sto aggiornando…',
+
+  // --- Rilevamento ---------------------------------
+  'ril2.vede':
+    'Cosa sta vedendo adesso',
+
+  // --- Rassegna ------------------------------------
+  'ras2.esc':
+    'Esc',
+
+  // --- Select --------------------------------------
+  'sel.vuoto':
+    'Nessuna opzione disponibile',
+
+  // --- Topbar --------------------------------------
+  'top.nome':
+    'Scriba',
+  // --- Analisi.tsx ------------------------
+  'pan.da_confermare':
+    'task da confermare',
+  'pan.rassegna':
+    'Passa in rassegna',
+  'pan.conferma':
+    'Conferma',
+  'pan.scarta':
+    'Scarta',
+  'pan.modifica':
+    'Modifica',
+  'pan.annulla':
+    'Annulla',
+  'pan.no_pyannote':
+    'Distinguere le voci dentro «altri» non è disponibile: manca pyannote.audio, non incluso nel pacchetto. Va installato a parte.',
+  'pan.voci_distinte':
+    'voci distinte',
+  'pan.durata_stimata':
+    'Durata stimata',
+  'pan.misurati':
+    'Misurati davvero su questa macchina. Gira in locale: nessun dato esce dal computer. Puoi chiudere la finestra, il lavoro continua e lo ritrovi finito.',
+  'pan.avvia':
+    'Avvia',
+  'pan.riprova':
+    'Riprova',
+  'pan.distingui':
+    'Distingui le voci',
+  'pan.label':
+    'ANALISI',
+  'pan.scegli_call':
+    'Seleziona una call per vederne l\'analisi.',
+  'pan.a_call_finita':
+    'Si fa a call finita. Riassunto, punti salienti e task su tutta la registrazione, non a pezzi.',
+  'pan.label_in_corso':
+    'ANALISI IN CORSO',
+  'pan.puoi_chiudere':
+    'Puoi chiudere la finestra.',
+  'pan.lavoro_continua':
+    'Il lavoro continua e lo ritrovi finito. Ti avvisiamo quando è pronto.',
+  'pan.interrompi':
+    'Interrompi',
+  'pan.titolo':
+    'Analisi',
+  'pan.carico':
+    'Carico l\'analisi…',
+  'pan.non_analizzata':
+    'Questa call non è ancora stata analizzata.',
+  'pan.analizza':
+    'Analizza la call',
+  'pan.motore':
+    'Motore',
+  'pan.costo':
+    'Costo stimato',
+  'pan.rianalizza':
+    'Rianalizza',
+  'pan.riassunto':
+    'Riassunto',
+  'pan.salienti':
+    'Punti salienti',
+  'pan.task':
+    'Task',
+  'pan.nessun_impegno':
+    'Nessun impegno individuato.',
+
+  // --- impostazioni/Trascrizione.tsx ------------------------
+  'tra2.titolo':
+    'Trascrizione',
+  'tra2.lingua':
+    'Lingua delle call',
+  'tra2.lingua_nota':
+    'Vale per la trascrizione e per quello che ne viene ricavato: riassunto, punti salienti e task escono in questa lingua. Le altre vengono riconosciute lo stesso, ma con più errori sui nomi.',
+  'tra2.microfono':
+    'Microfono',
+  'tra2.microfono_nota':
+    'Registra la tua voce.',
+  'tra2.loopback':
+    'Audio del computer',
+  'tra2.loopback_nota':
+    'Registra la voce degli altri. Senza questo si sente solo te.',
+  'tra2.filtro':
+    'Filtro dell’eco',
+  'tra2.filtro_nota':
+    'Riconosce quando il microfono riprende l’altoparlante. Se alzi troppo, le sovrapposizioni di voce si perdono.',
+  'tra2.dopo':
+    'Dopo la call',
+  'tra2.rifai':
+    'Rifai la trascrizione da sola',
+  'tra2.nomi':
+    'Nomi propri',
+  'tra2.glossario':
+    'Glossario',
+  'tra2.glossario_nota':
+    'I nomi che il modello non conosce li indovina da capo a ogni frase, e ogni volta in modo diverso: nella stessa call «Clotilde» diventa Tilde, Cotilde e Protile. Scrivili qui, uno per riga, e vengono rimessi a posto a frase finita. Il testo di partenza resta salvato.',
+  'tra2.anche_clienti':
+    'Anche i clienti',
+  'tra2.anche_clienti_nota':
+    'I nomi dell’anagrafica entrano nel glossario da soli, senza riscriverli qui.',
+  'tra2.quanto':
+    'Quanto insistere',
 } as const
 
 export type Chiave = keyof typeof it
@@ -763,6 +1045,267 @@ const en: Record<Chiave, string> = {
     'No thanks',
   'dlg.torna':
     'it comes back on the next call',
+  'mod.titolo':
+    'Local models',
+  'mod.spazio':
+    'Disk space',
+  'mod.apri_cartella':
+    'Open the folder',
+  'mod.download_nota':
+    'A download can be paused and resumed: it picks up where it left off, even after closing Scriba.',
+  'mod.scarica':
+    'Download',
+  'mod.sospendi':
+    'Pause',
+  'mod.riprendi':
+    'Resume',
+  'mod.avvia':
+    'Start',
+  'mod.elimina':
+    'Delete',
+  'mod.ferma':
+    'Stop',
+
+  'tra.nessuna_call':
+    'No call',
+  'tra.mai_registrato':
+    'You have not recorded anything yet',
+  'tra.mai_registrato_nota':
+    'Start recording when you join a call. You will hear your microphone and the computer audio.',
+  'tra.registra':
+    'Record',
+  'tra.io':
+    'Me',
+  'tra.altri':
+    'Others',
+  'tra.nomina_voci':
+    'NAME THE VOICES',
+  'tra.in_ascolto':
+    'Listening. Nobody has spoken yet.',
+  'tra.nessuna_trascrizione':
+    'No transcript for this call.',
+  'tra.eco_nota':
+    'kept out of the summary, notes and exports',
+  'tra.scatto_alt':
+    'Shared screen at minute {t}',
+
+  'ana.titolo':
+    'Analysis',
+  'ana.quando':
+    'When to analyse',
+  'ana.quando_nota':
+    'When the call ends it starts by itself and you find it ready. On request you decide each time.',
+  'ana.fine_call':
+    'When the call ends',
+  'ana.richiesta':
+    'On request',
+  'ana.note':
+    'Running notes during the call',
+  'ana.note_nota':
+    'A partial summary every ten minutes, while people are talking.',
+  'ana.note_rete':
+    'With an engine on the network this means sending the transcript out several times during the call.',
+  'ana.ogni_quanto':
+    'How often',
+  'ana.ogni_quanto_nota':
+    'On a call shorter than the interval none come out: it is the most common reason for not seeing any.',
+
+  'mot.titolo':
+    'Analysis engine',
+  'mot.titolo_nota':
+    'Who reads the transcript and draws out the summary, key points and tasks. Only one can be used at a time.',
+  'mot.in_caricamento':
+    'The model is loading into memory. It becomes selectable by itself as soon as it is ready.',
+  'mot.salva':
+    'Save',
+  'mot.annulla':
+    'Cancel',
+  'mot.serve_chiave':
+    'An API key is needed',
+  'mot.inserisci':
+    'Enter the key',
+
+  'ovl.nome':
+    'Scriba',
+
+  'rif.interrompi':
+    'Stop',
+  'rif.gia_in_corso':
+    'A refinement is already running, on another call.',
+  'rif.rifai':
+    'Redo',
+  'rif.durata':
+    'Estimated time',
+  'rif.rifai_trascrizione':
+    'Redo the transcription',
+
+  'arc2.ia_nota':
+    'Every quotation next to what it supports, and stated plainly which commitments a call produced.',
+  'arc2.integrale':
+    'Full transcript',
+  'arc2.mostra':
+    'Show',
+  'arc2.esc':
+    'Esc',
+
+  'exp.titolo':
+    'Export',
+  'exp.cartella':
+    'Default folder',
+  'exp.cambia':
+    'Change',
+  'exp.formato':
+    'Format',
+  'exp.formato_nota':
+    'Markdown also carries the minutes of the evidence. Plain text is the transcript and nothing else.',
+
+  'idx.apri_cartella':
+    'Open the folder',
+
+  'sco.titolo':
+    'Shortcuts',
+  'sco.titolo_nota':
+    'You press them, you do not type them: click the field and press the combination. If another application already has it we say so immediately, because Windows refuses it in silence.',
+  'sco.ripristina':
+    'Reset',
+  'sco.gia_usata':
+    'Already taken by another application. Windows refuses it in silence: until you change it, the shortcut does nothing.',
+
+  'asp.titolo':
+    'Appearance',
+  'asp.tema':
+    'Theme',
+  'asp.tema_nota':
+    '“Same as the system” follows Windows, including when it changes by itself at sunset. It applies immediately, without restarting. The transcript strip stays dark either way: it sits over the meeting window, and white glares there.',
+
+  'ntn2.annulla':
+    'Cancel',
+
+  'imp.titolo':
+    'Settings',
+  'imp.carico':
+    'Loading settings…',
+  'imp.chiudi':
+    'Close',
+
+  'prv.titolo':
+    'EVIDENCE',
+  'prv.nota':
+    'Every field of the task comes from one of these sentences. If a piece of evidence does not hold up, the field is wrong.',
+
+  'not.titolo':
+    'WORKING NOTE',
+  'not.aggiorno':
+    'updating…',
+
+  'ril2.vede':
+    'What it is seeing right now',
+
+  'ras2.esc':
+    'Esc',
+
+  'sel.vuoto':
+    'No option available',
+
+  'top.nome':
+    'Scriba',
+  'pan.da_confermare':
+    'tasks to confirm',
+  'pan.rassegna':
+    'Review them',
+  'pan.conferma':
+    'Confirm',
+  'pan.scarta':
+    'Discard',
+  'pan.modifica':
+    'Edit',
+  'pan.annulla':
+    'Cancel',
+  'pan.no_pyannote':
+    'Telling the voices inside “others” apart is not available: pyannote.audio is missing, and it is not part of the package. It has to be installed separately.',
+  'pan.voci_distinte':
+    'distinct voices',
+  'pan.durata_stimata':
+    'Estimated time',
+  'pan.misurati':
+    'Actually measured on this machine. It runs locally: no data leaves the computer. You can close the window, the work carries on and you find it finished.',
+  'pan.avvia':
+    'Start',
+  'pan.riprova':
+    'Try again',
+  'pan.distingui':
+    'Tell the voices apart',
+  'pan.label':
+    'ANALYSIS',
+  'pan.scegli_call':
+    'Select a call to see its analysis.',
+  'pan.a_call_finita':
+    'It happens once the call is over. Summary, key points and tasks over the whole recording, not in pieces.',
+  'pan.label_in_corso':
+    'ANALYSING',
+  'pan.puoi_chiudere':
+    'You can close the window.',
+  'pan.lavoro_continua':
+    'The work carries on and you find it finished. We will tell you when it is ready.',
+  'pan.interrompi':
+    'Stop',
+  'pan.titolo':
+    'Analysis',
+  'pan.carico':
+    'Loading the analysis…',
+  'pan.non_analizzata':
+    'This call has not been analysed yet.',
+  'pan.analizza':
+    'Analyse the call',
+  'pan.motore':
+    'Engine',
+  'pan.costo':
+    'Estimated cost',
+  'pan.rianalizza':
+    'Analyse again',
+  'pan.riassunto':
+    'Summary',
+  'pan.salienti':
+    'Key points',
+  'pan.task':
+    'Tasks',
+  'pan.nessun_impegno':
+    'No commitment found.',
+
+  'tra2.titolo':
+    'Transcription',
+  'tra2.lingua':
+    'Call language',
+  'tra2.lingua_nota':
+    'It applies to the transcript and to everything drawn from it: summary, key points and tasks come out in this language. The others are still recognised, but with more mistakes on names.',
+  'tra2.microfono':
+    'Microphone',
+  'tra2.microfono_nota':
+    'Records your own voice.',
+  'tra2.loopback':
+    'Computer audio',
+  'tra2.loopback_nota':
+    'Records the other people’s voices. Without it you only hear yourself.',
+  'tra2.filtro':
+    'Echo filter',
+  'tra2.filtro_nota':
+    'Recognises when the microphone picks the loudspeaker back up. Turn it too high and overlapping speech is lost.',
+  'tra2.dopo':
+    'After the call',
+  'tra2.rifai':
+    'Redo the transcript on its own',
+  'tra2.nomi':
+    'Proper names',
+  'tra2.glossario':
+    'Glossary',
+  'tra2.glossario_nota':
+    'Names the model does not know it guesses afresh at every sentence, and differently each time: in the same call “Clotilde” becomes Tilde, Cotilde and Protile. Write them here, one per line, and they are put back in place once a sentence ends. The original text stays saved.',
+  'tra2.anche_clienti':
+    'Clients too',
+  'tra2.anche_clienti_nota':
+    'The names in your client list join the glossary by themselves, without retyping them here.',
+  'tra2.quanto':
+    'How hard to try',
 }
 
 const CATALOGHI = { it, en } as const

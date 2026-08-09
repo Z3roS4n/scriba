@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import type { Sessione } from './tipi'
+import { useT } from './lingua'
 
 export interface StatoRifinitura {
   in_corso: boolean
@@ -88,6 +89,7 @@ export function ControlloRifinitura({
   /** Chiamata quando la passata finisce: la trascrizione a video è vecchia. */
   onFinita?: () => void
 }) {
+  const t = useT()
   const [conferma, setConferma] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
 
@@ -131,14 +133,14 @@ export function ControlloRifinitura({
           {stato?.totale}
         </span>
         <button className="btn btn--sm" onClick={() => window.scriba.post('/rifinitura/interrompi')}>
-          Interrompi
+          {t('rif.interrompi')}
         </button>
       </div>
     )
   }
 
   if (inCorsoAltrove) {
-    return <span className="refine__n">C’è già una rifinitura in corso, su un’altra call.</span>
+    return <span className="refine__n">{t('rif.gia_in_corso')}</span>
   }
 
   if (esito) {
@@ -154,7 +156,7 @@ export function ControlloRifinitura({
           </p>
         ))}
         <button className="btn btn--sm" onClick={() => setConferma(true)}>
-          Rifai
+          {t('rif.rifai')}
         </button>
       </div>
     )
@@ -166,7 +168,7 @@ export function ControlloRifinitura({
       <div className="refine refine--conferma">
         <div className="kv">
           <div className="kv__row">
-            <span>Durata stimata</span>
+            <span>{t('rif.durata')}</span>
             <b>
               {min}-{max} min
             </b>
@@ -192,7 +194,7 @@ export function ControlloRifinitura({
   return (
     <div className="refine">
       <button className="btn btn--sm" onClick={() => setConferma(true)}>
-        Rifai la trascrizione
+        {t('rif.rifai_trascrizione')}
       </button>
       {errore && <span className="refine__n refine__n--rosso">{errore}</span>}
     </div>
