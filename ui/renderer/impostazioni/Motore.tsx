@@ -72,7 +72,7 @@ export function SezioneMotore({
                     <span className="engine__name">{p.etichetta}</span>
                     <span className="engine__desc">{p.descrizione}</span>
                     {p.minuti_per_ora != null && (
-                      <span className="engine__speed">circa {p.minuti_per_ora} min per un’ora di call</span>
+                      <span className="engine__speed">{t('mot2.velocita', { n: p.minuti_per_ora })}</span>
                     )}
                   </div>
                   <span className={`engine__state ${p.disponibile ? 'is-ok' : ''}`}>
@@ -84,7 +84,7 @@ export function SezioneMotore({
                           ? 'In avvio…'
                           : chiedeChiave
                             ? 'Chiave mancante'
-                            : 'Non disponibile'}
+                            : t('mot2.non_disponibile')}
                   </span>
                 </div>
 
@@ -149,7 +149,7 @@ export function SezioneMotore({
                 )}
 
                 {p.esce_dal_computer && (
-                  <p className="engine__risk">La trascrizione viene inviata a {DESTINAZIONE[p.id] ?? p.etichetta}.</p>
+                  <p className="engine__risk">{t('mot2.inviata_a', { dove: DESTINAZIONE[p.id] ?? p.etichetta })}</p>
                 )}
               </div>
             )

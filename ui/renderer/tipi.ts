@@ -605,8 +605,11 @@ export function dataBreve(epochMs: number, locale = 'it-IT', oggiTesto = 'oggi')
   return `${giornoBreve(epochMs, locale, oggiTesto)} · ${ora}`
 }
 
-/** «6,4 GB», «312 MB». Virgola decimale: l'interfaccia è in italiano. */
-export function dimensione(bytes: number): string {
+/** «6,4 GB», «312 MB» — o «6.4 GB» in inglese: il separatore decimale lo
+ *  decide la lingua, non il file. Il valore di riserva resta l'italiano
+ *  perché è la lingua in cui questa funzione è nata e in cui è già chiamata
+ *  da posti che una lingua a portata di mano non ce l'hanno. */
+export function dimensione(bytes: number, locale = 'it-IT'): string {
   if (bytes < 1024) return `${bytes} B`
   const unita = ['KB', 'MB', 'GB', 'TB']
   let valore = bytes / 1024
@@ -616,7 +619,8 @@ export function dimensione(bytes: number): string {
     i += 1
   }
   const cifre = valore < 10 && i >= 2 ? 1 : 0
-  return `${valore.toFixed(cifre).replace('.', ',')} ${unita[i]}`
+  const n = valore.toLocaleString(locale, { minimumFractionDigits: cifre, maximumFractionDigits: cifre })
+  return `${n} ${unita[i]}`
 }
 
 /** «Alt + R»: come sta sul tasto, non come lo scrive Electron. */

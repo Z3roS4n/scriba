@@ -12,23 +12,11 @@
 
 import type { Disco, Modello } from '../tipi'
 import { dataBreve, dimensione } from '../tipi'
-import { useT } from '../lingua'
+import { etichettaValore, useLocale, useT, type Traduci } from '../lingua'
 
-function tempoRimanente(secondi: number): string {
-  if (secondi < 60) return `${Math.round(secondi)} s rimanenti`
-  return `${Math.round(secondi / 60)} min rimanenti`
-}
-
-const ETICHETTA_STATO: Record<Modello['stato'], string> = {
-  non_installato: 'non installato',
-  in_download: 'in download',
-  in_pausa: 'in pausa',
-  in_verifica: 'in verifica',
-  installato: 'installato',
-  in_avvio: 'in avvio',
-  in_uso: 'in uso',
-  spazio_insufficiente: 'spazio insufficiente',
-  errore: 'errore',
+function tempoRimanente(secondi: number, t: Traduci): string {
+  if (secondi < 60) return t('mod2.secondi', { n: Math.round(secondi) })
+  return t('mod2.minuti', { n: Math.round(secondi / 60) })
 }
 
 function classeStato(stato: Modello['stato']): string {
@@ -59,6 +47,7 @@ export function SezioneModelli({
   onApriCartella: () => void
 }) {
   const t = useT()
+  const locale = useLocale()
   const percentualeUsata = disco
     ? Math.min(100, Math.round(((disco.totale_bytes - disco.libero_bytes) / Math.max(1, disco.totale_bytes)) * 100))
     : 0
@@ -73,7 +62,10 @@ export function SezioneModelli({
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-md)' }}>
                 <span style={{ color: 'var(--fg-2)' }}>{t('mod.spazio')}</span>
                 <span style={{ color: 'var(--fg-body)' }}>
-                  {dimensione(disco.libero_bytes)} liberi di {dimensione(disco.totale_bytes)}
+                  {t('mod2.liberi_di', {
+                    liberi: dimensione(disco.libero_bytes, locale),
+                    totale: dimensione(disco.totale_bytes, locale),
+                  })}
                 </span>
               </div>
               <div className="disk__bar">
@@ -127,6 +119,7 @@ function RigaModello({
   onFerma: () => void
 }) {
   const t = useT()
+  const locale = useLocale()
   const percentualeScaricata = m.size_bytes > 0 ? Math.round((m.scaricati_bytes / m.size_bytes) * 100) : 0
   const mancano = disco ? Math.max(0, m.size_bytes - disco.libero_bytes) : null
 
@@ -135,8 +128,8 @@ function RigaModello({
       <div className="model__top">
         <span className="model__name">{m.nome}</span>
         <span className="model__use">{m.uso}</span>
-        <span className="model__size">{dimensione(m.size_bytes)}</span>
-        <span className={`model__state ${classeStato(m.stato)}`}>{ETICHETTA_STATO[m.stato]}</span>
+        <span className="model__size">{dimensione(m.size_bytes, locale)}</span>
+        <span className={`model__state ${classeStato(m.stato)}`}>{etichettaValore(t, 'mod_stato', m.stato)}</span>
 
         {m.stato === 'non_installato' && (
           <button className="btn btn--sm btn--primary" onClick={onScarica}>
@@ -190,14 +183,21 @@ function RigaModello({
 
       {m.stato === 'in_download' && (
         <span className="model__meta">
-          {dimensione(m.scaricati_bytes)} di {dimensione(m.size_bytes)}
-          {m.velocita_bps != null ? ` · ${dimensione(m.velocita_bps)}/s` : ''}
-          {m.secondi_rimanenti != null ? ` · ${tempoRimanente(m.secondi_rimanenti)}` : ''}
+          {t('mod2.scaricati', {
+            fatti: dimensione(m.scaricati_bytes, locale),
+            totale: dimensione(m.size_bytes, locale),
+          })}
+          {m.velocita_bps != null ? ` · ${dimensione(m.velocita_bps, locale)}/s` : ''}
+          {m.secondi_rimanenti != null ? ` · ${tempoRimanente(m.secondi_rimanenti, t)}` : ''}
         </span>
       )}
       {m.stato === 'in_pausa' && (
         <span className="model__meta">
-          {dimensione(m.scaricati_bytes)} di {dimensione(m.size_bytes)} · in pausa
+          {t('mod2.scaricati', {
+            fatti: dimensione(m.scaricati_bytes, locale),
+            totale: dimensione(m.size_bytes, locale),
+          })}{' · '}
+          {etichettaValore(t, 'mod_stato', 'in_pausa')}
         </span>
       )}
       {/* La nota del core ha la precedenza: non tutti i modelli si scaricano
@@ -205,21 +205,22 @@ function RigaModello({
           non si sta verificando un hash — si sta ancora scaricando. Il testo
           fisso vale solo quando il core non ha niente di più preciso da dire. */}
       {m.stato === 'in_verifica' && (
-        <span className="model__meta">{m.nota || 'controllo dell’integrità · sha256'}</span>
+        <span className="model__meta">{m.nota || t('mod2.integrita')}</span>
       )}
       {m.stato === 'installato' && m.installato_at != null && (
-        <span className="model__meta">installato il {dataBreve(m.installato_at)}</span>
+        <span className="model__meta">{t('mod2.installato_il', { data: dataBreve(m.installato_at, locale, t('data.oggi')) })}</span>
       )}
       {m.stato === 'in_avvio' && (
         <span className="model__meta">
-          si sta caricando in memoria: qualche decina di secondi
-          {m.ram_bytes != null ? ` · ${dimensione(m.ram_bytes)} di RAM finora` : ''}
+          {t('mod2.in_memoria')}
+          {m.ram_bytes != null ? ` · ${t('mod2.ram_finora', { ram: dimensione(m.ram_bytes, locale) })}` : ''}
         </span>
       )}
       {m.stato === 'in_uso' && (
         <span className="model__meta">
-          avviato{m.endpoint ? ` · ${m.endpoint}` : ''}
-          {m.ram_bytes != null ? ` · ${dimensione(m.ram_bytes)} di RAM` : ''}
+          {t('mod2.avviato')}
+          {m.endpoint ? ` · ${m.endpoint}` : ''}
+          {m.ram_bytes != null ? ` · ${t('mod2.ram', { ram: dimensione(m.ram_bytes, locale) })}` : ''}
         </span>
       )}
       {m.stato === 'non_installato' && m.nota && <span className="model__meta">{m.nota}</span>}
@@ -227,11 +228,15 @@ function RigaModello({
       {m.stato === 'spazio_insufficiente' && (
         <>
           <span className="model__meta">
-            servono {dimensione(m.size_bytes)}, ne restano {disco ? dimensione(disco.libero_bytes) : '—'}
+            {t('mod2.servono', {
+              servono: dimensione(m.size_bytes, locale),
+              restano: disco ? dimensione(disco.libero_bytes, locale) : '—',
+            })}
           </span>
           <p className="model__err">
-            Il download non parte: mancano {mancano != null ? dimensione(mancano) : 'alcuni GB'}. Va liberato spazio
-            prima, non a metà scaricamento.
+            {t('mod2.non_parte', {
+              mancano: mancano != null ? dimensione(mancano, locale) : t('mod2.alcuni_gb'),
+            })}
           </p>
         </>
       )}

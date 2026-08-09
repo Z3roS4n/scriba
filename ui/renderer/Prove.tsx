@@ -9,18 +9,9 @@
 
 import type { Task } from './tipi'
 import { tempo } from './tipi'
-import { useT } from './lingua'
+import { etichettaValore, useT } from './lingua'
 
 /** Come va scritto il campo sopra la citazione: maiuscolo, come sul chip. */
-const ETICHETTA_CAMPO: Record<string, string> = {
-  titolo: 'TITOLO',
-  descrizione: 'DESCRIZIONE',
-  assignee: 'CHI',
-  due_date: 'SCADENZA',
-  priorita: 'PRIORITÀ',
-  esistenza: 'ORIGINE',
-}
-
 export function PannelloProve({
   task,
   onVaiA,
@@ -51,10 +42,10 @@ export function PannelloProve({
               <button className="ev__t" onClick={() => onVaiA(e.t_ms)}>
                 {tempo(e.t_ms)}
               </button>
-              <span className="ev__field">{ETICHETTA_CAMPO[e.supports] ?? e.supports.toUpperCase()}</span>
+              <span className="ev__field">{etichettaValore(t, 'prv_campo', e.supports).toUpperCase()}</span>
             </div>
             {/* Una prova senza frase non si finge: si dice che è dedotta. */}
-            <p className="ev__quote">{e.quote ?? 'Dedotta dal contesto, non da una frase precisa.'}</p>
+            <p className="ev__quote">{e.quote ?? t('ras3.dedotta')}</p>
           </div>
         ))}
         <p className="ev__note">

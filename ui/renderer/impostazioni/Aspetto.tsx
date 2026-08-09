@@ -11,15 +11,11 @@
  */
 
 import type { Impostazioni } from '../tipi'
-import { linguaValida, useT, type Lingua } from '../lingua'
+import { etichettaValore, linguaValida, useT, type Lingua } from '../lingua'
 import { applica, temaValido, type Tema } from '../tema'
 // gia importato
 
-const TEMI: Array<{ id: Tema; etichetta: string }> = [
-  { id: 'scuro', etichetta: 'Scuro' },
-  { id: 'chiaro', etichetta: 'Chiaro' },
-  { id: 'sistema', etichetta: 'Come il sistema' },
-]
+const TEMI: Tema[] = ['scuro', 'chiaro', 'sistema']
 
 export function SezioneAspetto({
   impostazioni,
@@ -87,13 +83,9 @@ export function SezioneAspetto({
             </span>
           </div>
           <div className="picker">
-            {TEMI.map((t) => (
-              <button
-                key={t.id}
-                className={tema === t.id ? 'is-on' : ''}
-                onClick={() => scegli(t.id)}
-              >
-                {t.etichetta}
+            {TEMI.map((id) => (
+              <button key={id} className={tema === id ? 'is-on' : ''} onClick={() => scegli(id)}>
+                {etichettaValore(t, 'tema', id)}
               </button>
             ))}
           </div>

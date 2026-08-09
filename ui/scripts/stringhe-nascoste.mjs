@@ -74,7 +74,11 @@ for (const percorso of file(RADICE)) {
   // «{schema.titolo}». Un campo lasciato su…» non lo vedeva nessuno dei due.
   const pezzi = []
   for (const m of testo.matchAll(/(?<![\w$)])(['"])((?:[^'"\\\n]|\\.){2,})\1/g)) {
-    pezzi.push([m[2], m.index])
+    // `{t('a')}{' '}{x.map(…).join(t('b'))}`: gli apici si accoppiano a due a
+    // due, e quello di chiusura di `' '` con quello di apertura di `'b'`
+    // racchiudono del codice. Una stringa mostrata non contiene graffe — i
+    // segnaposto le hanno solo nel catalogo, non qui.
+    if (!/[{}]/.test(m[2])) pezzi.push([m[2], m.index])
   }
   // I pezzi che vengono da un taglio (template e nodi misti) possono finire a
   // metà di un'espressione: `${` annidati e `=>` mandano a spasso qualunque

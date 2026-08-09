@@ -34,7 +34,7 @@ export function SezioneExport({
         <div className="row">
           <div className="row__t">
             <b>{t('exp.cartella')}</b>
-            <span style={{ fontFamily: 'var(--font-code)' }}>{esp.cartella ?? 'Non ancora scelta'}</span>
+            <span style={{ fontFamily: 'var(--font-code)' }}>{esp.cartella ?? t('exp2.non_scelta')}</span>
           </div>
           <button className="btn" onClick={onCambiaCartella}>
             {t('exp.cambia')}

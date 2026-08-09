@@ -113,7 +113,7 @@ export function ModaleConsenso(props: {
 
         <div className="modal__foot">
           <span className="modal__hint">
-            {consenso ? 'Invio per registrare' : 'Senza la conferma non si registra.'}
+            {consenso ? t('dlg2.invio_per_registrare') : t('dlg2.senza_conferma')}
           </span>
           <button type="button" className="btn" onClick={onAnnulla}>
             {t('dlg.annulla')}
@@ -145,7 +145,7 @@ export function AvvisoCall(props: {
       <div className="toast__top">
         <i className="toast__dot" />
         <div className="toast__text">
-          <b>Sembra che tu sia in una call su {nome}</b>
+          <b>{t('dlg2.sembra_call', { app: nome })}</b>
           <span>{t('dlg.rilevata')}</span>
         </div>
         <button type="button" className="btn--link" onClick={onChiudi}>

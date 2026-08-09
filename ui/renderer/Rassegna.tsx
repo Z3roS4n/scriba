@@ -439,7 +439,7 @@ export function Rassegna(props: {
                                 </button>
                               ))}
                               <button className="btn btn--sm" onClick={() => salva(null)}>
-                                nessuna
+                                {tr('priorita.nessuna')}
                               </button>
                               <button className="btn btn--quiet btn--sm" onClick={annullaModifica}>
                                 {tr('ras.annulla')}

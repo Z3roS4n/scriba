@@ -108,7 +108,7 @@ function PannelloIa({ call }: { call: Sessione[] }) {
     )
     setOccupato(false)
     if (!r.ok) {
-      setEsito('Export non riuscito.')
+      setEsito(t('arc3.export_ko'))
       return
     }
     setPercorso(r.body.percorso)
@@ -119,7 +119,7 @@ function PannelloIa({ call }: { call: Sessione[] }) {
     <div className="ia">
       <div className="ia__testo">
         <b>
-          {call.length} {call.length === 1 ? 'call' : 'call'} in un documento solo
+          {t('arc3.in_un_documento', { n: call.length })}
         </b>
         <span>
           {t('arc2.ia_nota')}

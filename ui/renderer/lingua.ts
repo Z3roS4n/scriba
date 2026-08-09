@@ -1028,6 +1028,134 @@ const it = {
     '1 riga nuova',
   'tra3.nuove_n':
     '{n} righe nuove',
+
+  // --- la coda, dentro le espressioni --------
+  'mod_stato.non_installato':
+    'non installato',
+  'mod_stato.in_download':
+    'in download',
+  'mod_stato.in_pausa':
+    'in pausa',
+  'mod_stato.in_verifica':
+    'in verifica',
+  'mod_stato.installato':
+    'installato',
+  'mod_stato.in_avvio':
+    'in avvio',
+  'mod_stato.in_uso':
+    'in uso',
+  'mod_stato.spazio_insufficiente':
+    'spazio insufficiente',
+  'mod_stato.errore':
+    'errore',
+  'mod2.secondi':
+    '{n} s rimanenti',
+  'mod2.minuti':
+    '{n} min rimanenti',
+  'mod2.liberi_di':
+    '{liberi} liberi di {totale}',
+  'mod2.scaricati':
+    '{fatti} di {totale}',
+  'mod2.integrita':
+    'controllo dell’integrità · sha256',
+  'mod2.installato_il':
+    'installato il {data}',
+  'mod2.in_memoria':
+    'si sta caricando in memoria: qualche decina di secondi',
+  'mod2.ram_finora':
+    '{ram} di RAM finora',
+  'mod2.avviato':
+    'avviato',
+  'mod2.ram':
+    '{ram} di RAM',
+  'mod2.servono':
+    'servono {servono}, ne restano {restano}',
+  'mod2.non_parte':
+    'Il download non parte: mancano {mancano}. Va liberato spazio prima, non a metà scaricamento.',
+  'mod2.alcuni_gb':
+    'alcuni GB',
+  'not2.no_risposta':
+    'Il modello non ha risposto.',
+  'not2.solo_ultima':
+    'solo l’ultima',
+  'not2.tutte_e':
+    'tutte e {n}',
+  'not2.la_prima':
+    'La prima arriva dopo i primi dieci minuti di call.',
+  'not2.finita_prima':
+    'Questa call è finita prima che ne venisse scritta una.',
+  'traccia.mic':
+    'la tua voce',
+  'traccia.loopback':
+    'gli altri',
+  'traccia.':
+    'la trascrizione',
+  'rif2.rifaccio':
+    'rifaccio {cosa} · {fatte} di {totale}',
+  'rif2.non_partita':
+    'Non è partita ({n}).',
+  'rif2.nessuna_riga':
+    'nessuna riga cambiata',
+  'rif2.righe_rifatte':
+    '{n} righe rifatte',
+  'rif2.non_rifatta':
+    ': non rifatta.',
+  'dlg2.invio_per_registrare':
+    'Invio per registrare',
+  'dlg2.senza_conferma':
+    'Senza la conferma non si registra.',
+  'dlg2.sembra_call':
+    'Sembra che tu sia in una call su {app}',
+  'mot2.velocita':
+    'circa {n} min per un’ora di call',
+  'mot2.non_disponibile':
+    'Non disponibile',
+  'mot2.inviata_a':
+    'La trascrizione viene inviata a {dove}.',
+  'gloss.prudente':
+    'Prudente',
+  'gloss.medio':
+    'Medio',
+  'gloss.aggressivo':
+    'Aggressivo',
+  'gloss_nota.prudente':
+    'Solo una lettera di scarto. Non sbaglia quasi mai, e non prende le storpiature grosse.',
+  'gloss_nota.medio':
+    'Prende anche i nomi mangiati all’inizio o alla fine («Tilde» per «Clotilde»).',
+  'gloss_nota.aggressivo':
+    'Prende anche «Protile». Può correggere un nome simile in quello sbagliato.',
+  'arc3.export_ko':
+    'Export non riuscito.',
+  'arc3.in_un_documento':
+    '{n} call in un documento solo',
+  'sco_nome.scorciatoia_overlay':
+    'Mostra e nascondi la striscia',
+  'sco_nome.scorciatoia_screenshot':
+    'Scatta uno screenshot',
+  'prv_campo.titolo':
+    'TITOLO',
+  'prv_campo.descrizione':
+    'DESCRIZIONE',
+  'prv_campo.assignee':
+    'CHI',
+  'prv_campo.due_date':
+    'SCADENZA',
+  'prv_campo.priorita':
+    'PRIORITÀ',
+  'prv_campo.esistenza':
+    'ORIGINE',
+  'tema.scuro':
+    'Scuro',
+  'tema.chiaro':
+    'Chiaro',
+  'tema.sistema':
+    'Come il sistema',
+  'exp2.non_scelta':
+    'Non ancora scelta',
+
+  // --- la coda, secondo giro --------
+  'sco2.premi':
+    'Premi i tasti…',
 } as const
 
 export type Chiave = keyof typeof it
@@ -1974,6 +2102,132 @@ const en: Record<Chiave, string> = {
     '1 new line',
   'tra3.nuove_n':
     '{n} new lines',
+
+  'mod_stato.non_installato':
+    'not installed',
+  'mod_stato.in_download':
+    'downloading',
+  'mod_stato.in_pausa':
+    'paused',
+  'mod_stato.in_verifica':
+    'checking',
+  'mod_stato.installato':
+    'installed',
+  'mod_stato.in_avvio':
+    'starting',
+  'mod_stato.in_uso':
+    'in use',
+  'mod_stato.spazio_insufficiente':
+    'not enough room',
+  'mod_stato.errore':
+    'error',
+  'mod2.secondi':
+    '{n} s left',
+  'mod2.minuti':
+    '{n} min left',
+  'mod2.liberi_di':
+    '{liberi} free of {totale}',
+  'mod2.scaricati':
+    '{fatti} of {totale}',
+  'mod2.integrita':
+    'integrity check · sha256',
+  'mod2.installato_il':
+    'installed on {data}',
+  'mod2.in_memoria':
+    'loading into memory: a few tens of seconds',
+  'mod2.ram_finora':
+    '{ram} of RAM so far',
+  'mod2.avviato':
+    'running',
+  'mod2.ram':
+    '{ram} of RAM',
+  'mod2.servono':
+    'it needs {servono}, {restano} left',
+  'mod2.non_parte':
+    'The download will not start: {mancano} short. Free the room first, not halfway through.',
+  'mod2.alcuni_gb':
+    'a few GB',
+  'not2.no_risposta':
+    'The model did not answer.',
+  'not2.solo_ultima':
+    'only the last one',
+  'not2.tutte_e':
+    'all {n}',
+  'not2.la_prima':
+    'The first one arrives after the first ten minutes of the call.',
+  'not2.finita_prima':
+    'This call ended before one got written.',
+  'traccia.mic':
+    'your own voice',
+  'traccia.loopback':
+    'the others',
+  'traccia.':
+    'the transcript',
+  'rif2.rifaccio':
+    'redoing {cosa} · {fatte} of {totale}',
+  'rif2.non_partita':
+    'It did not start ({n}).',
+  'rif2.nessuna_riga':
+    'no line changed',
+  'rif2.righe_rifatte':
+    '{n} lines redone',
+  'rif2.non_rifatta':
+    ': not redone.',
+  'dlg2.invio_per_registrare':
+    'Enter to record',
+  'dlg2.senza_conferma':
+    'Without the tick there is no recording.',
+  'dlg2.sembra_call':
+    'Looks like you are in a call on {app}',
+  'mot2.velocita':
+    'about {n} min for an hour of call',
+  'mot2.non_disponibile':
+    'Not available',
+  'mot2.inviata_a':
+    'The transcript is sent to {dove}.',
+  'gloss.prudente':
+    'Careful',
+  'gloss.medio':
+    'Middling',
+  'gloss.aggressivo':
+    'Aggressive',
+  'gloss_nota.prudente':
+    'One letter of slack. It almost never gets it wrong, and it misses the big manglings.',
+  'gloss_nota.medio':
+    'It also catches names eaten at the start or the end (“Tilde” for “Clotilde”).',
+  'gloss_nota.aggressivo':
+    'It also catches “Protile”. It can correct a similar name into the wrong one.',
+  'arc3.export_ko':
+    'The export did not work.',
+  'arc3.in_un_documento':
+    '{n} calls in a single document',
+  'sco_nome.scorciatoia_overlay':
+    'Show and hide the strip',
+  'sco_nome.scorciatoia_screenshot':
+    'Take a screenshot',
+  'prv_campo.titolo':
+    'TITLE',
+  'prv_campo.descrizione':
+    'DESCRIPTION',
+  'prv_campo.assignee':
+    'WHO',
+  'prv_campo.due_date':
+    'DUE',
+  'prv_campo.priorita':
+    'PRIORITY',
+  'prv_campo.esistenza':
+    'ORIGIN',
+  'tema.scuro':
+    'Dark',
+  'tema.chiaro':
+    'Light',
+  'tema.sistema':
+    'Follow the system',
+  'exp2.non_scelta':
+    'Not chosen yet',
+
+  'sco2.premi':
+    'Press the keys…',
 }
 
 const CATALOGHI = { it, en } as const

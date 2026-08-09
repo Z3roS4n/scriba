@@ -30,11 +30,7 @@ const FILTRI_ECO = ['basso', 'medio', 'alto'] as const
  *  Le descrizioni dicono cosa si perde alzando, non solo cosa si guadagna:
  *  allargare la rete significa anche correggere nomi che erano già giusti, e
  *  quello — a differenza del nome sbagliato — rileggendo non si nota. */
-const LIVELLI_GLOSSARIO = [
-  { id: 'prudente', etichetta: 'Prudente', nota: 'Solo una lettera di scarto. Non sbaglia quasi mai, e non prende le storpiature grosse.' },
-  { id: 'medio', etichetta: 'Medio', nota: 'Prende anche i nomi mangiati all’inizio o alla fine («Tilde» per «Clotilde»).' },
-  { id: 'aggressivo', etichetta: 'Aggressivo', nota: 'Prende anche «Protile». Può correggere un nome simile in quello sbagliato.' },
-] as const
+const LIVELLI_GLOSSARIO = ['prudente', 'medio', 'aggressivo'] as const
 
 /**
  * L'elenco dei nomi, uno per riga.
@@ -196,17 +192,17 @@ export function SezioneTrascrizione({
           <div className="row__t">
             <b>{t('tra2.quanto')}</b>
             <span>
-              {LIVELLI_GLOSSARIO.find((l) => l.id === (stt.glossario_livello ?? 'prudente'))?.nota}
+              {etichettaValore(t, 'gloss_nota', stt.glossario_livello ?? 'prudente')}
             </span>
           </div>
           <div className="picker">
-            {LIVELLI_GLOSSARIO.map((l) => (
+            {LIVELLI_GLOSSARIO.map((id) => (
               <button
-                key={l.id}
-                className={(stt.glossario_livello ?? 'prudente') === l.id ? 'is-on' : ''}
-                onClick={() => onCambia({ stt: { ...stt, glossario_livello: l.id } })}
+                key={id}
+                className={(stt.glossario_livello ?? 'prudente') === id ? 'is-on' : ''}
+                onClick={() => onCambia({ stt: { ...stt, glossario_livello: id } })}
               >
-                {l.etichetta}
+                {etichettaValore(t, 'gloss', id)}
               </button>
             ))}
           </div>
