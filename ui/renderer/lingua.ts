@@ -1156,6 +1156,12 @@ const it = {
   // --- la coda, secondo giro --------
   'sco2.premi':
     'Premi i tasti…',
+
+  // --- a cosa serve un modello --------
+  'uso.trascrizione':
+    'trascrizione',
+  'uso.analisi':
+    'analisi',
 } as const
 
 export type Chiave = keyof typeof it
@@ -2228,6 +2234,11 @@ const en: Record<Chiave, string> = {
 
   'sco2.premi':
     'Press the keys…',
+
+  'uso.trascrizione':
+    'transcription',
+  'uso.analisi':
+    'analysis',
 }
 
 const CATALOGHI = { it, en } as const

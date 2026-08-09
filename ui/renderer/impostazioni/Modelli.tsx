@@ -127,7 +127,7 @@ function RigaModello({
     <div className="model">
       <div className="model__top">
         <span className="model__name">{m.nome}</span>
-        <span className="model__use">{m.uso}</span>
+        <span className="model__use">{etichettaValore(t, 'uso', m.uso)}</span>
         <span className="model__size">{dimensione(m.size_bytes, locale)}</span>
         <span className={`model__state ${classeStato(m.stato)}`}>{etichettaValore(t, 'mod_stato', m.stato)}</span>
 

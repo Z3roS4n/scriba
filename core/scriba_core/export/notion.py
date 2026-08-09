@@ -56,6 +56,7 @@ from typing import Any
 import httpx
 
 from ..db.store import Store
+from ..i18n import campo_notion
 from ._util import mmss
 from .json_export import costruisci_payload
 
@@ -225,13 +226,13 @@ _OPZIONI_IN_CREAZIONE: dict[str, tuple[str, ...]] = {
 }
 
 
-def campi_disponibili() -> list[dict[str, Any]]:
+def campi_disponibili(lingua: str = "it") -> list[dict[str, Any]]:
     """L'elenco per l'interfaccia: è qui la definizione, non lì."""
     return [
         {
             "id": c.id,
-            "etichetta": c.etichetta,
-            "aiuto": c.aiuto,
+            "etichetta": campo_notion(c.id, c.etichetta, c.aiuto, lingua)[0],
+            "aiuto": campo_notion(c.id, c.etichetta, c.aiuto, lingua)[1],
             "tipi": list(c.tipi),
             "nome_notion": c.nome_notion,
             "consigliato": c.consigliato,

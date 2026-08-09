@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any
 
 from ...db.store import Store
+from ...i18n import colonna_sql
 from . import modello, postgres, segreti
 from .modello import Tabella
 from .postgres import ErroreSql
@@ -195,9 +196,9 @@ def colonne_di(
         "campi": [
             {
                 "chiave": c.chiave,
-                "etichetta": c.etichetta,
+                "etichetta": colonna_sql(t.chiave, c.chiave, c.etichetta, c.descrizione, lingua)[0],
                 "tipo": c.tipo,
-                "descrizione": c.descrizione,
+                "descrizione": colonna_sql(t.chiave, c.chiave, c.etichetta, c.descrizione, lingua)[1],
                 "chiave_naturale": c.chiave_naturale,
                 "ammesse": [x["nome"] for x in colonne if DIALETTO.accetta(c.tipo, x["tipo"])],
             }

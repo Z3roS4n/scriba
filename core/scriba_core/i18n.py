@@ -116,6 +116,7 @@ def fase(chiave: str, titolo_it: str, lingua: str) -> str:
     """Il titolo di una fase dell'analisi."""
     return titolo_it if lingua == "it" else _FASI_EN.get(chiave, titolo_it)
 
+
 #: La nota dei modelli locali: nel catalogo è la loro `descrizione`, ed è
 #: l'unico testo del pannello Modelli che nasce nel core.
 _MODELLI_EN: dict[str, str] = {
@@ -141,4 +142,119 @@ _MODELLI_EN: dict[str, str] = {
 def nota_modello(model_id: str, nota_it: str, lingua: str) -> str:
     """La nota di un modello locale nella lingua chiesta."""
     return nota_it if lingua == "it" else _MODELLI_EN.get(model_id, nota_it)
+
+
+#: I campi che si possono mandare a Notion: etichetta e riga di aiuto.
+_CAMPI_NOTION_EN: dict[str, tuple[str, str]] = {
+    "titolo": (
+        "Task title",
+        "It always goes in the database's title property: it is the only one Notion guarantees.",
+    ),
+    "descrizione": ("Description", "The detail of the task, when the model wrote one."),
+    "assegnatario": (
+        "Assignee",
+        "The name as it was said in the call, not a Notion user.",
+    ),
+    "scadenza": ("Due date", "The date, when the call makes clear which one it is."),
+    "priorita": ("Priority", "Low, medium, high or critical."),
+    "stato": ("Done", "Ticked when the task is marked done in Scriba."),
+    "prova": (
+        "Evidence",
+        "The sentences from the call the task comes from, with the minute. It is what makes it checkable.",
+    ),
+    "call": ("Call it came from", "The title of the meeting the task comes from."),
+    "data_call": ("Call date", "When the meeting was held."),
+    "link_call": ("Link to the call page", "The address of the page Scriba creates for the call."),
+    "confidenza": ("Model confidence", "How sure the model was, from 0 to 1."),
+    "da_rivedere": ("To review", "Ticked when Scriba suggests checking the task by hand."),
+}
+
+
+def campo_notion(campo_id: str, etichetta_it: str, aiuto_it: str, lingua: str) -> tuple[str, str]:
+    """Etichetta e aiuto di un campo esportabile su Notion."""
+    if lingua == "it":
+        return etichetta_it, aiuto_it
+    return _CAMPI_NOTION_EN.get(campo_id, (etichetta_it, aiuto_it))
+
+
+#: Il modello dati del database remoto: tabelle e colonne, come si leggono
+#: nella schermata in cui si sceglie cosa mandare fuori.
+_TABELLE_SQL_EN: dict[str, tuple[str, str]] = {
+    "call": ("Calls", "One row per meeting: when, how long it ran, whose it was."),
+    "task": ("Tasks", "The commitments taken from the meeting, with the quote they come from."),
+    "analisi": ("Summary and key points", "What the model produced, and with which model."),
+    "trascrizione": ("Transcript", "Every sentence said, with the minute and the track it comes from."),
+    "partecipante": ("Participants", "The voices recognised in the call, with the name if one was given."),
+    "screenshot": (
+        "Screenshots",
+        "Only the data, not the images: path on the computer and the text read by OCR. "
+        "The path opens nothing from somewhere else.",
+    ),
+}
+
+#: Le colonne, per `tabella.colonna`: molte si ripetono fra tabelle e il nome
+#: da solo non basterebbe a distinguerle.
+_COLONNE_SQL_EN: dict[str, tuple[str, str]] = {
+    "call.uuid": ("Identifier", "Stable: it never changes"),
+    "call.titolo": ("Title", ""),
+    "call.cliente": ("Client", "Empty when the call is not attributed"),
+    "call.piattaforma": ("Platform", "Zoom, Teams, browser…"),
+    "call.inizio": ("Start", ""),
+    "call.fine": ("End", ""),
+    "call.durata_ms": ("Length (ms)", ""),
+    "call.stato": ("State", ""),
+    "call.lingua": ("Language", ""),
+    "call.note": ("Notes", "The ones written by hand on the card"),
+    "task.uuid": ("Identifier", ""),
+    "task.call_uuid": ("Call", "Which meeting it belongs to"),
+    "task.titolo": ("Title", ""),
+    "task.descrizione": ("Description", ""),
+    "task.assegnatario": ("Assignee", ""),
+    "task.scadenza": ("Due date", "Resolved into a real date"),
+    "task.scadenza_detta": ("Due date as said", "“by the end of the month”: the ambiguity as it was"),
+    "task.priorita": ("Priority", ""),
+    "task.stato": ("State", ""),
+    "task.confidenza": ("Confidence", "How much the model believes it, from 0 to 1"),
+    "task.citazione": ("Quote", "The sentence the task comes from"),
+    "task.citazione_ms": ("Minute of the quote", ""),
+    "analisi.call_uuid": ("Call", ""),
+    "analisi.tipo": ("Kind", "summary, key points…"),
+    "analisi.contenuto": ("Content", ""),
+    "analisi.modello": ("Model", ""),
+    "analisi.provider": ("Engine", "local, anthropic, openai…"),
+    "analisi.prodotta_at": ("Produced on", ""),
+    "trascrizione.call_uuid": ("Call", ""),
+    "trascrizione.indice": ("Position", "The order number inside the call"),
+    "trascrizione.t_start_ms": ("From (ms)", ""),
+    "trascrizione.t_end_ms": ("To (ms)", ""),
+    "trascrizione.sorgente": ("Track", "mic = me, loopback = the others"),
+    "trascrizione.parlante": ("Speaker", "Only if the call was diarised"),
+    "trascrizione.testo": ("Text", ""),
+    "partecipante.call_uuid": ("Call", ""),
+    "partecipante.etichetta": ("Label", "“io”, “Voce 2”…"),
+    "partecipante.ruolo": ("Role", "me | them"),
+    "partecipante.nome": ("Name", ""),
+    "screenshot.call_uuid": ("Call", ""),
+    "screenshot.t_ms": ("Minute (ms)", ""),
+    "screenshot.percorso": ("Local path", ""),
+    "screenshot.ocr": ("Text read", ""),
+    "screenshot.nota": ("Note", ""),
+}
+
+
+def tabella_sql(chiave: str, etichetta_it: str, descrizione_it: str, lingua: str) -> tuple[str, str]:
+    """Nome e descrizione di una tabella del modello dati."""
+    if lingua == "it":
+        return etichetta_it, descrizione_it
+    return _TABELLE_SQL_EN.get(chiave, (etichetta_it, descrizione_it))
+
+
+def colonna_sql(
+    tabella: str, colonna: str, etichetta_it: str, descrizione_it: str, lingua: str
+) -> tuple[str, str]:
+    """Nome e descrizione di una colonna del modello dati."""
+    if lingua == "it":
+        return etichetta_it, descrizione_it
+    return _COLONNE_SQL_EN.get(f"{tabella}.{colonna}", (etichetta_it, descrizione_it))
+
 
