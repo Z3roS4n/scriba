@@ -262,7 +262,7 @@ export function Impostazioni() {
           {NAV.map((n) => (
             <button
               key={n.id}
-              className={`navitem ${sezione === n.id ? 'is-active' : ''}`}
+              className={`navitem ${sezione === n.id ? 'is-on' : ''}`}
               onClick={() => setSezione(n.id)}
             >
               {n.etichetta}

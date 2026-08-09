@@ -943,14 +943,14 @@ export function PannelloAnalisi({
           onFinita={onRicaricaSegmenti}
         />
         <div className="tabs" role="tablist">
-          <button className={`tab${scheda === 'sum' ? ' is-active' : ''}`} onClick={() => setScheda('sum')}>
+          <button className={`tab${scheda === 'sum' ? ' is-on' : ''}`} onClick={() => setScheda('sum')}>
             Riassunto
           </button>
-          <button className={`tab${scheda === 'high' ? ' is-active' : ''}`} onClick={() => setScheda('high')}>
-            Punti salienti<span className="tab__count">{salienti.length}</span>
+          <button className={`tab${scheda === 'high' ? ' is-on' : ''}`} onClick={() => setScheda('high')}>
+            Punti salienti<span className="tab__n num">{salienti.length}</span>
           </button>
-          <button className={`tab${scheda === 'task' ? ' is-active' : ''}`} onClick={() => setScheda('task')}>
-            Task<span className="tab__count">{tasks.length}</span>
+          <button className={`tab${scheda === 'task' ? ' is-on' : ''}`} onClick={() => setScheda('task')}>
+            Task<span className="tab__n num">{tasks.length}</span>
           </button>
         </div>
       </div>
@@ -966,7 +966,7 @@ export function PannelloAnalisi({
                       <span>
                         {v.testo}{' '}
                         {v.t_ms != null && (
-                          <button className="ref" onClick={() => onVaiA(v.t_ms as number)}>
+                          <button className="ev__t num" onClick={() => onVaiA(v.t_ms as number)}>
                             {tempo(v.t_ms)}
                           </button>
                         )}
@@ -992,7 +992,7 @@ export function PannelloAnalisi({
             ? salienti.map((p, i) => (
                 <div className="hl" key={i} onClick={() => onVaiA(p.t_ms)}>
                   <button
-                    className="ref"
+                    className="ev__t num"
                     onClick={(e) => {
                       e.stopPropagation()
                       onVaiA(p.t_ms)
