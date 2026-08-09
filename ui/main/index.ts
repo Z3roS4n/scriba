@@ -314,13 +314,33 @@ function createTray(): void {
 }
 
 /** Chiamata al core, con il token che solo questo processo conosce. */
+/**
+ * La lingua dell'interfaccia, risolta.
+ *
+ * `sistema` lo scioglie questo processo e non il core: la lingua del sistema
+ * operativo la conosce lui, e far indovinare al core una cosa che qualcun
+ * altro sa e' il modo piu' sicuro di farli divergere.
+ */
+function linguaEffettiva(): string {
+  const scelta = linguaSalvata()
+  if (scelta === 'it' || scelta === 'en') return scelta
+  return app.getLocale().toLowerCase().startsWith('en') ? 'en' : 'it'
+}
+
 async function coreFetch(path: string, init?: RequestInit): Promise<Response> {
   const endpoint = sidecar.address
   if (!endpoint) throw new Error('Il core non e\' pronto')
   const separator = path.includes('?') ? '&' : '?'
   return fetch(`${sidecar.baseUrl}${path}${separator}token=${endpoint.token}`, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      // In un punto solo, e quindi su TUTTE le richieste. Passarla rotta per
+      // rotta vorrebbe dire dimenticarsene alla prossima: qui o c'e' per
+      // tutte, o per nessuna.
+      'Accept-Language': linguaEffettiva(),
+      ...(init?.headers ?? {}),
+    },
   })
 }
 

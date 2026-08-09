@@ -32,6 +32,7 @@ from pydantic import BaseModel
 
 from .api import traduci_stato_sessione as _traduci_stato_sessione
 from .api.diarizzazione import numero_voce
+from .i18n import LinguaUI, fase as _fase, motore as _motore
 from .db import manutenzione
 from .db.store import Store
 from .recorder import Recorder
@@ -1042,7 +1043,7 @@ def create_app(
         return settings.tutto()
 
     @app.get("/providers", dependencies=[Depends(check_token)])
-    async def providers() -> list[dict[str, Any]]:
+    async def providers(lingua: LinguaUI) -> list[dict[str, Any]]:
         """Quali motori di analisi sono utilizzabili in questo momento.
 
         Non basta elencarli: un motore locale spento e un `claude` non
@@ -1055,8 +1056,10 @@ def create_app(
         elenco = [
             {
                 "id": id_,
-                "etichetta": info["etichetta"],
-                "descrizione": info["descrizione"],
+                # I tre testi che l'utente legge passano dal catalogo; `id_`,
+                # `model` e le bandierine no — quelli si confrontano.
+                "etichetta": _motore(info, id_, lingua)["etichetta"],
+                "descrizione": _motore(info, id_, lingua)["descrizione"],
                 "model": attuale.get("model") if attuale.get("provider") == id_ else info["model"],
                 "esce_dal_computer": info["esce_dal_computer"],
                 "costo_ora_usd": info["costo_ora_usd"],
@@ -1093,7 +1096,7 @@ def create_app(
             voce["rimedio"] = (
                 None
                 if voce["disponibile"] or voce["in_avvio"]
-                else PROVIDERS_INFO[voce["id"]]["rimedio"]
+                else _motore(PROVIDERS_INFO[voce["id"]], voce["id"], lingua)["rimedio"]
             )
         return elenco
 
