@@ -142,7 +142,7 @@ const it = {
   'arch.esci': 'torna alla call',
   'arch.cerca': 'Cerca nei titoli e in quello che è stato detto…',
   'arch.raggruppa': 'Raggruppa per cliente',
-  'arch.per_ia': 'Per l’IA',
+  'arch.per_ia': "Per l'IA",
   'arch.n_call': '{n} call',
   'arch.ore': '{n} ore registrate',
   'arch.con_parola': '{n} con «{q}»',
@@ -166,7 +166,7 @@ const it = {
   'db.titolo': 'Database remoto',
   'db.esce': 'La trascrizione, se la includi, esce da questo computer.',
   'db.in_chiaro':
-    'L’indirizzo è salvato in chiaro: la cifratura di Windows non ha risposto quando è stato collegato. Chi legge quel file entra nel database.',
+    "L'indirizzo è salvato in chiaro: la cifratura di Windows non ha risposto quando è stato collegato. Chi legge quel file entra nel database.",
   'db.collegato': 'Collegato',
   'db.scollega': 'Scollega',
   'db.cosa_manda': 'Cosa viene mandato',
@@ -195,11 +195,89 @@ const it = {
   'db.quali_dati_nota': 'Quello che non spunti non esce da questo computer.',
   'db.ddl': 'Cosa verrà eseguito',
   'db.ddl_nota':
-    'Nessun DROP, nessun ALTER: su un database che è tuo si aggiunge, non si sistema d’ufficio.',
+    "Nessun DROP, nessun ALTER: su un database che è tuo si aggiunge, non si sistema d'ufficio.",
   'db.chiave_nota_1': 'I campi con',
   'db.chiave_nota_2':
     'servono a riconoscere una riga già inviata: senza, ogni sincronizzazione ne aggiungerebbe di nuove.',
   'db.prefisso': 'Prefisso dei nomi delle tabelle',
+  // --- rilevamento call --------------------------------------------------
+  'ril.vede_ora':
+    'Cosa sta vedendo adesso',
+  'ril.vede_nota':
+    'Se una riunione non viene riconosciuta, qui si legge quale delle condizioni non è soddisfatta invece di doverlo indovinare.',
+  'ril.mostra':
+    'Mostra',
+  'ril.aggiorna':
+    'Si aggiorna da solo ogni due secondi, finché resta aperto.',
+  'ril.nascondi':
+    'Nascondi',
+  'ril.chiedo':
+    'Chiedo al core…',
+  'ril.spento':
+    'Il rilevamento è spento nell\'interruttore qui sopra: nessuna applicazione viene osservata, e nessuna riunione può essere proposta.',
+  'ril.sonda_muta':
+    'La sonda è partita ma non ha ancora riferito niente. Se resta così per più di qualche secondo non è una stanza silenziosa: è la sonda che non sta parlando.',
+  'ril.nessuna_app':
+    'Nessuna applicazione sta usando il microfono in questo momento. Entra in una riunione e questa riga cambia entro un paio di secondi: se non cambia, il problema è a monte del rilevamento.',
+  'ril.titolo':
+    'Rilevamento automatico delle call',
+  'ril.accorgiti':
+    'Accorgiti da solo quando entro in call',
+  'ril.accorgiti_nota':
+    'Guarda quali applicazioni stanno usando il microfono. Non legge il contenuto della riunione.',
+  'ril.aspetta':
+    'Aspetta prima di propormelo',
+  'ril.aspetta_nota':
+    'Evita la proposta per le chiamate di dieci secondi.',
+  'ril.cosa_fare':
+    'Cosa fare quando la rileva',
+  'ril.cosa_fare_nota':
+    'Anche avviando da sola, il consenso resta obbligatorio: la registrazione parte solo dopo la spunta.',
+  'ril.proponi':
+    'Proponi',
+  'ril.avvia':
+    'Avvia da sola',
+  // --- Notion ------------------------------------------------------------
+  'ntn.manda':
+    'Manda le task a Notion',
+  'ntn.esce':
+    'I dati della call escono dal computer verso Notion.',
+  'ntn.cambia_colonne':
+    'Cambia le colonne',
+  'ntn.cambia_db':
+    'Cambia database',
+  'ntn.scollega':
+    'Scollega',
+  'ntn.collega':
+    'Collega Notion',
+  'ntn.token':
+    'Il token dell’integrazione',
+  'ntn.token_nota':
+    'Si crea su notion.so/my-integrations. Poi va condiviso, dal menù «…» della pagina o del database, con l’integrazione appena creata: senza quel passaggio Notion non la lascia entrare.',
+  'ntn.annulla':
+    'Annulla',
+  'ntn.quale_db':
+    'Quale database?',
+  'ntn.quale_db_nota':
+    'Solo quelli che hai condiviso con l’integrazione. Se il tuo non c’è, aprilo in Notion e condividilo, oppure fatene creare uno nuovo con le colonne che ti servono.',
+  'ntn.nessun_db':
+    'Nessun database condiviso con l’integrazione.',
+  'ntn.creane':
+    'Creane uno nuovo',
+  'ntn.colonne':
+    'Cosa va in quale colonna',
+  'ntn.db_nuovo':
+    'Un database nuovo',
+  'ntn.db_nuovo_nota':
+    'Lo crea Scriba dentro una pagina che gli hai condiviso, con le sole colonne che scegli qui.',
+  'ntn.dentro_pagina':
+    'DENTRO QUALE PAGINA',
+  'ntn.nome_db':
+    'NOME DEL DATABASE',
+  'ntn.colonne_label':
+    'COLONNE',
+  'ntn.indietro':
+    'Indietro',
 } as const
 
 export type Chiave = keyof typeof it
@@ -354,6 +432,82 @@ const en: Record<Chiave, string> = {
   'db.chiave_nota_2':
     'identify a row already sent: without them every sync would add new ones.',
   'db.prefisso': 'Table name prefix',
+  'ril.vede_ora':
+    'What it is seeing right now',
+  'ril.vede_nota':
+    'If a meeting is not recognised, this says which condition is not met instead of leaving you to guess.',
+  'ril.mostra':
+    'Show',
+  'ril.aggiorna':
+    'It refreshes by itself every two seconds, while it stays open.',
+  'ril.nascondi':
+    'Hide',
+  'ril.chiedo':
+    'Asking the core…',
+  'ril.spento':
+    'Detection is off in the switch above: no application is being watched, and no meeting can be proposed.',
+  'ril.sonda_muta':
+    'The probe started but has not reported anything yet. If it stays like this for more than a few seconds it is not a quiet room: it is the probe not talking.',
+  'ril.nessuna_app':
+    'No application is using the microphone right now. Join a meeting and this line changes within a couple of seconds: if it does not, the problem is upstream of detection.',
+  'ril.titolo':
+    'Automatic call detection',
+  'ril.accorgiti':
+    'Notice by yourself when I join a call',
+  'ril.accorgiti_nota':
+    'It looks at which applications are using the microphone. It does not read the content of the meeting.',
+  'ril.aspetta':
+    'Wait before offering',
+  'ril.aspetta_nota':
+    'Avoids offering for ten-second calls.',
+  'ril.cosa_fare':
+    'What to do when it detects one',
+  'ril.cosa_fare_nota':
+    'Even when starting by itself, consent stays mandatory: recording only begins after the tick.',
+  'ril.proponi':
+    'Offer',
+  'ril.avvia':
+    'Start by itself',
+  'ntn.manda':
+    'Send tasks to Notion',
+  'ntn.esce':
+    'The call data leaves the computer, towards Notion.',
+  'ntn.cambia_colonne':
+    'Change the columns',
+  'ntn.cambia_db':
+    'Change database',
+  'ntn.scollega':
+    'Disconnect',
+  'ntn.collega':
+    'Connect Notion',
+  'ntn.token':
+    'The integration token',
+  'ntn.token_nota':
+    'You create it at notion.so/my-integrations. Then it has to be shared, from the «…» menu of the page, with the integration you just made.',
+  'ntn.annulla':
+    'Cancel',
+  'ntn.quale_db':
+    'Which database?',
+  'ntn.quale_db_nota':
+    'Only the ones you shared with the integration. If yours is not here, open it on Notion and share it.',
+  'ntn.nessun_db':
+    'No database shared with the integration.',
+  'ntn.creane':
+    'Create a new one',
+  'ntn.colonne':
+    'What goes in which column',
+  'ntn.db_nuovo':
+    'A new database',
+  'ntn.db_nuovo_nota':
+    'Scriba creates it inside a page you have shared with it, with only the columns it needs.',
+  'ntn.dentro_pagina':
+    'INSIDE WHICH PAGE',
+  'ntn.nome_db':
+    'DATABASE NAME',
+  'ntn.colonne_label':
+    'COLUMNS',
+  'ntn.indietro':
+    'Back',
 }
 
 const CATALOGHI = { it, en } as const

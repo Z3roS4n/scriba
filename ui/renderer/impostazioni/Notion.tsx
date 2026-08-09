@@ -26,6 +26,7 @@ import type {
 } from '../tipi'
 import { Modal } from './Modal'
 import { Select } from '../Select'
+import { useT } from '../lingua'
 
 const ETICHETTE_TIPO: Record<string, string> = {
   title: 'titolo',
@@ -51,6 +52,7 @@ function motivo(risposta: { status: number; body: unknown }, ripiego: string): s
 }
 
 export function SezioneNotion() {
+  const t = useT()
   const [stato, setStato] = useState<StatoNotion | null>(null)
   const [campi, setCampi] = useState<CampoNotion[]>([])
   const [passo, setPasso] = useState<Passo>('chiusa')
@@ -176,9 +178,9 @@ export function SezioneNotion() {
     <>
       <div className="row row--risk">
         <div className="row__t">
-          <b>Manda le task a Notion</b>
+          <b>{t('ntn.manda')}</b>
           <span>{descrizione}</span>
-          <span>I dati della call escono dal computer verso Notion.</span>
+          <span>{t('ntn.esce')}</span>
           {errore && passo === 'chiusa' && <span style={{ color: 'var(--red)' }}>{errore}</span>}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', alignItems: 'flex-end' }}>
@@ -192,7 +194,7 @@ export function SezioneNotion() {
                   apriSchema(stato?.database_id ?? '')
                 }}
               >
-                Cambia le colonne
+                {t('ntn.cambia_colonne')}
               </button>
               <button
                 className="btn btn--sm"
@@ -202,10 +204,10 @@ export function SezioneNotion() {
                   caricaDestinazioni('')
                 }}
               >
-                Cambia database
+                {t('ntn.cambia_db')}
               </button>
               <button className="btn btn--sm" disabled={lavorando} onClick={scollega}>
-                Scollega
+                {t('ntn.scollega')}
               </button>
             </>
           ) : (
@@ -216,7 +218,7 @@ export function SezioneNotion() {
                 setPasso('token')
               }}
             >
-              Collega Notion
+              {t('ntn.collega')}
             </button>
           )}
         </div>
@@ -225,10 +227,9 @@ export function SezioneNotion() {
       {passo === 'token' && (
         <Modal onChiudi={chiudi}>
           <div className="modal__head">
-            <h2>Il token dell’integrazione</h2>
+            <h2>{t('ntn.token')}</h2>
             <p>
-              Si crea su notion.so/my-integrations. Poi va condiviso, dal menù «…» della pagina o del database,
-              con l’integrazione appena creata: senza quel passaggio Notion non la lascia entrare.
+              {t('ntn.token_nota')}
             </p>
           </div>
           <div className="modal__field">
@@ -248,7 +249,7 @@ export function SezioneNotion() {
           )}
           <div className="modal__foot">
             <button className="btn" onClick={chiudi}>
-              Annulla
+              {t('ntn.annulla')}
             </button>
             <button
               className="btn btn--primary"
@@ -264,10 +265,9 @@ export function SezioneNotion() {
       {passo === 'scelta' && destinazioni && (
         <Modal onChiudi={chiudi}>
           <div className="modal__head">
-            <h2>Quale database?</h2>
+            <h2>{t('ntn.quale_db')}</h2>
             <p>
-              Solo quelli che hai condiviso con l’integrazione. Se il tuo non c’è, aprilo in Notion e condividilo,
-              oppure fatene creare uno nuovo con le colonne che ti servono.
+              {t('ntn.quale_db_nota')}
             </p>
           </div>
           <div
@@ -282,7 +282,7 @@ export function SezioneNotion() {
           >
             {destinazioni.database.length === 0 ? (
               <p style={{ color: 'var(--fg-3)', fontSize: 'var(--fs-sm)' }}>
-                Nessun database condiviso con l’integrazione.
+                {t('ntn.nessun_db')}
               </p>
             ) : (
               destinazioni.database.map((d) => (
@@ -309,7 +309,7 @@ export function SezioneNotion() {
                 setPasso('crea')
               }}
             >
-              Creane uno nuovo
+              {t('ntn.creane')}
             </button>
           </div>
         </Modal>
@@ -318,7 +318,7 @@ export function SezioneNotion() {
       {passo === 'mappa' && schema && (
         <Modal onChiudi={chiudi} larghezza={560}>
           <div className="modal__head">
-            <h2>Cosa va in quale colonna</h2>
+            <h2>{t('ntn.colonne')}</h2>
             <p>
               Database «{schema.titolo}». Un campo lasciato su «Non mandare» resta in Scriba e non arriva a Notion.
             </p>
@@ -417,11 +417,11 @@ export function SezioneNotion() {
       {passo === 'crea' && destinazioni && (
         <Modal onChiudi={chiudi}>
           <div className="modal__head">
-            <h2>Un database nuovo</h2>
-            <p>Lo crea Scriba dentro una pagina che gli hai condiviso, con le sole colonne che scegli qui.</p>
+            <h2>{t('ntn.db_nuovo')}</h2>
+            <p>{t('ntn.db_nuovo_nota')}</p>
           </div>
           <div className="modal__field">
-            <span className="label">DENTRO QUALE PAGINA</span>
+            <span className="label">{t('ntn.dentro_pagina')}</span>
             <Select
               opzioni={destinazioni.pagine.map((p) => ({ id: p.id, etichetta: p.titolo }))}
               selezionato={pagina}
@@ -430,7 +430,7 @@ export function SezioneNotion() {
             />
           </div>
           <div className="modal__field" style={{ paddingTop: 0 }}>
-            <span className="label">NOME DEL DATABASE</span>
+            <span className="label">{t('ntn.nome_db')}</span>
             <input
               className="textfield"
               value={nomeNuovo}
@@ -438,7 +438,7 @@ export function SezioneNotion() {
             />
           </div>
           <div className="modal__field" style={{ paddingTop: 0 }}>
-            <span className="label">COLONNE</span>
+            <span className="label">{t('ntn.colonne_label')}</span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', maxHeight: 240, overflowY: 'auto' }}>
               {campoTitolo && (
                 <div style={{ display: 'flex', gap: 11, alignItems: 'flex-start' }}>
@@ -487,7 +487,7 @@ export function SezioneNotion() {
           )}
           <div className="modal__foot">
             <button className="btn" onClick={() => setPasso('scelta')}>
-              Indietro
+              {t('ntn.indietro')}
             </button>
             <button
               className="btn btn--primary"

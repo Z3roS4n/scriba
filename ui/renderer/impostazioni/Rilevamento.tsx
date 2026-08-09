@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import type { DiagnosticaRilevamento, Impostazioni, ProcessoVisto } from '../tipi'
+import { useT } from '../lingua'
 
 /** Il colore dell'esito. Solo «riunione» è verde: il resto è informazione. */
 const CLASSE_ESITO: Record<string, string> = {
@@ -47,6 +48,7 @@ function Processo({ p }: { p: ProcessoVisto }) {
 }
 
 function Diagnostica() {
+  const t = useT()
   const [d, setD] = useState<DiagnosticaRilevamento | null>(null)
   const [aperto, setAperto] = useState(false)
 
@@ -69,14 +71,13 @@ function Diagnostica() {
     return (
       <div className="row">
         <div className="row__t">
-          <b>Cosa sta vedendo adesso</b>
+          <b>{t('ril.vede_ora')}</b>
           <span>
-            Se una riunione non viene riconosciuta, qui si legge quale delle condizioni non è
-            soddisfatta invece di doverlo indovinare.
+            {t('ril.vede_nota')}
           </span>
         </div>
         <button className="btn" onClick={() => setAperto(true)}>
-          Mostra
+          {t('ril.mostra')}
         </button>
       </div>
     )
@@ -87,20 +88,19 @@ function Diagnostica() {
       <div className="row">
         <div className="row__t">
           <b>Cosa sta vedendo adesso</b>
-          <span>Si aggiorna da solo ogni due secondi, finché resta aperto.</span>
+          <span>{t('ril.aggiorna')}</span>
         </div>
         <button className="btn" onClick={() => setAperto(false)}>
-          Nascondi
+          {t('ril.nascondi')}
         </button>
       </div>
 
       {d === null ? (
-        <p className="vis__nota">Chiedo al core…</p>
+        <p className="vis__nota">{t('ril.chiedo')}</p>
       ) : d.spento ? (
         <div className="alert alert--inline">
           <p>
-            Il rilevamento è spento nell'interruttore qui sopra: nessuna applicazione viene
-            osservata, e nessuna riunione può essere proposta.
+            {t('ril.spento')}
           </p>
         </div>
       ) : (
@@ -138,8 +138,7 @@ function Diagnostica() {
               Distinguerle è metà del motivo per cui questo pannello esiste. */}
           {d.sonda != null && d.sonda.ultima_lettura_fa_s === null ? (
             <p className="vis__nota">
-              La sonda è partita ma non ha ancora riferito niente. Se resta così per più di
-              qualche secondo non è una stanza silenziosa: è la sonda che non sta parlando.
+              {t('ril.sonda_muta')}
             </p>
           ) : d.sonda != null &&
             d.intervallo_s != null &&
@@ -151,9 +150,7 @@ function Diagnostica() {
             </p>
           ) : d.processi.length === 0 ? (
             <p className="vis__nota">
-              Nessuna applicazione sta usando il microfono in questo momento. Entra in una
-              riunione e questa riga cambia entro un paio di secondi: se non cambia, il problema è
-              a monte del rilevamento.
+              {t('ril.nessuna_app')}
             </p>
           ) : (
             d.processi.map((p) => <Processo key={p.pid} p={p} />)
@@ -177,17 +174,18 @@ export function SezioneRilevamento({
   impostazioni: Impostazioni
   onCambia: (patch: Partial<Impostazioni>) => void
 }) {
+  const t = useT()
   const r = impostazioni.rilevamento
   const cambia = (patch: Partial<Impostazioni['rilevamento']>) => onCambia({ rilevamento: { ...r, ...patch } })
 
   return (
     <>
-      <div className="settings__head">Rilevamento automatico delle call</div>
+      <div className="settings__head">{t('ril.titolo')}</div>
       <div className="settings__body">
         <div className="row">
           <div className="row__t">
-            <b>Accorgiti da solo quando entro in call</b>
-            <span>Guarda quali applicazioni stanno usando il microfono. Non legge il contenuto della riunione.</span>
+            <b>{t('ril.accorgiti')}</b>
+            <span>{t('ril.accorgiti_nota')}</span>
           </div>
           <button
             className={`switch ${r.attivo ? 'is-on' : ''}`}
@@ -200,8 +198,8 @@ export function SezioneRilevamento({
         </div>
         <div className="row">
           <div className="row__t">
-            <b>Aspetta prima di propormelo</b>
-            <span>Evita la proposta per le chiamate di dieci secondi.</span>
+            <b>{t('ril.aspetta')}</b>
+            <span>{t('ril.aspetta_nota')}</span>
           </div>
           <div className="stepper">
             <button onClick={() => cambia({ conferma_s: Math.max(0, r.conferma_s - 5) })}>−</button>
@@ -211,15 +209,15 @@ export function SezioneRilevamento({
         </div>
         <div className="row">
           <div className="row__t">
-            <b>Cosa fare quando la rileva</b>
-            <span>Anche avviando da sola, il consenso resta obbligatorio: la registrazione parte solo dopo la spunta.</span>
+            <b>{t('ril.cosa_fare')}</b>
+            <span>{t('ril.cosa_fare_nota')}</span>
           </div>
           <div className="picker">
             <button className={!r.avvio_automatico ? 'is-on' : ''} onClick={() => cambia({ avvio_automatico: false })}>
-              Proponi
+              {t('ril.proponi')}
             </button>
             <button className={r.avvio_automatico ? 'is-on' : ''} onClick={() => cambia({ avvio_automatico: true })}>
-              Avvia da sola
+              {t('ril.avvia')}
             </button>
           </div>
         </div>
