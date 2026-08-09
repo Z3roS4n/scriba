@@ -116,9 +116,11 @@ export class Overlay {
       minWidth: minimi.width,
       minHeight: minimi.height,
       alwaysOnTop: true,
+      // Fuori dalla barra delle applicazioni: e' un pezzo di Scriba, non una
+      // seconda applicazione aperta. Questo e' tutto quello che fa: NON ha
+      // niente a che vedere con la condivisione schermo, che si risolve piu'
+      // sotto con setContentProtection.
       skipTaskbar: true,
-      // Non compare nel selettore di finestre della condivisione schermo: se
-      // condividi lo schermo, la trascrizione non e' roba che vuoi mostrare.
       focusable: true,
       hasShadow: false,
       webPreferences: {
@@ -129,6 +131,17 @@ export class Overlay {
     })
 
     this.finestra.loadFile(join(this.cartellaRisorse, 'renderer', 'overlay.html'))
+
+    // Fuori dalla cattura dello schermo. Questa striscia sta sopra tutto e
+    // porta le parole della riunione: senza, chi condivide lo schermo mostra a
+    // tutti i presenti la trascrizione dal vivo di quello che si stanno
+    // dicendo. Su Windows la finestra sparisce dalla cattura (da Windows 10
+    // 2004); sulle versioni precedenti Electron ripiega su un rettangolo nero,
+    // che e' brutto ma non espone niente.
+    //
+    // Vale anche per gli scatti di Scriba, e va bene cosi': si cattura la
+    // slide che c'e' sotto, non la propria trascrizione sopra.
+    this.finestra.setContentProtection(true)
 
     // Sopra anche le applicazioni a schermo intero, che e' il caso di una call
     // condivisa: con il livello normale sparirebbe proprio quando serve.
