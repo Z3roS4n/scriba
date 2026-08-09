@@ -726,6 +726,44 @@ const it = {
     'Chiudi le prove',
   'tra.ph_nome_vero':
     'nome vero',
+
+  // --- pannello analisi, dentro le espressioni --------
+  'pan.chi':
+    'chi',
+  'pan.entro':
+    'entro',
+  'pan.non_detto':
+    'non detto',
+  'pan.non_detta':
+    'non detta',
+  'pan.solo_a_voce':
+    'solo a voce: «{q}»',
+  'pan.prova_1':
+    '1 prova',
+  'pan.prove_n':
+    '{n} prove',
+  'pan.confermata':
+    'confermata',
+  'pan.scartata':
+    'scartata',
+  'pan.diariz_fallita':
+    'Diarizzazione non riuscita.',
+  'pan.diariz_fallita_n':
+    'Diarizzazione non riuscita ({n}).',
+  'pan.fallita':
+    'Analisi non riuscita.',
+  'pan.fallita_n':
+    'Analisi non riuscita ({n}).',
+  'pan.fallita_titolo':
+    'Analisi non riuscita',
+  'pan.ultimo_tentativo':
+    'ultimo tentativo {ora}',
+  'pan.avvia_locale':
+    'Avvia il modello locale…',
+  'pan.altro_motore':
+    'Usa un altro motore…',
+  'pan.esce_dal_computer':
+    'La trascrizione di {min} minuti esce da questo computer e viene inviata a {dove}.',
 } as const
 
 export type Chiave = keyof typeof it
@@ -1377,6 +1415,43 @@ const en: Record<Chiave, string> = {
     'Close the evidence',
   'tra.ph_nome_vero':
     'real name',
+
+  'pan.chi':
+    'who',
+  'pan.entro':
+    'by',
+  'pan.non_detto':
+    'not said',
+  'pan.non_detta':
+    'not said',
+  'pan.solo_a_voce':
+    'said out loud only: “{q}”',
+  'pan.prova_1':
+    '1 piece of evidence',
+  'pan.prove_n':
+    '{n} pieces of evidence',
+  'pan.confermata':
+    'confirmed',
+  'pan.scartata':
+    'discarded',
+  'pan.diariz_fallita':
+    'Telling the voices apart did not work.',
+  'pan.diariz_fallita_n':
+    'Telling the voices apart did not work ({n}).',
+  'pan.fallita':
+    'The analysis did not work.',
+  'pan.fallita_n':
+    'The analysis did not work ({n}).',
+  'pan.fallita_titolo':
+    'The analysis did not work',
+  'pan.ultimo_tentativo':
+    'last try {ora}',
+  'pan.avvia_locale':
+    'Start the local model…',
+  'pan.altro_motore':
+    'Use a different engine…',
+  'pan.esce_dal_computer':
+    'The {min}-minute transcript leaves this computer and is sent to {dove}.',
 }
 
 const CATALOGHI = { it, en } as const
