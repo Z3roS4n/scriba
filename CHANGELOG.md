@@ -7,6 +7,39 @@ Each entry is split into three sections, and the highest one present decides
 the version bump: **Breaking changes** (major), **New features** (minor),
 **Fixes** (patch). A section with nothing in it is left out.
 
+## 0.6.2 — 9 August 2026
+
+### Fixes
+
+- **The working note is visible during the call.** It was only mounted in
+  branches of the panel that a recording never reaches: the feature existed,
+  kept itself up to date, and could not be looked at exactly when it is meant
+  to be used. It even carried a waiting message written for that moment — "The
+  first one arrives after the first ten minutes of the call" — that nobody
+  could ever have read. ([#70](https://github.com/Z3roS4n/scriba/issues/70))
+- **Task priority no longer disappears.** You typed it by hand, and anything
+  other than `bassa`, `media`, `alta` or `critica` — a capital letter was
+  enough — made the write fail: the field went back to what it was, saying
+  nothing. Now the four values are chosen, the core rejects anything else and
+  explains what is allowed, and a save that fails says so where you pressed,
+  keeping what you typed. This applies to all four fields, not just priority.
+  ([#71](https://github.com/Z3roS4n/scriba/issues/71))
+- **The analysis cost is written in dollars, because dollars is what it is.**
+  The panel appended a `€` without converting anything: a number wrong by a
+  little and always in the same direction, which is the kind you never catch
+  by re-reading. ([#72](https://github.com/Z3roS4n/scriba/issues/72))
+- **If the microphone you picked is gone, Scriba says so.** When the device
+  chosen in settings has been unplugged, recording falls back to the default
+  one: the core had always reported this and the interface was not listening.
+  A notice now names the device actually recording.
+  ([#73](https://github.com/Z3roS4n/scriba/issues/73))
+- **With the archive or the review open the window can still be controlled.**
+  Minimise, maximise and close disappeared: in a frameless window that bar is
+  the frame, and only Alt+F4 was left. Notices went with them — and those do
+  not talk about the call you are looking at but about the core failing to
+  start or the model failing to load, so one arriving while a plane was open
+  was seen by nobody. ([#74](https://github.com/Z3roS4n/scriba/issues/74))
+
 ## 0.6.1 — 8 August 2026
 
 ### Fixes

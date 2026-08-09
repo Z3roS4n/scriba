@@ -90,10 +90,21 @@ function dataEstesa(iso: string): string {
   return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }).replace('.', '')
 }
 
-/** «X,XX €». Il campo si chiama costo_usd in tipi.ts ma il pannello lo mostra
- * in euro, com'è nel design: è il core a decidere la valuta, non questo file. */
-function formattaEuro(n: number): string {
-  return `${n.toFixed(2).replace('.', ',')} €`
+/** «X,XX $».
+ *
+ * I listini dei fornitori sono in dollari e il consuntivo che arriva dal core
+ * è `costo_usd`. Prima questa funzione ci appendeva un `€` senza convertire
+ * niente, e il commento se ne lavava le mani dicendo che la valuta la decide
+ * il core — che però non la converte nemmeno lui. Restava un numero in
+ * dollari con scritto euro: sbaglia sempre nella stessa direzione e sempre
+ * poco, quindi rileggendo non si nota mai.
+ *
+ * Convertire vorrebbe dire prendere un tasso da qualche parte e tenerlo
+ * aggiornato, in un'applicazione che per il resto non parla con nessuno. Un
+ * tasso inventato sarebbe un numero finto in un pannello che vive di numeri
+ * veri. Si scrive la valuta che è. */
+function formattaDollari(n: number): string {
+  return `${n.toFixed(2).replace('.', ',')} $`
 }
 
 /** «3m 12s»: la nota accanto al motore, diversa dal formato mm:ss dei minuti
@@ -709,6 +720,18 @@ export function PannelloAnalisi({
     return (
       <section className="analysis analysis--muted">
         <div className="pad">
+          {/* La nota di lavoro sta qui, prima di tutto. `compatto` vale quanto
+              `registrando` (index.tsx), quindi durante una call si esce da
+              questo ramo e non si arriva mai a quelli sotto: la nota era
+              montata solo li', ed era percio' invisibile **proprio mentre
+              serve** — al punto che il suo messaggio di attesa, «La prima
+              arriva dopo i primi dieci minuti di call», non poteva leggerlo
+              nessuno (#70).
+
+              Il pannello resta `--muted`: l'analisi vera si fa a call finita,
+              e questa colonna durante la registrazione non deve chiamare
+              l'attenzione. Ma spenta non vuol dire vuota. */}
+          <NotaDiLavoro sessionId={sessione.id} registrando={registrando} />
           <span className="label">ANALISI</span>
           <p style={{ fontSize: 'var(--fs-md)', lineHeight: 1.6, color: 'var(--fg4)' }}>
             Si fa a call finita. Riassunto, punti salienti e task su tutta la registrazione, non a pezzi.
@@ -812,9 +835,9 @@ export function PannelloAnalisi({
       providerAttivo?.minuti_per_ora != null ? Math.max(1, Math.round(providerAttivo.minuti_per_ora * ore)) : null
     const costoTesto = !providerAttivo
       ? '—'
-      : providerAttivo.costo_ora_eur == null
+      : providerAttivo.costo_ora_usd == null
         ? 'gratis'
-        : formattaEuro(providerAttivo.costo_ora_eur * ore)
+        : formattaDollari(providerAttivo.costo_ora_usd * ore)
 
     return (
       <section className="analysis">
@@ -892,7 +915,7 @@ export function PannelloAnalisi({
             <span className="analysis__meta">
               {[
                 meta.etichetta_provider,
-                meta.costo_usd != null ? formattaEuro(meta.costo_usd) : null,
+                meta.costo_usd != null ? formattaDollari(meta.costo_usd) : null,
                 meta.durata_ms != null ? formattaDurataMeta(meta.durata_ms) : null,
               ]
                 .filter(Boolean)

@@ -53,6 +53,10 @@ RITARDO_ANALISI_AUTOMATICA_S = 2.0
 # Le quattro fasi mostrate mentre un'analisi gira, nell'ordine in cui accadono
 # davvero. La chiave è quella che ai/analyze.py usa nel suo callback di
 # avanzamento; il titolo è quello che l'interfaccia mostra.
+# Gli stessi quattro valori del `CHECK` in schema.sql. Sono etichette di un
+# valore salvato: si traducono dove si mostrano, mai dove si confrontano.
+PRIORITA_AMMESSE: frozenset[str] = frozenset({"bassa", "media", "alta", "critica"})
+
 FASI_ANALISI: tuple[tuple[str, str], ...] = (
     ("riassunto", "Riassunto"),
     ("salienti", "Punti salienti"),
@@ -63,6 +67,13 @@ FASI_ANALISI: tuple[tuple[str, str], ...] = (
 # Cosa dire di ogni motore di analisi: non solo se è disponibile, ma cosa
 # comporta usarlo. È la stessa informazione che serve all'export e ai log, per
 # questo vive qui in un solo posto invece che scritta a mano nell'interfaccia.
+#
+# `costo_ora_usd` è una stima scritta a mano, ricavata dai listini dei
+# fornitori — che sono in **dollari**, come il consuntivo `costo_usd` che
+# arriva dall'analisi. Si chiamava `costo_ora_eur` e l'interfaccia ci
+# appendeva un `€`: era un numero in dollari con scritto euro, e sbagliando
+# sempre poco e sempre nella stessa direzione non si notava mai. Se un giorno
+# si vogliono gli euro serve un cambio vero, non un nome diverso.
 PROVIDERS_INFO: dict[str, dict[str, Any]] = {
     "local": {
         "etichetta": "Modello locale",
@@ -70,7 +81,7 @@ PROVIDERS_INFO: dict[str, dict[str, Any]] = {
         "una call di un'ora richiede una decina di minuti.",
         "model": "gemma-4-12b-it",
         "esce_dal_computer": False,
-        "costo_ora_eur": None,
+        "costo_ora_usd": None,
         "minuti_per_ora": 10,
         "rimedio": "Scarica e avvia il modello locale dalle Impostazioni.",
     },
@@ -80,7 +91,7 @@ PROVIDERS_INFO: dict[str, dict[str, Any]] = {
         "Circa tre minuti per una call di un'ora. La trascrizione viene inviata ad Anthropic.",
         "model": "sonnet",
         "esce_dal_computer": True,
-        "costo_ora_eur": None,
+        "costo_ora_usd": None,
         "minuti_per_ora": 3,
         "rimedio": "Installa Claude Code (l'eseguibile `claude`) e accedi al tuo abbonamento "
         "con `claude auth login`. Se prima funzionava, la sessione è scaduta: rifai l'accesso.",
@@ -90,7 +101,7 @@ PROVIDERS_INFO: dict[str, dict[str, Any]] = {
         "descrizione": "Richiede una chiave. Si paga a consumo.",
         "model": "claude-sonnet-5",
         "esce_dal_computer": True,
-        "costo_ora_eur": 0.15,
+        "costo_ora_usd": 0.15,
         "minuti_per_ora": 3,
         "rimedio": "Aggiungi una chiave API Anthropic nelle Impostazioni.",
     },
@@ -99,7 +110,7 @@ PROVIDERS_INFO: dict[str, dict[str, Any]] = {
         "descrizione": "Richiede una chiave. Si paga a consumo.",
         "model": "gpt-5-mini",
         "esce_dal_computer": True,
-        "costo_ora_eur": 0.05,
+        "costo_ora_usd": 0.05,
         "minuti_per_ora": 3,
         "rimedio": "Aggiungi una chiave API OpenAI nelle Impostazioni.",
     },
@@ -992,6 +1003,24 @@ def create_app(
         if not campi:
             raise HTTPException(status_code=400, detail="nessun campo modificabile")
 
+        # La priorità la controlla anche lo schema
+        # (`CHECK (priorita IN (...))`), ma un CHECK violato è un errore di
+        # database: arriva come 500, senza dire quale campo né quali valori
+        # sono ammessi. Chi chiama si ritrova una scrittura fallita e nessuna
+        # indicazione su cosa fare — ed è così che l'interfaccia perdeva le
+        # modifiche in silenzio (#71). Qui si rifiuta prima, dicendo cosa si
+        # accetta.
+        if "priorita" in campi and campi["priorita"] is not None:
+            if campi["priorita"] not in PRIORITA_AMMESSE:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"priorità «{campi['priorita']}» non ammessa. "
+                        f"Valori possibili: {', '.join(sorted(PRIORITA_AMMESSE))}, "
+                        "oppure nessuna."
+                    ),
+                )
+
         # Se l'utente ha messo mano a una task, l'ha guardata: non ha piu' senso
         # segnalargliela come da rivedere.
         campi["needs_review"] = 0
@@ -1029,7 +1058,7 @@ def create_app(
                 "descrizione": info["descrizione"],
                 "model": attuale.get("model") if attuale.get("provider") == id_ else info["model"],
                 "esce_dal_computer": info["esce_dal_computer"],
-                "costo_ora_eur": info["costo_ora_eur"],
+                "costo_ora_usd": info["costo_ora_usd"],
                 "minuti_per_ora": info["minuti_per_ora"],
             }
             for id_, info in PROVIDERS_INFO.items()

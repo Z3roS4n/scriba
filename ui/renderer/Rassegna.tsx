@@ -9,8 +9,15 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { RiquadroInline } from './Dialoghi'
 import type { Analisi, CampoProva, Segmento, Sessione, Task } from './tipi'
 import { dataBreve, tempo } from './tipi'
+
+/** I soli valori che lo schema accetta per la priorità
+ *  (`CHECK (priorita IN (...))`, schema.sql). Si sceglie fra questi invece di
+ *  scriverla a mano: erano quattro parole chiuse offerte come campo libero, e
+ *  qualunque altra cosa faceva fallire la scrittura in silenzio (#71). */
+const PRIORITA = ['bassa', 'media', 'alta', 'critica'] as const
 
 const CHI: Record<Segmento['source'], string> = { mic: 'Io', loopback: 'Altri' }
 
@@ -106,6 +113,9 @@ export function Rassegna(props: {
   const [analisi, setAnalisi] = useState<Analisi | null>(null)
   const [indice, setIndice] = useState(indiceIniziale)
   const [editando, setEditando] = useState<ChiaveCampo | null>(null)
+  /** Perché l'ultimo salvataggio non è andato. Livello 4: si mostra nel punto
+   *  in cui si è premuto, non su una barra lontana. */
+  const [erroreSalva, setErroreSalva] = useState<string | null>(null)
   const [bozza, setBozza] = useState('')
 
   const corpoRef = useRef<HTMLDivElement>(null)
@@ -201,22 +211,45 @@ export function Rassegna(props: {
     }
   }, [])
 
-  const salva = useCallback(async () => {
-    if (!taskCorrente || !editando) return
-    const campo = editando
-    const testo = bozza.trim()
-    // Il titolo non può restare vuoto: senza non ci sarebbe più una task da
-    // mostrare in cima al pannello.
-    if (campo === 'titolo' && !testo) return
-    const valore = testo || null
+  /** Esce dalla modifica buttando via anche l'errore: tenerlo in piedi dopo
+   *  un annullamento farebbe credere che ci sia ancora qualcosa in sospeso. */
+  const annullaModifica = useCallback(() => {
+    setErroreSalva(null)
     setEditando(null)
-    const r = await window.scriba.post(`/tasks/${taskCorrente.id}`, { [campo]: valore })
-    if (r.ok) {
+  }, [])
+
+  const salva = useCallback(
+    async (valoreImposto?: string | null) => {
+      if (!taskCorrente || !editando) return
+      const campo = editando
+      const testo = bozza.trim()
+      // Il titolo non può restare vuoto: senza non ci sarebbe più una task da
+      // mostrare in cima al pannello.
+      if (campo === 'titolo' && valoreImposto === undefined && !testo) return
+      const valore = valoreImposto !== undefined ? valoreImposto : testo || null
+
+      const r = await window.scriba.post(`/tasks/${taskCorrente.id}`, { [campo]: valore })
+      if (!r.ok) {
+        // Prima si usciva dalla modifica **prima** di sapere com'era andata, e
+        // un salvataggio rifiutato non lasciava traccia: il campo tornava al
+        // valore vecchio e sembrava che non fosse successo niente (#71). Ora
+        // si resta dentro, col testo scritto ancora lì, e si dice cosa non ha
+        // funzionato.
+        const dettaglio =
+          typeof (r.body as { detail?: unknown } | null)?.detail === 'string'
+            ? (r.body as { detail: string }).detail
+            : `Il core ha risposto ${r.status}.`
+        setErroreSalva(dettaglio)
+        return
+      }
+      setErroreSalva(null)
+      setEditando(null)
       setAnalisi((a) =>
         a ? { ...a, tasks: a.tasks.map((t) => (t.id === taskCorrente.id ? applicaCampo(t, campo, valore) : t)) } : a,
       )
-    }
-  }, [taskCorrente, editando, bozza])
+    },
+    [taskCorrente, editando, bozza],
+  )
 
   // Naviga senza decidere la sorte della task: è '‹' / 'Salta ›' e le
   // frecce, non C/X.
@@ -377,37 +410,62 @@ export function Rassegna(props: {
                       <div className="field__top">
                         <span className="field__label">{etichetta}</span>
                         {inModifica ? (
-                          <>
-                            <input
-                              className="textfield"
-                              autoFocus
-                              value={bozza}
-                              onChange={(e) => setBozza(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault()
-                                  salva()
-                                } else if (e.key === 'Escape') {
-                                  e.preventDefault()
-                                  setEditando(null)
-                                }
-                              }}
-                            />
-                            <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
-                              <button className="btn btn--sm btn--confirm" onClick={salva}>
-                                Salva
+                          chiave === 'priorita' ? (
+                            // Quattro valori chiusi, e sono gli unici che lo
+                            // schema accetta: si scelgono. Scriverli a mano
+                            // voleva dire poter scrivere «Alta» e vedersi
+                            // rifiutare la scrittura senza saperlo (#71).
+                            <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+                              {PRIORITA.map((p) => (
+                                <button
+                                  key={p}
+                                  className={`btn btn--sm${valoreGrezzo(taskCorrente, chiave) === p ? ' is-on' : ''}`}
+                                  onClick={() => salva(p)}
+                                >
+                                  {p}
+                                </button>
+                              ))}
+                              <button className="btn btn--sm" onClick={() => salva(null)}>
+                                nessuna
                               </button>
-                              <button className="btn btn--sm" onClick={() => setEditando(null)}>
+                              <button className="btn btn--sm" onClick={annullaModifica}>
                                 Annulla
                               </button>
                             </div>
-                          </>
+                          ) : (
+                            <>
+                              <input
+                                className="textfield"
+                                autoFocus
+                                value={bozza}
+                                onChange={(e) => setBozza(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault()
+                                    salva()
+                                  } else if (e.key === 'Escape') {
+                                    e.preventDefault()
+                                    annullaModifica()
+                                  }
+                                }}
+                              />
+                              <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+                                <button className="btn btn--sm btn--confirm" onClick={() => salva()}>
+                                  Salva
+                                </button>
+                                <button className="btn btn--sm" onClick={annullaModifica}>
+                                  Annulla
+                                </button>
+                              </div>
+                            </>
+                          )
                         ) : (
                           <>
                             <span className={`field__value${mancante ? ' is-missing' : ''}`}>{testo}</span>
                             <button
                               className="btn btn--sm"
                               onClick={() => {
+                                setErroreSalva(null)
                                 setBozza(valoreGrezzo(taskCorrente, chiave))
                                 setEditando(chiave)
                               }}
@@ -417,6 +475,14 @@ export function Rassegna(props: {
                           </>
                         )}
                       </div>
+                      {/* Nel punto in cui si è premuto, non su una barra
+                          lontana: chi ha appena salvato sta guardando qui. */}
+                      {inModifica && erroreSalva && (
+                        <RiquadroInline
+                          testo={`Non sono riuscito a salvare: ${erroreSalva}`}
+                          azioni={[{ etichetta: 'Riprova', onClick: () => salva() }]}
+                        />
+                      )}
                       <div className="field__proof">
                         {prove.length > 0 ? (
                           prove.map((p, i) => (

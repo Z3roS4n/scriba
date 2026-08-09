@@ -315,7 +315,7 @@ export interface Provider {
   /** Vero quando la trascrizione lascia il computer. Va detto sempre. */
   esce_dal_computer: boolean
   /** Costo indicativo per un'ora di call, in euro. Null quando non si paga. */
-  costo_ora_eur: number | null
+  costo_ora_usd: number | null
   /** Minuti indicativi per analizzare un'ora di call. */
   minuti_per_ora: number | null
   /** Cosa manca perché sia utilizzabile, quando non lo è. */
@@ -498,7 +498,18 @@ export interface SchemaNotion {
 /** Eventi che il core spinge sul websocket, girati alle finestre dal main. */
 export type EventoCore =
   | { type: 'transcript'; source: Traccia; t_start_ms: number; t_end_ms: number; text: string; is_final: boolean }
-  | { type: 'session_started'; session_id: number; titolo: string | null }
+  | {
+      type: 'session_started'
+      session_id: number
+      titolo: string | null
+      /** Il nome vero della periferica aperta, per sorgente («mic», «loopback»). */
+      devices?: Record<string, string>
+      /** Le sorgenti ripiegate sul predefinito perché quella scelta nelle
+       *  impostazioni non c'è più. Il core lo manda da sempre; fino a #73 qui
+       *  non era nemmeno dichiarato, quindi nessuno lo leggeva e chi
+       *  registrava dal microfono sbagliato lo scopriva a call finita. */
+      fallback?: Record<string, string>
+    }
   | { type: 'session_stopped'; session_id: number; durata_ms: number | null }
   | { type: 'screenshot'; id: number; t_ms: number; path: string }
   | {
