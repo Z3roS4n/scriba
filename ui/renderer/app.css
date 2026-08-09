@@ -310,13 +310,30 @@ a:hover { color:var(--red); border-bottom-color:var(--red); }
   border:1px solid var(--line-strong); background:var(--bg-grid); max-width:340px;
   margin-left:calc(46px + var(--sp-2) + var(--sp-4));
 }
+/* Nel handoff `.shot__img` è un rettangolo disegnato, perché una pagina di
+   prova non ha immagini vere. Qui l'immagine c'è: sta sul disco e il CSP
+   ammette `file:`. Mostrare il rettangolo al suo posto vorrebbe dire
+   nascondere proprio quello che si era condiviso, e costringere ad aprire la
+   cartella per saperlo.
+
+   `contain`, non `cover`: una slide tagliata a metà non risponde alla domanda
+   per cui la si guarda. L'altezza massima tiene la riga dentro il ritmo della
+   trascrizione — è un'anteprima, non un visore. */
 .shot__img {
-  height:112px;
+  display:block; width:100%; height:auto; max-height:220px;
+  object-fit:contain; background:var(--bg-quiet);
+}
+/* Il ripiego, quando il file non c'è più: il rettangolo del handoff. Meglio
+   di un'icona di immagine rotta, che non dice cosa è successo. */
+.shot__img--vuoto {
+  display:block; height:112px;
   background:
     linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0/var(--grid-step) var(--grid-step),
     linear-gradient(180deg, var(--line) 1px, transparent 1px) 0 0/var(--grid-step) var(--grid-step),
     var(--bg-quiet);
 }
+.shot__frame { display:block; width:100%; text-align:left; padding:0; cursor:zoom-in; }
+.shot__frame:hover { border-color:var(--act); }
 .shot__cap {
   display:flex; align-items:center; gap:var(--sp-2);
   padding:6px var(--sp-2); border-top:1px solid var(--line);

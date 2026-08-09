@@ -76,6 +76,19 @@ const Riga = memo(function Riga({ s, citata }: { s: Segmento; citata: boolean })
   )
 })
 
+/**
+ * Da percorso di Windows a URL che il renderer può caricare.
+ *
+ * `encodeURI` non tocca `#` e `?`, che in un nome di file sono legittimi e in
+ * un URL no: senza quei due, uno screenshot salvato in una cartella con un
+ * cancelletto non si vedrebbe, e la causa sarebbe invisibile.
+ */
+function urlFile(percorso: string): string {
+  const barre = percorso.replace(/\\/g, '/')
+  const assoluto = /^[a-zA-Z]:/.test(barre) ? `/${barre}` : barre
+  return 'file://' + encodeURI(assoluto).replace(/#/g, '%23').replace(/\?/g, '%3F')
+}
+
 const RigaScatto = memo(function RigaScatto({
   s,
   onApri,
@@ -83,14 +96,41 @@ const RigaScatto = memo(function RigaScatto({
   s: Scatto
   onApri: (percorso: string) => void
 }) {
+  /** Il file poteva esserci quando la call è stata registrata e non esserci
+   *  più adesso: spostato, cancellato, cartella su una chiavetta staccata. */
+  const [rotta, setRotta] = useState(false)
+
   return (
     <div className="shot" data-t={s.t_ms}>
-      <span className="shot__t">{tempo(s.t_ms)}</span>
+      <span className="shot__t num">{tempo(s.t_ms)}</span>
       <div>
-        <div className="shot__frame" onClick={() => onApri(s.path)}>
-          screenshot {s.width && s.height ? `${s.width}×${s.height}` : ''}
-        </div>
-        <span className="shot__cap">Schermata condivisa · clicca per aprirla</span>
+        <button className="shot__frame" onClick={() => onApri(s.path)}>
+          {/* L'immagine vera, non un segnaposto. Il file è sul disco e il CSP
+              delle pagine ammette `file:` per le immagini: mostrare un
+              rettangolo grigio dove c'è una slida vera vuol dire nascondere
+              proprio quello che serve — e costringere ad aprire la cartella
+              per sapere cosa si era condiviso.
+
+              `contain` e non `cover`: una slide tagliata a metà non risponde
+              alla domanda per cui la si guarda. Se il file non c'è più —
+              spostato, cancellato — si torna al riquadro disegnato invece di
+              lasciare l'icona di immagine rotta del browser. */}
+          {rotta ? (
+            <span className="shot__img shot__img--vuoto" />
+          ) : (
+            <img
+              className="shot__img"
+              src={urlFile(s.path)}
+              alt={`Schermata condivisa al minuto ${tempo(s.t_ms)}`}
+              loading="lazy"
+              onError={() => setRotta(true)}
+            />
+          )}
+        </button>
+        <span className="shot__cap">
+          {rotta ? 'Schermata condivisa · il file non è più al suo posto' : 'Schermata condivisa · clicca per aprirla'}
+          {s.width && s.height && <span className="num">{s.width}×{s.height}</span>}
+        </span>
       </div>
     </div>
   )
