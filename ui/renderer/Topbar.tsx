@@ -130,10 +130,21 @@ export function Topbar(props: {
         </button>
       </div>
 
+      {/* I tre segni sono disegnati dal CSS (`.wc-min`, `.wc-max`,
+          `.wc-close`), non sono caratteri. Erano «—», «▢», «✕»: tre glifi presi
+          da tre parti diverse della tavola Unicode, che il font rende con pesi
+          e altezze sue e che cambiano aspetto se il font cambia. Con i bordi,
+          la linea è una linea da 1px in tutti e tre. */}
       <div className="wincontrols">
-        <button onClick={() => window.scriba.finestra.riduci()}>—</button>
-        <button onClick={() => window.scriba.finestra.ingrandisci()}>▢</button>
-        <button onClick={() => window.scriba.finestra.chiudi()}>✕</button>
+        <button aria-label="Riduci a icona" onClick={() => window.scriba.finestra.riduci()}>
+          <i className="wc-min" />
+        </button>
+        <button aria-label="Ingrandisci" onClick={() => window.scriba.finestra.ingrandisci()}>
+          <i className="wc-max" />
+        </button>
+        <button aria-label="Chiudi" onClick={() => window.scriba.finestra.chiudi()}>
+          <i className="wc-close" />
+        </button>
       </div>
     </header>
   )
