@@ -14,6 +14,7 @@ import { join, resolve, sep } from 'node:path'
 import { Impostazioni } from './impostazioni'
 import { Overlay } from './overlay'
 import { Sidecar } from './sidecar'
+import { testo } from './lingua'
 
 const PROJECT_ROOT = resolve(app.getAppPath(), '..')
 const DATA_DIR = join(app.getPath('userData'), 'data')
@@ -83,7 +84,12 @@ const sidecar = new Sidecar(PROJECT_ROOT, join(DATA_DIR, 'scriba.sqlite'), versi
 
 const cartellaRisorse = __dirname.replace(/[\\/]main$/, '')
 const overlay = new Overlay(cartellaRisorse, join(DATA_DIR, 'overlay.json'))
-const impostazioni = new Impostazioni(cartellaRisorse, ICONA, () => coloreDiFondo())
+const impostazioni = new Impostazioni(
+  cartellaRisorse,
+  ICONA,
+  () => coloreDiFondo(),
+  () => linguaEffettiva(),
+)
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -210,12 +216,13 @@ function voceScreenshot(): Electron.MenuItemConstructorOptions[] {
   const schermi = elencaSchermi()
 
   if (schermi.length <= 1) {
-    return [{ label: combo ? `Screenshot (${combo})` : 'Screenshot', click: () => captureScreenshot() }]
+    const nome = testo(linguaEffettiva(), 'tray.screenshot')
+    return [{ label: combo ? `${nome} (${combo})` : nome, click: () => captureScreenshot() }]
   }
 
   return [
     {
-      label: 'Screenshot',
+      label: testo(linguaEffettiva(), 'tray.screenshot'),
       submenu: schermi.map((s) => ({
         // La scorciatoia si scrive solo accanto al principale perche' e' quello
         // che cattura davvero: scriverla su tutti prometterebbe il falso.
@@ -253,22 +260,23 @@ function aggiornaIconaTray(inRegistrazione = registrazioneInCorso): void {
 
   const immagine = nativeImage.createFromPath(iconaTray())
   if (!immagine.isEmpty()) tray.setImage(immagine)
-  tray.setToolTip(inRegistrazione ? 'Scriba — registrazione in corso' : 'Scriba')
+  tray.setToolTip(testo(linguaEffettiva(), inRegistrazione ? 'tray.tooltip_rec' : 'tray.tooltip'))
 }
 
 /** Il menu dell'area di notifica. Si ricostruisce quando cambiano le voci. */
 function menuTray(): Menu {
+  const lingua = linguaEffettiva()
   return Menu.buildFromTemplate([
-    { label: 'Apri Scriba', click: showWindow },
+    { label: testo(lingua, 'tray.apri'), click: showWindow },
     {
-      label: `Trascrizione sovrapposta (${(scorciatoiaOverlay ?? 'Alt+R').replace('CommandOrControl', 'Ctrl')})`,
+      label: `${testo(lingua, 'tray.overlay')} (${(scorciatoiaOverlay ?? 'Alt+R').replace('CommandOrControl', 'Ctrl')})`,
       click: () => overlay.alterna(),
     },
     { type: 'separator' },
     ...voceScreenshot(),
     { type: 'separator' },
     {
-      label: 'Esci',
+      label: testo(linguaEffettiva(), 'tray.esci'),
       click: () => {
         quitting = true
         app.quit()
@@ -308,7 +316,7 @@ function createTray(): void {
   const daFile = nativeImage.createFromPath(iconaTray())
   const icon = daFile.isEmpty() ? nativeImage.createFromDataURL(ICONA_RIPIEGO) : daFile
   tray = new Tray(icon)
-  tray.setToolTip(registrazioneInCorso ? 'Scriba — registrazione in corso' : 'Scriba')
+  tray.setToolTip(testo(linguaEffettiva(), registrazioneInCorso ? 'tray.tooltip_rec' : 'tray.tooltip'))
   tray.setContextMenu(menuTray())
   tray.on('double-click', showWindow)
 }
@@ -648,6 +656,14 @@ function registerIpc(): void {
     // Come per il tema: tre processi, e una finestra in inglese accanto a una
     // in italiano e' peggio che non poter scegliere.
     trasmettiATutte('lingua:cambiata', lingua)
+    // Il menu dell'area di notifica e' un menu di SISTEMA: non si ridisegna
+    // perche' e' cambiato uno stato, va ricostruito. Senza questa riga
+    // resterebbe nella lingua di quando l'applicazione e' partita, ed e'
+    // l'ultimo posto in cui uno andrebbe a cercare il motivo.
+    if (tray && !tray.isDestroyed()) {
+      tray.setContextMenu(menuTray())
+      tray.setToolTip(testo(lingua, registrazioneInCorso ? 'tray.tooltip_rec' : 'tray.tooltip'))
+    }
   })
 
   ipcMain.handle('tema:annuncia', (_evento, tema: string) => {
@@ -796,7 +812,7 @@ app.whenReady().then(async () => {
     overlay.impostaVariante(Boolean(impostazioniLette?.interfaccia?.overlay_ridotto))
   } catch (error) {
     dialog.showErrorBox(
-      'Scriba non riesce ad avviare il core',
+      testo(linguaEffettiva(), 'errore.core_titolo'),
       error instanceof Error ? error.message : String(error),
     )
   }

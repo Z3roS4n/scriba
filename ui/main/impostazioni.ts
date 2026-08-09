@@ -8,6 +8,7 @@
 
 import { BrowserWindow } from 'electron'
 import { join } from 'node:path'
+import { testo } from './lingua'
 
 const LARGHEZZA = 980
 const ALTEZZA = 720
@@ -21,6 +22,9 @@ export class Impostazioni {
     private readonly icona: string,
     /** Il colore di fondo del tema corrente, deciso da chi possiede le impostazioni. */
     private readonly coloreDiFondo: () => string,
+    /** La lingua dell'interfaccia, decisa da chi possiede le impostazioni: qui
+     *  non si rilegge, per non rispondere diversamente dalla riga accanto. */
+    private readonly lingua: () => string,
   ) {}
 
   /** Apre la finestra, o la porta davanti se e' gia' aperta. */
@@ -41,7 +45,7 @@ export class Impostazioni {
       show: false,
       frame: false,
       backgroundColor: this.coloreDiFondo(),
-      title: 'Impostazioni',
+      title: testo(this.lingua(), 'finestra.impostazioni'),
       icon: this.icona,
       webPreferences: {
         preload: join(this.cartellaRisorse, 'main', 'preload.js'),
