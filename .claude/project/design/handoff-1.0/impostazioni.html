@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Scriba — impostazioni</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+<style>
+  /* Solo ponteggio dell'anteprima: non fa parte della schermata. */
+  body { display:block; padding:30px; overflow:auto; }
+  .win, .sheet { margin-inline:auto; }
+  .sheet { max-width:1264px; }
+</style>
+</head>
+<body>
+<!-- Due sezioni su una pagina sola: Motore di analisi e Modelli locali.
+     Impostazioni è un piano dentro la finestra principale, non una finestra
+     separata. -->
+<div class="sheet" style="margin-inline:auto">
+
+  <div class="sheet__cap">
+    <span class="thread"></span>
+    <span class="label">Impostazioni · Motore di analisi</span>
+  </div>
+  <p class="sheet__note">Piano dentro la finestra principale, non una finestra separata: si esce con Esc e si è di nuovo sulla call, al punto in cui si era. La voce del tray apre la finestra principale su questo piano.</p>
+
+  <div class="win" style="position:relative" data-screen-label="Impostazioni — Motore di analisi">
+    <div class="topbar">
+      <div class="brand">Scriba</div>
+      <div class="status"><span class="sq sq--hollow"></span>Pronto</div>
+      <div class="topbar__spacer"></div>
+      <div class="toolbar"><button class="btn btn--rec">Registra</button></div>
+      <div class="wincontrols">
+        <button aria-label="Riduci a icona"><i class="wc-min"></i></button>
+        <button aria-label="Ingrandisci"><i class="wc-max"></i></button>
+        <button aria-label="Chiudi"><i class="wc-close"></i></button>
+      </div>
+    </div>
+
+    <div class="plane">
+      <div class="plane__head">
+        <span class="thread"></span>
+        <span class="plane__title">Impostazioni</span>
+        <span class="plane__spacer"></span>
+        <span class="esc"><span class="key">Esc</span>torna alla call</span>
+      </div>
+
+      <div class="plane__body">
+        <div class="settings">
+          <div class="settings__nav">
+            <button class="navitem is-on">Motore di analisi</button>
+            <button class="navitem">Modelli locali</button>
+            <button class="navitem">Trascrizione</button>
+            <button class="navitem">Rilevamento call</button>
+            <button class="navitem">Scorciatoie</button>
+            <button class="navitem">Aspetto</button>
+            <button class="navitem">Analisi</button>
+            <button class="navitem">Clienti</button>
+            <button class="navitem">Database remoto</button>
+            <button class="navitem">Dati e privacy</button>
+            <button class="navitem">Export</button>
+          </div>
+
+          <div class="settings__main">
+            <div class="settings__head">Motore di analisi</div>
+            <div class="settings__body">
+              <p>Chi legge la trascrizione e ne ricava riassunto, punti salienti e task. Se ne può usare uno solo alla volta.</p>
+
+              <div style="display:flex; flex-direction:column; gap:12px">
+
+                <div class="engine is-selected">
+                  <div class="engine__top">
+                    <span class="radio"><i></i></span>
+                    <div style="flex:1; display:flex; flex-direction:column; gap:4px">
+                      <span class="engine__name">API Anthropic</span>
+                      <span class="engine__desc">claude-sonnet-4. Il più preciso sui campi delle task e sulle scadenze dette a voce.</span>
+                      <span class="engine__speed">circa 2 min per un'ora di call</span>
+                    </div>
+                    <span class="engine__state is-live">In uso</span>
+                  </div>
+                  <div class="engine__risk">
+                    <span class="thread"></span>
+                    <span>La trascrizione esce da questo computer e viene inviata ad Anthropic.</span>
+                  </div>
+                </div>
+
+                <div class="engine">
+                  <div class="engine__top">
+                    <span class="radio"></span>
+                    <div style="flex:1; display:flex; flex-direction:column; gap:4px">
+                      <span class="engine__name">Modello locale</span>
+                      <span class="engine__desc">Qwen 14B, in esecuzione su questo computer. Niente esce dalla macchina.</span>
+                      <span class="engine__speed">circa 18 min per un'ora di call</span>
+                    </div>
+                    <span class="engine__state">In avvio…</span>
+                  </div>
+                  <div class="engine__need">
+                    <span>Il modello si sta caricando in memoria. Diventa selezionabile da solo appena risponde: non serve riaprire questo piano.</span>
+                  </div>
+                  <div class="model__dl">
+                    <div class="progress"><i style="width:64%"></i></div>
+                    <div class="model__dlmeta">
+                      <span class="num">9,0 GB di 14,0 GB in memoria</span>
+                      <span class="call__sep">·</span>
+                      <span class="num">40 s rimanenti</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="engine">
+                  <div class="engine__top">
+                    <span class="radio"></span>
+                    <div style="flex:1; display:flex; flex-direction:column; gap:4px">
+                      <span class="engine__name">API OpenAI</span>
+                      <span class="engine__desc">gpt-4o. Più rapido, meno affidabile quando la scadenza è detta a voce.</span>
+                      <span class="engine__speed">circa 2 min per un'ora di call</span>
+                    </div>
+                    <span class="engine__state">Chiave mancante</span>
+                  </div>
+                  <div class="engine__need">
+                    <div class="textfield is-placeholder" style="width:220px">Chiave API</div>
+                    <button class="btn btn--sm btn--primary">Salva</button>
+                    <button class="btn btn--sm">Annulla</button>
+                  </div>
+                </div>
+
+                <div class="engine">
+                  <div class="engine__top">
+                    <span class="radio"></span>
+                    <div style="flex:1; display:flex; flex-direction:column; gap:4px">
+                      <span class="engine__name">Claude Code</span>
+                      <span class="engine__desc">Usa l'abbonamento già installato su questo computer, senza chiave API.</span>
+                    </div>
+                    <span class="engine__state is-ok">Pronto</span>
+                  </div>
+                  <div class="engine__risk">
+                    <span class="thread"></span>
+                    <span>La trascrizione esce da questo computer e viene inviata ad Anthropic.</span>
+                  </div>
+                </div>
+
+              </div>
+
+              <p class="settings__note">La conseguenza resta scritta anche sul motore già in uso: è quella che si dimentica per prima.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet__cap" style="margin-top:24px">
+    <span class="thread"></span>
+    <span class="label">Impostazioni · Modelli locali</span>
+  </div>
+  <p class="sheet__note">Lo spazio si controlla prima di iniziare, non a metà. Un download si sospende e riprende dal punto in cui era, anche dopo aver chiuso l'applicazione. La verifica di integrità è uno stato visibile, non un passaggio silenzioso.</p>
+
+  <div class="win" style="position:relative" data-screen-label="Impostazioni — Modelli locali">
+    <div class="topbar">
+      <div class="brand">Scriba</div>
+      <div class="status"><span class="sq sq--hollow"></span>Pronto</div>
+      <div class="topbar__spacer"></div>
+      <div class="toolbar"><button class="btn btn--rec">Registra</button></div>
+      <div class="wincontrols">
+        <button aria-label="Riduci a icona"><i class="wc-min"></i></button>
+        <button aria-label="Ingrandisci"><i class="wc-max"></i></button>
+        <button aria-label="Chiudi"><i class="wc-close"></i></button>
+      </div>
+    </div>
+
+    <div class="plane">
+      <div class="plane__head">
+        <span class="thread"></span>
+        <span class="plane__title">Impostazioni</span>
+        <span class="plane__spacer"></span>
+        <span class="esc"><span class="key">Esc</span>torna alla call</span>
+      </div>
+
+      <div class="plane__body">
+        <div class="settings">
+          <div class="settings__nav">
+            <button class="navitem">Motore di analisi</button>
+            <button class="navitem is-on">Modelli locali</button>
+            <button class="navitem">Trascrizione</button>
+            <button class="navitem">Rilevamento call</button>
+            <button class="navitem">Scorciatoie</button>
+            <button class="navitem">Aspetto</button>
+            <button class="navitem">Analisi</button>
+            <button class="navitem">Clienti</button>
+            <button class="navitem">Database remoto</button>
+            <button class="navitem">Dati e privacy</button>
+            <button class="navitem">Export</button>
+          </div>
+
+          <div class="settings__main">
+            <div class="settings__head">Modelli locali</div>
+            <div class="settings__body">
+
+              <div class="disk">
+                <div style="flex:1">
+                  <div class="disk__t">
+                    <span style="color:var(--fg-3)">Spazio su disco</span>
+                    <span style="color:var(--fg-2)" class="num">86,4 GB liberi di 476 GB</span>
+                  </div>
+                  <div class="disk__bar"><i style="width:82%"></i></div>
+                </div>
+                <button class="btn">Apri la cartella</button>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:8px">
+
+                <div class="model">
+                  <div class="model__top">
+                    <div style="flex:1">
+                      <span class="model__n">Canary 1B</span>
+                      <span class="model__d">Trascrizione più precisa sui nomi propri. Si usa per rifare una trascrizione già registrata, non dal vivo.</span>
+                      <div class="model__meta"><span class="num">1,0 GB</span><span class="call__sep">·</span><span>trascrizione</span></div>
+                    </div>
+                    <span class="model__state">in download</span>
+                  </div>
+                  <div class="model__dl">
+                    <div class="progress"><i style="width:38%"></i></div>
+                    <div class="model__dlmeta">
+                      <span class="num">380 MB di 1,0 GB</span>
+                      <span class="call__sep">·</span>
+                      <span class="num">2 min rimanenti</span>
+                      <button class="btn btn--sm">Sospendi</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="model">
+                  <div class="model__top">
+                    <div style="flex:1">
+                      <span class="model__n">Parakeet 0.6B</span>
+                      <span class="model__d">Trascrizione dal vivo. È il modello che sta girando adesso mentre registri.</span>
+                      <div class="model__meta"><span class="num">610 MB</span><span class="call__sep">·</span><span>trascrizione</span><span class="call__sep">·</span><span class="num">installato il 3 nov</span></div>
+                    </div>
+                    <span class="model__state is-ok">in uso</span>
+                  </div>
+                </div>
+
+                <div class="model">
+                  <div class="model__top">
+                    <div style="flex:1">
+                      <span class="model__n">Qwen 14B</span>
+                      <span class="model__d">Analisi senza far uscire niente dal computer. Più lento delle API, e con qualche campo in meno sulle scadenze.</span>
+                      <div class="model__meta"><span class="num">14,0 GB</span><span class="call__sep">·</span><span>analisi</span></div>
+                    </div>
+                    <span class="model__state">in verifica</span>
+                  </div>
+                  <div class="model__dl">
+                    <div class="progress"><i style="width:100%"></i></div>
+                    <div class="model__dlmeta">
+                      <span>Scaricato. Controllo del file in corso.</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="model">
+                  <div class="model__top">
+                    <div style="flex:1">
+                      <span class="model__n">Qwen 32B</span>
+                      <span class="model__d">La qualità più alta fra i modelli locali. Serve una scheda video con almeno 24 GB.</span>
+                      <div class="model__meta"><span class="num">32,0 GB</span><span class="call__sep">·</span><span>analisi</span></div>
+                    </div>
+                    <span class="model__state is-err">spazio insufficiente</span>
+                  </div>
+                  <div class="engine__need">
+                    <span>Mancano <b class="num">18,6 GB</b>. Libera spazio o scegli un modello più piccolo.</span>
+                    <button class="btn btn--sm" disabled>Scarica</button>
+                  </div>
+                </div>
+
+              </div>
+
+              <p class="settings__note">Un download si può sospendere e riprendere: riparte da dove si era fermato, anche dopo aver chiuso l'applicazione. A fine scaricamento il file viene verificato, e l'esito si vede qui.</p>
+
+              <div class="row row--risk" style="margin-top:32px; border-bottom:0">
+                <div class="row__t">
+                  <span class="row__k">Elimina tutti i modelli scaricati</span>
+                  <span class="row__d">Libera 15,6 GB. Le trascrizioni già fatte restano; per rifarne una servirà scaricare di nuovo.</span>
+                </div>
+                <button class="btn btn--danger">Elimina</button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

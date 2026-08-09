@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Scriba — finestra principale, registrazione dal vivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+<style>
+  /* Solo ponteggio dell'anteprima: non fa parte della schermata. */
+  body { display:block; padding:30px; overflow:auto; }
+  .win, .sheet { margin-inline:auto; }
+  .sheet { max-width:1264px; }
+</style>
+</head>
+<body>
+<!-- Stato: registrazione in corso.
+     La colonna destra è in configurazione «durante» (288px): nota di lavoro,
+     scatti, dispositivi. Il corpo della trascrizione è a 16px, non 15.
+     In cima c'è un avviso di livello 1, che non impedisce niente. -->
+<div class="win is-recording" data-screen-label="Finestra principale — registrazione dal vivo">
+
+  <div class="topbar">
+    <div class="brand">Scriba</div>
+    <div class="status is-recording"><span class="sq sq--rec"></span>Registrazione</div>
+    <span class="timer num">12:04</span>
+    <div class="picker">
+      <button>Schermo 1</button>
+      <button class="is-on">Schermo 2</button>
+    </div>
+    <div class="topbar__spacer"></div>
+    <div class="toolbar">
+      <button class="btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="miter"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+        Scatta
+      </button>
+      <button class="btn btn--quiet btn--icon" title="Impostazioni" aria-label="Impostazioni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="miter"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+      </button>
+      <button class="btn btn--rec is-recording">Ferma</button>
+    </div>
+    <div class="wincontrols">
+      <button aria-label="Riduci a icona"><i class="wc-min"></i></button>
+      <button aria-label="Ingrandisci"><i class="wc-max"></i></button>
+      <button aria-label="Chiudi"><i class="wc-close"></i></button>
+    </div>
+  </div>
+
+  <div class="notice">
+    Alt+R è già usata da un'altra applicazione: la scorciatoia dell'overlay non risponde.
+    <span class="notice__spacer"></span>
+    <button class="btn btn--sm">Cambia scorciatoia</button>
+    <button class="btn--link" aria-label="Chiudi l'avviso">✕</button>
+  </div>
+
+  <div class="win__body">
+
+    <div class="calls">
+      <div class="calls__head">
+        <span class="thread"></span>
+        <span class="label">Call</span>
+        <span class="calls__count num">25</span>
+      </div>
+      <div class="calls__list">
+        <button class="call is-selected is-current">
+          <span class="call__title">Call in corso</span>
+          <span class="call__meta"><span class="num">oggi</span><span class="call__sep">·</span><span class="num">12:04</span></span>
+          <span class="call__foot"><span class="call__client is-none">Senza cliente</span><span class="call__todo call__todo--err">in registrazione</span></span>
+        </button>
+        <button class="call">
+          <span class="call__title">Allineamento sprint 14</span>
+          <span class="call__meta"><span class="num">12 nov</span><span class="call__sep">·</span><span class="num">47:12</span></span>
+          <span class="call__foot"><span class="call__client">Ferrotecnica Sud</span><span class="call__todo call__todo--now num">6 da confermare</span></span>
+        </button>
+        <button class="call">
+          <span class="call__title">Revisione preventivo impianto</span>
+          <span class="call__meta"><span class="num">11 nov</span><span class="call__sep">·</span><span class="num">28:40</span></span>
+          <span class="call__foot"><span class="call__client">Ferrotecnica Sud</span><span class="call__todo num">7 task</span></span>
+        </button>
+        <button class="call">
+          <span class="call__title">Call #12</span>
+          <span class="call__meta"><span class="num">9 nov</span><span class="call__sep">·</span><span class="num">1:04:38</span></span>
+          <span class="call__foot"><span class="call__client is-none">Senza cliente</span><span class="call__todo call__todo--err">non riuscita</span></span>
+        </button>
+        <button class="call">
+          <span class="call__title">Colloquio — profilo backend</span>
+          <span class="call__meta"><span class="num">8 nov</span><span class="call__sep">·</span><span class="num">52:03</span></span>
+          <span class="call__foot"><span class="call__client is-none">Senza cliente</span><span class="call__todo num">3 task</span></span>
+        </button>
+        <button class="call">
+          <span class="call__title">Passaggio di consegne CRM</span>
+          <span class="call__meta"><span class="num">6 nov</span><span class="call__sep">·</span><span class="num">1:12:55</span></span>
+          <span class="call__foot"><span class="call__client">Metalgraf</span><span class="call__todo num">11 task</span></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="transcript">
+      <div class="transcript__head">
+        <h1 class="transcript__title">Call in corso</h1>
+        <span class="transcript__meta num">86 righe · italiano</span>
+        <div class="legend">
+          <span><i></i>Io</span>
+          <span><i class="is-other"></i>Altri</span>
+        </div>
+      </div>
+      <div class="transcript__body">
+
+        <div class="echo">
+          <button class="echo__toggle">
+            <span class="chev"></span>
+            <span><b class="num">3 righe</b> riprese dall'altoparlante</span>
+            <span class="echo__hint">tenute fuori da riassunto, note ed export</span>
+          </button>
+        </div>
+
+        <div class="line line--other">
+          <button class="line__t num">10:48</button>
+          <span class="line__who">Altri</span>
+          <p class="line__text">Se il fornitore non conferma entro venerdì saltiamo la finestra di consegna, e a quel punto slitta tutto di due settimane perché dopo c'è il fermo.</p>
+        </div>
+
+        <div class="line line--me">
+          <button class="line__t num">11:02</button>
+          <span class="line__who">Io</span>
+          <p class="line__text">Lo chiamo io oggi pomeriggio. Se non risponde entro domani mattina passiamo al secondo, che ha già dato disponibilità e costa il quattro per cento in più.</p>
+        </div>
+
+        <div class="line line--other">
+          <button class="line__t num">11:24</button>
+          <span class="line__who">Altri</span>
+          <p class="line__text">Il quattro per cento su questa commessa lo assorbiamo. Piuttosto assicurati che sia scritto da qualche parte, perché l'ultima volta ce lo siamo detti a voce e poi nessuno se lo ricordava.</p>
+        </div>
+
+        <div class="line line--me">
+          <button class="line__t num">11:41</button>
+          <span class="line__who">Io</span>
+          <p class="line__text">Sì, lo metto nel verbale. Anzi, questa call la sto registrando, quindi resta lì.</p>
+        </div>
+
+        <div class="line line--other">
+          <button class="line__t num">11:58</button>
+          <span class="line__who">Altri</span>
+          <p class="line__text">Perfetto. Ultima cosa sul magazzino: abbiamo ancora duecento pezzi della serie vecchia e nessuno li ha ordinati da marzo.</p>
+        </div>
+
+        <div class="line line--other">
+          <button class="line__t num">12:03</button>
+          <span class="line__who">Altri</span>
+          <p class="line__text is-provisional">Direi di scalarli sul prossimo lotto invece di tenerli fermi, tanto la differenza di<span class="caret"></span></p>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="side side--rec">
+      <div class="side__head">
+        <div class="side__eyebrow">
+          <span class="thread"></span>
+          <span class="label">Durante la call</span>
+        </div>
+        <div class="side__meta">
+          L'analisi si avvia quando fermi la registrazione.
+        </div>
+      </div>
+
+      <div class="side__body">
+
+        <div class="nota">
+          <div class="nota__head">
+            <span class="label label--quiet">Nota di lavoro</span>
+            <span class="nota__when num">aggiornata alle 12:01</span>
+          </div>
+          <p class="nota__par">Consegna a rischio: la finestra dipende dalla conferma del fornitore attesa entro venerdì.</p>
+          <ul class="nota__elenco">
+            <li>Se non arriva, si passa al secondo fornitore — disponibile, +4% sul prezzo.</li>
+            <li>Il sovrapprezzo è stato accettato a voce; va messo per iscritto nel verbale.</li>
+            <li>Duecento pezzi della serie vecchia fermi da marzo, ancora senza destinazione.</li>
+          </ul>
+          <button class="btn btn--quiet btn--sm">2 note precedenti</button>
+        </div>
+
+        <div class="mini">
+          <div class="mini__head">
+            <span class="label label--quiet">Scatti</span>
+            <span class="mini__n num">3</span>
+          </div>
+          <div class="thumbs">
+            <button class="thumb" aria-label="Scatto delle 11:12"></button>
+            <button class="thumb" aria-label="Scatto delle 11:36"></button>
+            <button class="thumb" aria-label="Scatto delle 11:58"></button>
+          </div>
+        </div>
+
+        <div class="mini">
+          <div class="mini__head">
+            <span class="label label--quiet">Audio</span>
+            <button class="btn btn--quiet btn--sm" style="margin-left:auto">Cambia</button>
+          </div>
+          <div class="dev"><span class="dev__k">Microfono</span><span class="dev__v">Jabra Evolve2 40</span></div>
+          <div class="dev"><span class="dev__k">Uscita</span><span class="dev__v">Altoparlanti (Realtek)</span></div>
+        </div>
+
+      </div>
+
+      <div class="side__foot">
+        <div class="refine">
+          <div>
+            <div class="refine__t">Overlay</div>
+            <span class="refine__n">Alt+R · la scorciatoia non risponde</span>
+          </div>
+          <button class="btn btn--sm">Mostra</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Scriba — archivio e ricerca</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+<style>
+  /* Solo ponteggio dell'anteprima: non fa parte della schermata. */
+  body { display:block; padding:30px; overflow:auto; }
+  .win, .sheet { margin-inline:auto; }
+  .sheet { max-width:1264px; }
+</style>
+</head>
+<body>
+<!-- Piano a tutta finestra. Stato: ricerca «fornitore» dentro il parlato,
+     filtrata su un cliente e raggruppata. -->
+<div class="win" style="position:relative" data-screen-label="Archivio e ricerca">
+
+  <div class="topbar">
+    <div class="brand">Scriba</div>
+    <div class="status"><span class="sq sq--hollow"></span>Pronto</div>
+    <div class="topbar__spacer"></div>
+    <div class="toolbar"><button class="btn btn--rec">Registra</button></div>
+    <div class="wincontrols">
+      <button aria-label="Riduci a icona"><i class="wc-min"></i></button>
+      <button aria-label="Ingrandisci"><i class="wc-max"></i></button>
+      <button aria-label="Chiudi"><i class="wc-close"></i></button>
+    </div>
+  </div>
+
+  <div class="plane">
+    <div class="plane__head">
+      <span class="thread"></span>
+      <span class="plane__title">Archivio</span>
+      <span class="plane__sub num">24 call · 18 ore registrate</span>
+      <span class="plane__spacer"></span>
+      <span class="esc"><span class="key">Esc</span>torna alla call</span>
+    </div>
+
+    <div class="arch__tools">
+      <div class="search">
+        <div class="textfield is-focus">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="miter" style="width:15px;height:15px;stroke-width:1.75;margin-right:8px;color:var(--fg-3)"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+          <span>fornitore</span><span class="caret" style="background:var(--fg)"></span>
+        </div>
+      </div>
+      <button class="filter is-on">Ferrotecnica Sud <span class="chev chev--down"></span></button>
+      <button class="filter">Qualsiasi stato <span class="chev chev--down"></span></button>
+      <button class="filter">Ultimi 3 mesi <span class="chev chev--down"></span></button>
+      <button class="filter is-on"><span class="sq"></span>Raggruppa per cliente</button>
+    </div>
+
+    <div class="arch__body">
+
+      <div class="arch__group">
+        <span class="label">Ferrotecnica Sud</span>
+        <span class="arch__n num">9 call · 4 con «fornitore»</span>
+      </div>
+
+      <button class="arow">
+        <div>
+          <span class="arow__t">Allineamento sprint 14</span>
+          <span class="arow__hit">…assicurati che sia scritto da qualche parte, perché con il <mark>fornitore</mark> l'ultima volta ce lo siamo detti a voce…</span>
+        </div>
+        <span class="arow__c">Ferrotecnica Sud</span>
+        <span class="arow__m">12 nov</span>
+        <span class="arow__m">47:12</span>
+        <span class="arow__s">15 task</span>
+      </button>
+
+      <button class="arow">
+        <div>
+          <span class="arow__t">Revisione preventivo impianto</span>
+          <span class="arow__hit">…il secondo <mark>fornitore</mark> ha dato disponibilità e costa il quattro per cento in più, però consegna…</span>
+        </div>
+        <span class="arow__c">Ferrotecnica Sud</span>
+        <span class="arow__m">11 nov</span>
+        <span class="arow__m">28:40</span>
+        <span class="arow__s">7 task</span>
+      </button>
+
+      <button class="arow">
+        <div>
+          <span class="arow__t">Sopralluogo linea 3</span>
+          <span class="arow__hit">…quando è passato il <mark>fornitore</mark> a settembre aveva già segnalato l'usura sui cuscinetti…</span>
+        </div>
+        <span class="arow__c">Ferrotecnica Sud</span>
+        <span class="arow__m">28 ott</span>
+        <span class="arow__m">1:22:04</span>
+        <span class="arow__s">12 task</span>
+      </button>
+
+      <button class="arow">
+        <div>
+          <span class="arow__t">Call #12</span>
+          <span class="arow__hit">…senti il <mark>fornitore</mark> prima di confermare la data, perché se salta questa finestra…</span>
+        </div>
+        <span class="arow__c is-none">Senza cliente <span class="chev chev--down"></span></span>
+        <span class="arow__m">9 nov</span>
+        <span class="arow__m">1:04:38</span>
+        <span class="arow__s is-err">non riuscita</span>
+      </button>
+
+      <div class="arch__group">
+        <span class="label">Metalgraf</span>
+        <span class="arch__n num">6 call · 1 con «fornitore»</span>
+      </div>
+
+      <button class="arow">
+        <div>
+          <span class="arow__t">Passaggio di consegne CRM</span>
+          <span class="arow__hit">…l'anagrafica <mark>fornitore</mark> va migrata prima, altrimenti gli ordini aperti restano senza riferimento…</span>
+        </div>
+        <span class="arow__c">Metalgraf</span>
+        <span class="arow__m">6 nov</span>
+        <span class="arow__m">1:12:55</span>
+        <span class="arow__s">11 task</span>
+      </button>
+
+      <button class="arow">
+        <div>
+          <span class="arow__t">Call #9</span>
+        </div>
+        <span class="arow__c">Metalgraf</span>
+        <span class="arow__m">5 nov</span>
+        <span class="arow__m">19:22</span>
+        <span class="arow__s">da analizzare</span>
+      </button>
+
+    </div>
+
+    <div class="ia">
+      <div class="ia__t">
+        <b class="num">5 call in un documento solo</b>
+        <span>Ogni citazione accanto a ciò che sostiene, e detto chiaro quali impegni una fonte non ce l'hanno.</span>
+      </div>
+      <div class="ia__spacer"></div>
+      <button class="checkbox" aria-label="Includi la trascrizione integrale"></button>
+      <span style="font-size:var(--fs-sm); color:var(--fg-2)">Trascrizione integrale</span>
+      <span class="ia__peso num">~18.400 token</span>
+      <button class="btn btn--primary">Esporta</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

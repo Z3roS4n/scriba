@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scriba — handoff di design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+<style>
+  /* Questa pagina è l'indice dell'handoff: non fa parte del sistema.
+     Usa gli stessi token, così è anche una prova che reggono fuori
+     dalla finestra dell'applicazione. */
+  body { background:var(--bg-page); padding:0; }
+  .wrap { max-width:1120px; margin-inline:auto; padding:64px 32px 96px; }
+  .hero { border-bottom:1px solid var(--line); padding-bottom:40px; margin-bottom:48px; }
+  h1 { font-size:44px; font-weight:800; letter-spacing:-.03em; line-height:1.06; margin-top:16px; text-wrap:balance; }
+  .lede { font-size:17px; line-height:1.65; color:var(--fg-2); max-width:64ch; margin-top:20px; }
+  h2 { font-size:26px; font-weight:800; letter-spacing:-.02em; margin-bottom:8px; }
+  .sec { padding-top:64px; }
+  .sec + .sec { border-top:1px solid var(--line); }
+  .sub { font-size:15px; line-height:1.65; color:var(--fg-2); max-width:64ch; margin-bottom:32px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(320px,1fr)); gap:24px; }
+  .card { border:1px solid var(--line); background:var(--bg-win); display:flex; flex-direction:column; transition:border-color 160ms var(--ease); }
+  .card:hover { border-color:var(--line-strong); }
+  .card img { width:100%; aspect-ratio:1264/824; object-fit:cover; object-position:top left; display:block; border-bottom:1px solid var(--line); background:var(--bg-quiet); }
+  /* I pezzi (overlay, dialoghi) non hanno il rapporto della finestra: forzarglielo
+     taglierebbe via metà di quello che la didascalia nomina. Si vedono interi. */
+  .card img.wide { aspect-ratio:auto; object-fit:contain; }
+  .card__b { padding:16px; }
+  .card__t { font-size:15px; font-weight:700; }
+  .card__d { font-size:12.5px; color:var(--fg-2); line-height:1.6; margin-top:6px; text-wrap:pretty; }
+  .card__l { display:flex; gap:12px; margin-top:12px; font-size:11.5px; }
+  .files { display:grid; grid-template-columns:200px 1fr; gap:0 24px; }
+  .files > div { padding:14px 0; border-bottom:1px solid var(--line-2); font-size:13.5px; }
+  .files > div:nth-child(odd) { font-weight:700; }
+  .files > div:nth-child(even) { color:var(--fg-2); line-height:1.6; }
+  .dev { display:flex; flex-direction:column; gap:32px; }
+  .dev__i { border-left:3px solid var(--red); padding-left:20px; max-width:66ch; }
+  .dev__i h3 { font-size:17px; font-weight:700; margin-bottom:8px; }
+  .dev__i p { font-size:14px; line-height:1.65; color:var(--fg-2); text-wrap:pretty; }
+  .open { display:inline-flex; align-items:center; gap:8px; height:34px; padding:0 16px; font-size:13px; font-weight:700; background:var(--act); color:var(--act-fg); border:1px solid var(--act); border-radius:2px; }
+  .open:hover { background:var(--act-hover); border-color:var(--act-hover); color:var(--act-fg); }
+  a.plain { border-bottom-color:var(--line); color:var(--fg-2); }
+  a.plain:hover { color:var(--red); border-bottom-color:var(--red); }
+  @media (max-width:640px) { .files { grid-template-columns:1fr; gap:0; } h1 { font-size:32px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span class="thread"></span>
+      <span class="label">Handoff di design · 1.0</span>
+    </div>
+    <h1>Scriba</h1>
+    <p class="lede">Il design system di M's Works applicato a un'applicazione desktop. CSS puro, nessun framework, nessun controllo di form nativo, nessun font di rete. Le pagine qui sotto sono gli stessi file su cui è costruito il design: quello che approvi è letteralmente quello che passa in React.</p>
+  </div>
+
+  <div class="sec" style="padding-top:0">
+    <h2>Le schermate</h2>
+    <p class="sub">Ogni pagina si apre da sola in un browser e carica <code class="mono">tokens.css</code> + <code class="mono">app.css</code>. I PNG in <code class="mono">screenshots/</code> sono catture a 2× della finestra intera: alla scala del sistema le linee da 1px e le etichette da 10,5px restano leggibili.</p>
+    <div class="grid">
+
+      <div class="card">
+        <img src="screenshots/01-principale-analizzata.png" alt="Finestra principale, call analizzata">
+        <div class="card__b">
+          <div class="card__t">Finestra principale — call analizzata</div>
+          <p class="card__d">Il caso denso: elenco call, trascrizione, pannello task aperto sulle prove. Decide quasi tutti i componenti del sistema.</p>
+          <div class="card__l"><a href="principale-analizzata.html">Apri</a><a class="plain" href="screenshots/01-principale-analizzata.png">PNG</a></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <img src="screenshots/02-principale-registrazione.png" alt="Finestra principale, registrazione dal vivo">
+        <div class="card__b">
+          <div class="card__t">Finestra principale — registrazione</div>
+          <p class="card__d">Colonna destra in configurazione «durante», 288px: nota di lavoro, scatti, dispositivi. Trascrizione a 16px, riga provvisoria col cursore.</p>
+          <div class="card__l"><a href="principale-registrazione.html">Apri</a><a class="plain" href="screenshots/02-principale-registrazione.png">PNG</a></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <img src="screenshots/03-rassegna.png" alt="Rassegna task">
+        <div class="card__b">
+          <div class="card__t">Rassegna task</div>
+          <p class="card__d">Trascrizione ferma sulle righe citate a sinistra, una task alla volta a destra con la prova sotto ogni campo. C / X / ← / →.</p>
+          <div class="card__l"><a href="rassegna.html">Apri</a><a class="plain" href="screenshots/03-rassegna.png">PNG</a></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <img src="screenshots/04-impostazioni-motore.png" alt="Impostazioni, motore di analisi">
+        <div class="card__b">
+          <div class="card__t">Impostazioni — motore di analisi</div>
+          <p class="card__d">Piano dentro la finestra principale, non una finestra separata. La conseguenza resta scritta anche sul motore già in uso.</p>
+          <div class="card__l"><a href="impostazioni.html">Apri</a><a class="plain" href="screenshots/04-impostazioni-motore.png">PNG</a></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <img src="screenshots/05-impostazioni-modelli.png" alt="Impostazioni, modelli locali">
+        <div class="card__b">
+          <div class="card__t">Impostazioni — modelli locali</div>
+          <p class="card__d">Disco in testa, download sospendibile, verifica come stato visibile, «mancano 18,6 GB» invece di un errore a metà scaricamento.</p>
+          <div class="card__l"><a href="impostazioni.html">Apri</a><a class="plain" href="screenshots/05-impostazioni-modelli.png">PNG</a></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <img src="screenshots/06-archivio.png" alt="Archivio e ricerca">
+        <div class="card__b">
+          <div class="card__t">Archivio e ricerca</div>
+          <p class="card__d">Ricerca dentro il parlato, con la frase trovata sotto il titolo. Raggruppamento per cliente, e il peso dell'export mostrato prima.</p>
+          <div class="card__l"><a href="archivio.html">Apri</a><a class="plain" href="screenshots/06-archivio.png">PNG</a></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <img class="wide" src="screenshots/07-overlay.png" alt="Overlay in tre stati">
+        <div class="card__b">
+          <div class="card__t">Overlay — tre stati</div>
+          <p class="card__d">Striscia intera, ridotta e a riposo. Colori fissi e non i token: sotto può esserci qualunque cosa, quindi resta scura anche a tema chiaro.</p>
+          <div class="card__l"><a href="overlay-e-dialoghi.html">Apri</a><a class="plain" href="screenshots/07-overlay.png">PNG</a></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <img class="wide" src="screenshots/08-consenso-e-proposta.png" alt="Consenso e call rilevata">
+        <div class="card__b">
+          <div class="card__t">Consenso e call rilevata</div>
+          <p class="card__d">Il consenso è l'unico modale dell'app. «Call rilevata» sta in basso a destra, mai al centro: arriva mentre si sta entrando in riunione.</p>
+          <div class="card__l"><a href="overlay-e-dialoghi.html">Apri</a><a class="plain" href="screenshots/08-consenso-e-proposta.png">PNG</a></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <img class="wide" src="screenshots/09-errori.png" alt="I quattro livelli di errore">
+        <div class="card__b">
+          <div class="card__t">I quattro livelli di errore</div>
+          <p class="card__d">Nessuno è modale. Il livello dipende da quanto impedisce, non da quanto è grave in astratto.</p>
+          <div class="card__l"><a href="overlay-e-dialoghi.html">Apri</a><a class="plain" href="screenshots/09-errori.png">PNG</a></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <img src="screenshots/10-principale-analizzata-en.png" alt="Interfaccia in inglese">
+        <div class="card__b">
+          <div class="card__t">Interfaccia in inglese</div>
+          <p class="card__d">Chrome inglese, trascrizione e citazioni in italiano: è il caso reale, e mostra che lingua dell'interfaccia e lingua della call sono due assi indipendenti.</p>
+          <div class="card__l"><a href="principale-analizzata-en.html">Apri</a><a class="plain" href="screenshots/10-principale-analizzata-en.png">PNG</a></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <img src="screenshots/11-tema-scuro.png" alt="Tema scuro">
+        <div class="card__b">
+          <div class="card__t">Tema scuro</div>
+          <p class="card__d">La stessa pagina della prima scheda con <code class="mono">data-theme="dark"</code> sull'elemento radice. Nessuna regola di <code class="mono">app.css</code> cambia: l'inversione sta sul livello dei ruoli, mai sulla palette base.</p>
+          <div class="card__l"><a href="principale-analizzata-scuro.html">Apri</a><a class="plain" href="screenshots/11-tema-scuro.png">PNG</a></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>I file</h2>
+    <p class="sub">Quattro file portano tutto il sistema. Le pagine delle schermate li caricano, non li ricopiano.</p>
+    <div class="files">
+      <div><a href="tokens.css">tokens.css</a></div>
+      <div>Palette msworks esatta, le aggiunte di Scriba dichiarate una per una col motivo, tema chiaro e scuro, i valori fissi dell'overlay.</div>
+      <div><a href="app.css">app.css</a></div>
+      <div>Tutti i componenti. È lo stesso file che passa in React.</div>
+      <div><a href="comportamento.md">comportamento.md</a></div>
+      <div>Cinquanta regole che il codice deve rispettare, più cosa serve dal core e non esiste ancora.</div>
+      <div><a href="stringhe.md">stringhe.md</a></div>
+      <div>Chiave · italiano · inglese, con la colonna che segnala quali stringhe sono etichette di valori salvati e non vanno mai tradotte dove si confrontano.</div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>Le tre deviazioni da msworks</h2>
+    <p class="sub">Dichiarate, non silenziose. Ognuna nasce da una cosa che un sito non ha e un'applicazione sì.</p>
+    <div class="dev">
+      <div class="dev__i">
+        <h3>Il rosso non è il colore della CTA</h3>
+        <p>msworks usa il rosso per l'azione primaria. Qui è riservato a cinque cose: registrazione in corso, dati che escono dal computer, azione distruttiva, guasto che blocca, priorità critica. L'azione primaria è Ink pieno. Se «Analizza la call» fosse rossa, il pallino della registrazione smetterebbe di significare qualcosa.</p>
+      </div>
+      <div class="dev__i">
+        <h3>Il tema scuro esiste già, e msworks non lo sa</h3>
+        <p>Le sue sezioni su fondo nero hanno testo #B9B9B6, label #9A9A98, bordi #3A3A38. Il tema scuro di Scriba è quella terna promossa da trattamento di sezione a trattamento di pagina. Una sola aggiunta necessaria: #C60001 su #111111 fa 3,4:1, sotto soglia, quindi serve un rosso schiarito — unica eccezione alla palette, dichiarata.</p>
+      </div>
+      <div class="dev__i">
+        <h3>Due scale tipografiche invece di una</h3>
+        <p>La regola dei 17px nasce dal testo corrente letto di seguito, e nella finestra quel testo è la trascrizione: 15px a riposo, 16px in registrazione — sale, non scende. Controlli, metadati e celle hanno una scala d'interfaccia a parte, 10,5-14px, dichiarata come seconda scala e non come strappo.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>Cosa serve dal core</h2>
+    <p class="sub">Tre cose che il design chiede e che oggi non esistono. Stanno anche in fondo a <a href="comportamento.md">comportamento.md</a>.</p>
+    <div class="files">
+      <div>Righe di eco</div>
+      <div><code class="mono">Segmento.is_eco</code> e, per rendere la piega verificabile, <code class="mono">eco_di: segment_id</code>. Oggi <code class="mono">stt.filtro_eco</code> esiste solo come preferenza e all'interfaccia non arriva niente.</div>
+      <div>Lingua dell'interfaccia</div>
+      <div><code class="mono">aspetto.lingua: 'it' | 'en' | 'sistema'</code>, con la stessa propagazione immediata a tre finestre già risolta dal tema.</div>
+      <div>Valuta</div>
+      <div>Il costo è in USD (<code class="mono">meta.costo_usd</code>) e l'interfaccia mostra euro. O c'è un cambio vero, o si mostra USD: convertire con un tasso inventato è un numero finto in una schermata che vive di numeri veri.</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
