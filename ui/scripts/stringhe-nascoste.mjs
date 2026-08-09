@@ -58,9 +58,31 @@ for (const percorso of file(RADICE)) {
   const testo = senzaCommenti(readFileSync(percorso, 'utf8'))
   const trovate = []
 
+  // Tre nascondigli, non uno:
+  //   'letterale'   `template ${con} buchi`   >testo con {espressione} dentro<
+  // Il terzo sfugge anche all'altro contatore, che cerca `>[^<>{}]+<` e quindi
+  // salta ogni nodo di testo in cui compaia un'espressione — «Database
+  // «{schema.titolo}». Un campo lasciato su…» non lo vedeva nessuno dei due.
+  const pezzi = []
   for (const m of testo.matchAll(/(?<![\w$)])(['"])((?:[^'"\\\n]|\\.){2,})\1/g)) {
-    const s = m[2]
-    const prima = testo.slice(Math.max(0, m.index - 40), m.index)
+    pezzi.push([m[2], m.index])
+  }
+  // I pezzi che vengono da un taglio (template e nodi misti) possono finire a
+  // metà di un'espressione: `${` annidati e `=>` mandano a spasso qualunque
+  // ritaglio fatto con un'espressione regolare. Un frammento con dentro
+  // `=`, `;` o una graffa è codice tagliato male, non una frase.
+  const prosa = (p) => p.trim().length > 1 && !/[=;{}`'"[\]]|=>/.test(p)
+  for (const m of testo.matchAll(/`((?:[^`\\]|\\.)*)`/g)) {
+    for (const parte of m[1].split(/\$\{[^{}]*\}/)) if (prosa(parte)) pezzi.push([parte, m.index])
+  }
+  for (const m of testo.matchAll(/(?<![=\-!<>])>([^<>]{2,})</g)) {
+    if (!m[1].includes('{')) continue // già contato dall'altro metro
+    for (const parte of m[1].split(/\{[^{}]*\}/)) if (prosa(parte)) pezzi.push([parte.trim(), m.index])
+  }
+
+  for (const [grezzo, dove] of pezzi) {
+    const s = grezzo
+    const prima = testo.slice(Math.max(0, dove - 40), dove)
     if (/\bfrom\s+$|\b(import|require)\s*\($/.test(prima)) continue
     if (/\b(className|class|id|key|href|src|type|role|name|method|charset)=\s*$/.test(prima)) continue
     if (/\b(t|tr|etichettaValore|etichettaVoce)\(\s*$/.test(prima)) continue
