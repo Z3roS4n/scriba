@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RiquadroInline } from './Dialoghi'
-import { etichettaValore, useT, type Traduci } from './lingua'
+import { etichettaValore, useLocale, useT, type Traduci } from './lingua'
 import type { Analisi, CampoProva, Segmento, Sessione, Task } from './tipi'
 import { dataBreve, tempo } from './tipi'
 
@@ -118,6 +118,7 @@ export function Rassegna(props: {
   const { sessione, segmenti, indiceIniziale, onEsci } = props
 
   const tr = useT()
+  const locale = useLocale()
   const [analisi, setAnalisi] = useState<Analisi | null>(null)
   const [indice, setIndice] = useState(indiceIniziale)
   const [editando, setEditando] = useState<ChiaveCampo | null>(null)
@@ -320,7 +321,7 @@ export function Rassegna(props: {
         <span className="thread" />
         <span className="plane__title">Rassegna</span>
         <span className="plane__sub">
-          {nomeCall} · {dataBreve(sessione.started_at)}
+          {nomeCall} · {dataBreve(sessione.started_at, locale, tr('data.oggi'))}
         </span>
         <span className="plane__spacer" />
         <span className="rev__count num">

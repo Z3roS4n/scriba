@@ -27,6 +27,7 @@ import { SezioneMotore } from './impostazioni/Motore'
 import { SezioneRilevamento } from './impostazioni/Rilevamento'
 import { SezioneScorciatoie } from './impostazioni/Scorciatoie'
 import { SezioneTrascrizione } from './impostazioni/Trascrizione'
+import { useT, type Chiave } from './lingua'
 
 type Sezione =
   | 'motore'
@@ -41,18 +42,20 @@ type Sezione =
   | 'dati'
   | 'export'
 
-const NAV: { id: Sezione; etichetta: string }[] = [
-  { id: 'motore', etichetta: 'Motore di analisi' },
-  { id: 'modelli', etichetta: 'Modelli locali' },
-  { id: 'trascrizione', etichetta: 'Trascrizione' },
-  { id: 'rilevamento', etichetta: 'Rilevamento call' },
-  { id: 'scorciatoie', etichetta: 'Scorciatoie' },
-  { id: 'aspetto', etichetta: 'Aspetto' },
-  { id: 'analisi', etichetta: 'Analisi' },
-  { id: 'clienti', etichetta: 'Clienti' },
-  { id: 'database', etichetta: 'Database remoto' },
-  { id: 'dati', etichetta: 'Dati e privacy' },
-  { id: 'export', etichetta: 'Export' },
+/** Le undici sezioni. L'etichetta è una chiave, non un testo: l'id resta
+ *  quello che il codice confronta, e la traduzione avviene dove si mostra. */
+const NAV: { id: Sezione; chiave: Chiave }[] = [
+  { id: 'motore', chiave: 'sez.motore' },
+  { id: 'modelli', chiave: 'sez.modelli' },
+  { id: 'trascrizione', chiave: 'sez.trascrizione' },
+  { id: 'rilevamento', chiave: 'sez.rilevamento' },
+  { id: 'scorciatoie', chiave: 'sez.scorciatoie' },
+  { id: 'aspetto', chiave: 'sez.aspetto' },
+  { id: 'analisi', chiave: 'sez.analisi' },
+  { id: 'clienti', chiave: 'sez.clienti' },
+  { id: 'database', chiave: 'sez.database' },
+  { id: 'dati', chiave: 'sez.dati' },
+  { id: 'export', chiave: 'sez.export' },
 ]
 
 function Topbar() {
@@ -70,6 +73,7 @@ function Topbar() {
 
 export function Impostazioni() {
   const [sezione, setSezione] = useState<Sezione>('motore')
+  const t = useT()
   const [impostazioni, setImpostazioni] = useState<ImpostazioniT | null>(null)
   const [providers, setProviders] = useState<Provider[]>([])
   const [dispositivi, setDispositivi] = useState<Dispositivi | null>(null)
@@ -265,7 +269,7 @@ export function Impostazioni() {
               className={`navitem ${sezione === n.id ? 'is-on' : ''}`}
               onClick={() => setSezione(n.id)}
             >
-              {n.etichetta}
+              {t(n.chiave)}
             </button>
           ))}
         </nav>

@@ -13,7 +13,7 @@
  * di tre righe invece di quattro.
  */
 
-import { useT, type Traduci } from './lingua'
+import { useLocale, useT, type Traduci } from './lingua'
 import { giornoBreve, tempo, type Sessione, type StatoSessione } from './tipi'
 
 /**
@@ -57,6 +57,7 @@ export function ElencoCall(props: {
   onRiapri: () => void
 }) {
   const t = useT()
+  const locale = useLocale()
   const { sessioni, sessioneVista, sessioneCorrente, compatta, onApri, onRiapri } = props
 
   if (compatta) {
@@ -113,7 +114,7 @@ export function ElencoCall(props: {
             >
               <span className="call__title">{s.titolo || t('call.senza_titolo', { n: s.id })}</span>
               <span className="call__meta">
-                <span className="num">{giornoBreve(s.started_at)}</span>
+                <span className="num">{giornoBreve(s.started_at, locale, t('data.oggi'))}</span>
                 <span className="call__sep">·</span>
                 <span className="num">{s.durata_ms != null ? tempo(s.durata_ms) : '—'}</span>
               </span>

@@ -20,44 +20,44 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { giornoBreve, tempo, type Cliente, type Sessione, type StatoSessione } from './tipi'
 import { Select } from './Select'
+import { useLocale, useT, type Chiave } from './lingua'
 
 /** Le voci del filtro stato. 'analyzing' non c'è: non è mai salvato nel
  *  database — vive solo nello stato del processo — quindi non si può filtrare. */
-const STATI: Array<{ valore: StatoSessione | ''; etichetta: string }> = [
-  { valore: '', etichetta: 'Qualsiasi stato' },
-  { valore: 'analyzed', etichetta: 'Analizzate' },
-  { valore: 'recorded', etichetta: 'Registrate' },
-  { valore: 'failed', etichetta: 'Analisi non riuscita' },
-  { valore: 'recording', etichetta: 'In corso' },
+/** Il valore è quello che il core riceve, la chiave è quello che si legge:
+ *  sono due cose diverse e da qui in poi non si toccano più. */
+const STATI: Array<{ valore: StatoSessione | ''; chiave: Chiave }> = [
+  { valore: '', chiave: 'arch.stato.tutti' },
+  { valore: 'analyzed', chiave: 'arch.stato.analyzed' },
+  { valore: 'recorded', chiave: 'arch.stato.recorded' },
+  { valore: 'failed', chiave: 'arch.stato.failed' },
+  { valore: 'recording', chiave: 'arch.stato.recording' },
 ]
 
-const PERIODI: Array<{ giorni: number | null; etichetta: string }> = [
-  { giorni: null, etichetta: 'Sempre' },
-  { giorni: 30, etichetta: 'Ultimi 30 giorni' },
-  { giorni: 90, etichetta: 'Ultimi 3 mesi' },
-  { giorni: 365, etichetta: "Ultimo anno" },
+const PERIODI: Array<{ giorni: number | null; chiave: Chiave }> = [
+  { giorni: null, chiave: 'arch.periodo.sempre' },
+  { giorni: 30, chiave: 'arch.periodo.30' },
+  { giorni: 90, chiave: 'arch.periodo.90' },
+  { giorni: 365, chiave: 'arch.periodo.365' },
 ]
 
 const SENZA_CLIENTE = '__senza__'
 
-function etichettaStato(stato: StatoSessione): string {
-  switch (stato) {
-    case 'recording':
-      return 'in corso'
-    case 'analyzed':
-      return 'analizzata'
-    case 'failed':
-      return 'analisi non riuscita'
-    case 'analyzing':
-      return 'in analisi'
-    default:
-      return 'registrata'
-  }
+/** Lo stato di una call, per chi lo legge. `etichettaStato` faceva la stessa
+ *  cosa con uno `switch` di stringhe italiane: qui la traduzione arriva dal
+ *  catalogo e lo stato resta l'identificatore che il core manda. */
+const CHIAVE_STATO: Record<StatoSessione, Chiave> = {
+  analyzed: 'arch.stato.analyzed',
+  recorded: 'arch.stato.recorded',
+  failed: 'arch.stato.failed',
+  recording: 'arch.stato.recording',
+  analyzing: 'call.in_analisi',
 }
 
-/** «12.400 token» invece di «12400 token»: si legge a colpo d'occhio. */
-function conPunti(n: number): string {
-  return n.toLocaleString('it-IT')
+/** «12.400 token» invece di «12400 token»: si legge a colpo d'occhio. E il
+ *  separatore delle migliaia lo decide la lingua — in inglese è la virgola. */
+function conPunti(n: number, locale: string): string {
+  return n.toLocaleString(locale)
 }
 
 /**
@@ -70,6 +70,7 @@ function conPunti(n: number): string {
  * il resto messo insieme.
  */
 function PannelloIa({ call }: { call: Sessione[] }) {
+  const locale = useLocale()
   const [conTrascrizione, setConTrascrizione] = useState(false)
   const [peso, setPeso] = useState<{ token_stimati: number; call: number } | null>(null)
   const [esito, setEsito] = useState<string | null>(null)
@@ -109,7 +110,7 @@ function PannelloIa({ call }: { call: Sessione[] }) {
       return
     }
     setPercorso(r.body.percorso)
-    setEsito(`Scritto: ${conPunti(r.body.token_stimati)} token stimati.`)
+    setEsito(`Scritto: ${conPunti(r.body.token_stimati, locale)} token stimati.`)
   }
 
   return (
@@ -133,7 +134,7 @@ function PannelloIa({ call }: { call: Sessione[] }) {
       </button>
       <span className="ia__voce">Trascrizione integrale</span>
 
-      {peso && <span className="ia__peso">~{conPunti(peso.token_stimati)} token</span>}
+      {peso && <span className="ia__peso">~{conPunti(peso.token_stimati, locale)} token</span>}
 
       <button className="btn btn--rec" disabled={occupato || ids.length === 0} onClick={esporta}>
         {occupato ? 'Scrivo…' : 'Esporta'}
@@ -159,6 +160,8 @@ export function Archivio(props: {
   const { clienti, onApri, onEsci, onClientiCambiati } = props
 
   const [testo, setTesto] = useState('')
+  const t = useT()
+  const locale = useLocale()
   const [cliente, setCliente] = useState<string>('')
   const [stato, setStato] = useState<StatoSessione | ''>('')
   const [giorni, setGiorni] = useState<number | null>(null)
@@ -252,15 +255,16 @@ export function Archivio(props: {
     <div className="plane">
       <div className="plane__head">
         <span className="thread" />
-        <span className="plane__title">Archivio</span>
+        <span className="plane__title">{t('arch.titolo')}</span>
         <span className="plane__sub num">
-          {call.length} {call.length === 1 ? 'call' : 'call'}
-          {oreTotali >= 0.1 && ` · ${oreTotali.toFixed(1).replace('.', ',')} ore registrate`}
+          {t('arch.n_call', { n: call.length })}
+          {oreTotali >= 0.1 &&
+            ` · ${t('arch.ore', { n: oreTotali.toFixed(1).replace('.', ',') })}`}
         </span>
         <span className="plane__spacer" />
         <button className="esc" onClick={onEsci}>
           <span className="key">Esc</span>
-          torna alla call
+          {t('arch.esci')}
         </button>
       </div>
 
@@ -269,36 +273,36 @@ export function Archivio(props: {
           <input
             className="textfield"
             type="search"
-            placeholder="Cerca nei titoli e in quello che è stato detto…"
+            placeholder={t('arch.cerca')}
             value={testo}
             onChange={(e) => setTesto(e.target.value)}
           />
         </div>
         <Select
           opzioni={[
-            { id: '', etichetta: 'Tutti i clienti' },
-            { id: SENZA_CLIENTE, etichetta: 'Senza cliente' },
+            { id: '', etichetta: t('arch.clienti.tutti') },
+            { id: SENZA_CLIENTE, etichetta: t('call.senza_cliente') },
             ...clienti.map((c) => ({ id: String(c.id), etichetta: c.nome })),
           ]}
           selezionato={cliente}
           onScegli={setCliente}
         />
         <Select
-          opzioni={STATI.map((s) => ({ id: s.valore, etichetta: s.etichetta }))}
+          opzioni={STATI.map((s) => ({ id: s.valore, etichetta: t(s.chiave) }))}
           selezionato={stato}
           onScegli={(v) => setStato(v as StatoSessione | '')}
         />
         <Select
           opzioni={PERIODI.map((p) => ({
             id: p.giorni === null ? '' : String(p.giorni),
-            etichetta: p.etichetta,
+            etichetta: t(p.chiave),
           }))}
           selezionato={giorni === null ? '' : String(giorni)}
           onScegli={(v) => setGiorni(v === '' ? null : Number(v))}
         />
         <button className={`filter${raggruppa ? ' is-on' : ''}`} onClick={() => setRaggruppa((v) => !v)}>
           <span className="sq" />
-          Raggruppa per cliente
+          {t('arch.raggruppa')}
         </button>
         <span className="plane__spacer" />
         {/* L'archivio e' il posto in cui una selezione di call esiste gia': i
@@ -309,7 +313,7 @@ export function Archivio(props: {
           disabled={call.length === 0}
           onClick={() => setPerIa((v) => !v)}
         >
-          Per l'IA
+          {t('arch.per_ia')}
         </button>
       </div>
 
@@ -317,30 +321,33 @@ export function Archivio(props: {
 
       <div className="arch__body">
         {caricando && call.length === 0 ? (
-          <p className="state__body">Cerco…</p>
+          <p className="state__body">{t('arch.cerco')}</p>
         ) : call.length === 0 ? (
           <p className="state__body">
             {filtrato
-              ? 'Nessuna call corrisponde a questi filtri.'
-              : 'Nessuna call registrata: qui compariranno appena ne registri una.'}
+              ? t('arch.nessun_filtro')
+              : t('arch.nessuna')}
           </p>
         ) : (
           gruppi.map((g) => (
             <section key={g.nome ?? '__nessuno__'}>
               {raggruppa && (
                 <div className="arch__group">
-                  <span className="label">{g.nome ?? 'Senza cliente'}</span>
+                  <span className="label">{g.nome ?? t('call.senza_cliente')}</span>
                   <span className="arch__n num">
-                    {g.call.length} {g.call.length === 1 ? 'call' : 'call'}
+                    {t('arch.n_call', { n: g.call.length })}
                     {testo.trim() !== '' &&
-                      ` · ${g.call.filter((c) => c.frammento).length} con «${testo.trim()}»`}
+                      ` · ${t('arch.con_parola', {
+                        n: g.call.filter((c) => c.frammento).length,
+                        q: testo.trim(),
+                      })}`}
                   </span>
                 </div>
               )}
               {g.call.map((c) => (
                 <div className="arow" key={c.id}>
                   <button className="arow__apri" onClick={() => onApri(c.id)}>
-                    <span className="arow__t">{c.titolo || `Call #${c.id}`}</span>
+                    <span className="arow__t">{c.titolo || t('call.senza_titolo', { n: c.id })}</span>
                     {/* La frase trovata, non solo il titolo: e' la meta' del
                         motivo per cui l'archivio esiste (regola 48). */}
                     {c.frammento && <span className="arow__hit">{conEvidenza(c.frammento)}</span>}
@@ -352,7 +359,7 @@ export function Archivio(props: {
                   <span className="arow__c">
                     <Select
                       opzioni={[
-                        { id: '', etichetta: 'Senza cliente' },
+                        { id: '', etichetta: t('call.senza_cliente') },
                         ...clienti.map((cl) => ({ id: String(cl.id), etichetta: cl.nome })),
                       ]}
                       selezionato={c.client_id != null ? String(c.client_id) : ''}
@@ -360,12 +367,16 @@ export function Archivio(props: {
                       larghezza={200}
                     />
                   </span>
-                  <span className="arow__m num">{giornoBreve(c.started_at)}</span>
+                  <span className="arow__m num">{giornoBreve(c.started_at, locale, t('data.oggi'))}</span>
                   <span className="arow__m num">{c.durata_ms != null ? tempo(c.durata_ms) : '—'}</span>
                   <span className="arow__s">
                     {c.n_task > 0
-                      ? `${c.n_task} task${c.n_da_confermare > 0 ? ` · ${c.n_da_confermare} da confermare` : ''}`
-                      : etichettaStato(c.stato)}
+                      ? `${t('call.n_task', { n: c.n_task })}${
+                          c.n_da_confermare > 0
+                            ? ` · ${t('call.n_da_confermare', { n: c.n_da_confermare })}`
+                            : ''
+                        }`
+                      : t(CHIAVE_STATO[c.stato])}
                   </span>
                 </div>
               ))}
