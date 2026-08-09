@@ -7,6 +7,21 @@ Ogni voce è divisa in tre sezioni, ed è la più alta presente a decidere lo
 scatto di versione: **Cambiamenti che rompono** (maggiore), **Funzioni nuove**
 (minore), **Correzioni** (patch). Una sezione senza voci si lascia fuori.
 
+## 0.6.3 — 9 agosto 2026
+
+### Correzioni
+
+- **Scriba può finalmente contenere un font proprio.** Tre cose lo impedivano,
+  e nessuna delle tre dava errore: il CSP delle pagine non permetteva i font
+  nemmeno se locali, la build copiava sei file per nome e quindi non avrebbe
+  mai portato dentro una cartella, e i file non c'erano. Il risultato sarebbe
+  stato un'applicazione che parte nel carattere di ripiego e sembra a posto.
+  Ora Montserrat viaggia dentro l'installer con la sua licenza SIL OFL, e la
+  build **si ferma** se un font o un'immagine dichiarati in un foglio di stile
+  non finiscono nel pacchetto. L'interfaccia non cambia aspetto: il carattere
+  entrerà in uso con il nuovo design.
+  ([#81](https://github.com/Z3roS4n/scriba/issues/81))
+
 ## 0.6.2 — 9 agosto 2026
 
 ### Correzioni
