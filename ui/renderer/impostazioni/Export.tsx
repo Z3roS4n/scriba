@@ -32,7 +32,7 @@ export function SezioneExport({
         <div className="row">
           <div className="row__text">
             <b>Cartella predefinita</b>
-            <span style={{ fontFamily: 'var(--mono)' }}>{esp.cartella ?? 'Non ancora scelta'}</span>
+            <span style={{ fontFamily: 'var(--font-code)' }}>{esp.cartella ?? 'Non ancora scelta'}</span>
           </div>
           <button className="btn" onClick={onCambiaCartella}>
             Cambia

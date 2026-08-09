@@ -112,7 +112,7 @@ export function ControlloRifinitura({
     // Detto, non nascosto: manca un modello da scaricare, e il rimedio è a due
     // clic. Un comando che sparisce non si può cercare.
     return (
-      <p className="rif__nota">
+      <p className="refine__n">
         Rifare la trascrizione con più cura richiede il modello Canary, non ancora scaricato:
         Impostazioni → Modelli locali (circa 1 GB).
       </p>
@@ -122,11 +122,11 @@ export function ControlloRifinitura({
   if (inCorsoQui) {
     const quota = stato && stato.totale > 0 ? Math.round((stato.fatte / stato.totale) * 100) : 0
     return (
-      <div className="rif">
-        <div className="progress progress--quota" style={{ width: 90 }}>
+      <div className="refine">
+        <div className="progress progress--thin" style={{ width: 90 }}>
           <i style={{ width: `${quota}%` }}></i>
         </div>
-        <span className="rif__nota">
+        <span className="refine__n">
           rifaccio {NOME_TRACCIA[stato?.traccia ?? ''] ?? 'la trascrizione'} · {stato?.fatte} di{' '}
           {stato?.totale}
         </span>
@@ -138,18 +138,18 @@ export function ControlloRifinitura({
   }
 
   if (inCorsoAltrove) {
-    return <span className="rif__nota">C’è già una rifinitura in corso, su un’altra call.</span>
+    return <span className="refine__n">C’è già una rifinitura in corso, su un’altra call.</span>
   }
 
   if (esito) {
     const rifiutate = Object.entries(esito.tracce).filter(([, t]) => t.stato === 'non_allineata')
     return (
-      <div className="rif rif--esito">
-        <span className="chip chip--muted">
+      <div className="refine refine--esito">
+        <span className="chip chip--quiet">
           {esito.riscritte === 0 ? 'nessuna riga cambiata' : `${esito.riscritte} righe rifatte`}
         </span>
         {rifiutate.map(([nome, t]) => (
-          <p key={nome} className="rif__nota rif__nota--avviso">
+          <p key={nome} className="refine__n refine__n--rosso">
             <b>{NOME_TRACCIA[nome] ?? nome}</b>: non rifatta. {t.motivo}
           </p>
         ))}
@@ -163,7 +163,7 @@ export function ControlloRifinitura({
   if (conferma) {
     const { min, max } = stima(sessione.durata_ms)
     return (
-      <div className="rif rif--conferma">
+      <div className="refine refine--conferma">
         <div className="kv">
           <div className="kv__row">
             <span>Durata stimata</span>
@@ -172,13 +172,13 @@ export function ControlloRifinitura({
             </b>
           </div>
         </div>
-        <p className="rif__nota">
+        <p className="refine__n">
           Ripassa ogni riga con un modello più preciso, a cui la lingua si può imporre davvero: è la
           correzione per le frasi finite in un’altra lingua. Il testo di adesso resta salvato. Gira in
           locale, e puoi chiudere la finestra.
         </p>
         <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
-          <button className="btn btn--sm btn--confirm" onClick={avvia}>
+          <button className="btn btn--primary btn--sm" onClick={avvia}>
             Avvia
           </button>
           <button className="btn btn--sm" onClick={() => setConferma(false)}>
@@ -190,11 +190,11 @@ export function ControlloRifinitura({
   }
 
   return (
-    <div className="rif">
+    <div className="refine">
       <button className="btn btn--sm" onClick={() => setConferma(true)}>
         Rifai la trascrizione
       </button>
-      {errore && <span className="rif__nota rif__nota--avviso">{errore}</span>}
+      {errore && <span className="refine__n refine__n--rosso">{errore}</span>}
     </div>
   )
 }

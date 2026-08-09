@@ -249,7 +249,7 @@ export function Impostazioni() {
     <div className="win settings">
       <Topbar />
       {errore && (
-        <div className="notice notice--error">
+        <div className="notice notice--rosso">
           <span>{errore}</span>
           <div className="notice__spacer" />
           <button className="btn btn--sm" onClick={() => setErrore(null)}>
@@ -270,7 +270,7 @@ export function Impostazioni() {
           ))}
         </nav>
         <div className="settings__main">
-          <div className="sec" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
+          <div className="settings__main">
             {sezione === 'motore' && (
               <SezioneMotore providers={providers} onScegli={scegliProvider} onSalvaChiave={salvaChiave} />
             )}

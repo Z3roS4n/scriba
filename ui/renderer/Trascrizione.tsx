@@ -126,7 +126,7 @@ const RigaVoceDaNominare = memo(function RigaVoceDaNominare({
 
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
-      <span className="chip chip--muted">{voce.label}</span>
+      <span className="chip chip--quiet">{voce.label}</span>
       <input
         className="textfield"
         type="text"
@@ -142,7 +142,7 @@ const RigaVoceDaNominare = memo(function RigaVoceDaNominare({
         }}
         style={{ width: 130, padding: '3px 7px', fontSize: 'var(--fs-sm)' }}
       />
-      <button className="btn btn--sm btn--confirm" onClick={salva} disabled={salvando || !nome.trim()}>
+      <button className="btn btn--primary btn--sm" onClick={salva} disabled={salvando || !nome.trim()}>
         {salvando ? '…' : 'Salva'}
       </button>
     </span>
@@ -420,7 +420,7 @@ export const Trascrizione = forwardRef<
               <i key={i} style={{ height: h }} />
             ))}
           </div>
-          <p style={{ fontSize: 'var(--fs-line)', color: 'var(--fg2)' }}>
+          <p style={{ fontSize: 'var(--fs-read)', color: 'var(--fg-body)' }}>
             In ascolto. Nessuno ha ancora parlato.
           </p>
         </div>

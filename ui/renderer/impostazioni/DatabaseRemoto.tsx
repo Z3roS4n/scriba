@@ -262,7 +262,7 @@ export function SezioneDatabaseRemoto() {
             <div className="row">
               <div className="row__t">
                 <b>Collegato</b>
-                <span style={{ fontFamily: 'var(--mono)' }}>
+                <span style={{ fontFamily: 'var(--font-code)' }}>
                   {stato.server?.utente}@{stato.server?.host}:{stato.server?.porta}/
                   {stato.server?.database} · schema {stato.schema} ·{' '}
                   {MODALITA.find((m) => m.id === stato.modalita)?.etichetta ?? stato.modalita}

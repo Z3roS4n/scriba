@@ -333,7 +333,7 @@ function ControlloDiarizzazione({
     // MB), e chi apre questa call deve saperlo invece di chiedersi perche'
     // "Voce 2" non diventa mai un nome.
     return (
-      <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg5)', margin: 0 }}>
+      <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg-3)', margin: 0 }}>
         Distinguere le voci dentro «altri» non è disponibile: manca pyannote.audio, non incluso nel
         pacchetto. Va installato a parte.
       </p>
@@ -343,7 +343,7 @@ function ControlloDiarizzazione({
   if (disponibile !== true) return null
 
   if (giaDiarizzata) {
-    return <span className="chip chip--muted">voci distinte</span>
+    return <span className="chip chip--quiet">voci distinte</span>
   }
 
   if (inCorsoQui) {
@@ -352,14 +352,14 @@ function ControlloDiarizzazione({
         <div className="progress" style={{ width: 90 }}>
           <i></i>
         </div>
-        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--fg5)' }}>{stato.nota || 'in corso'}</span>
+        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--fg-3)' }}>{stato.nota || 'in corso'}</span>
       </div>
     )
   }
 
   if (inCorsoAltrove) {
     return (
-      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--fg5)' }}>
+      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--fg-3)' }}>
         {stato.fase === 'in_corso_altrove'
           ? stato.messaggio
           : "C'è già una diarizzazione in corso, su un'altra call."}
@@ -379,12 +379,12 @@ function ControlloDiarizzazione({
             </b>
           </div>
         </div>
-        <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg5)', margin: 0 }}>
+        <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg-3)', margin: 0 }}>
           Misurati davvero su questa macchina. Gira in locale: nessun dato esce dal computer. Puoi
           chiudere la finestra, il lavoro continua e lo ritrovi finito.
         </p>
         <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
-          <button className="btn btn--sm btn--confirm" onClick={onAvvia}>
+          <button className="btn btn--primary btn--sm" onClick={onAvvia}>
             Avvia
           </button>
           <button className="btn btn--sm" onClick={onAnnullaConferma}>
@@ -398,7 +398,7 @@ function ControlloDiarizzazione({
   if (erroreQui) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}>
-        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--red-dim)' }}>{erroreQui.messaggio}</span>
+        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--red)' }}>{erroreQui.messaggio}</span>
         <button className="btn btn--sm" onClick={onChiediConferma}>
           Riprova
         </button>
@@ -726,7 +726,7 @@ export function PannelloAnalisi({
       <section className="side">
         <div className="pad">
           <span className="label">ANALISI</span>
-          <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: 'var(--fg4)' }}>
+          <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-2)' }}>
             Seleziona una call per vederne l'analisi.
           </p>
         </div>
@@ -751,7 +751,7 @@ export function PannelloAnalisi({
               l'attenzione. Ma spenta non vuol dire vuota. */}
           <NotaDiLavoro sessionId={sessione.id} registrando={registrando} />
           <span className="label">ANALISI</span>
-          <p style={{ fontSize: 'var(--fs-md)', lineHeight: 1.6, color: 'var(--fg4)' }}>
+          <p style={{ fontSize: 'var(--fs-md)', lineHeight: 1.6, color: 'var(--fg-2)' }}>
             Si fa a call finita. Riassunto, punti salienti e task su tutta la registrazione, non a pezzi.
           </p>
           {providerAttivo?.esce_dal_computer && (
@@ -785,8 +785,8 @@ export function PannelloAnalisi({
             ))}
           </div>
           <div className="kv">
-            <p style={{ fontSize: 'var(--fs-base)', color: 'var(--fg2)' }}>Puoi chiudere la finestra.</p>
-            <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg4)' }}>
+            <p style={{ fontSize: 'var(--fs-ui)', color: 'var(--fg-body)' }}>Puoi chiudere la finestra.</p>
+            <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg-2)' }}>
               Il lavoro continua e lo ritrovi finito. Ti avvisiamo quando è pronto.
             </p>
           </div>
@@ -802,7 +802,7 @@ export function PannelloAnalisi({
     return (
       <section className="side">
         <div className="pad">
-          <span className="label" style={{ color: 'var(--red-dim)' }}>
+          <span className="label" style={{ color: 'var(--red)' }}>
             ANALISI NON RIUSCITA
           </span>
           <div className="errorbox">
@@ -833,7 +833,7 @@ export function PannelloAnalisi({
       <section className="side">
         <div className="pad">
           <span className="label">ANALISI</span>
-          <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: 'var(--fg4)' }}>Carico l'analisi…</p>
+          <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-2)' }}>Carico l'analisi…</p>
         </div>
       </section>
     )
@@ -865,7 +865,7 @@ export function PannelloAnalisi({
               c'e' finche' il riassunto non arriva. */}
           <NotaDiLavoro sessionId={sessione.id} registrando={registrando} />
           <span className="label">ANALISI</span>
-          <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: 'var(--fg2)' }}>
+          <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-body)' }}>
             Questa call non è ancora stata analizzata.
           </p>
           <button className="btn btn--primary btn--block" onClick={analizza} disabled={registrando}>

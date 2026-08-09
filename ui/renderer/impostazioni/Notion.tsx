@@ -281,7 +281,7 @@ export function SezioneNotion() {
             }}
           >
             {destinazioni.database.length === 0 ? (
-              <p style={{ color: 'var(--fg5)', fontSize: 'var(--fs-sm)' }}>
+              <p style={{ color: 'var(--fg-3)', fontSize: 'var(--fs-sm)' }}>
                 Nessun database condiviso con l’integrazione.
               </p>
             ) : (
@@ -338,7 +338,7 @@ export function SezioneNotion() {
                   <b>{campoTitolo.etichetta}</b>
                   <span>{campoTitolo.aiuto}</span>
                 </div>
-                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--fg5)', paddingTop: 3 }}>
+                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--fg-3)', paddingTop: 3 }}>
                   {schema.titolo_proprieta} · titolo
                 </span>
               </div>
@@ -370,7 +370,7 @@ export function SezioneNotion() {
                     <span
                       style={{
                         fontSize: 'var(--fs-sm)',
-                        color: 'var(--fg5)',
+                        color: 'var(--fg-3)',
                         maxWidth: 190,
                         textAlign: 'right',
                         paddingTop: 3,
@@ -442,7 +442,7 @@ export function SezioneNotion() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', maxHeight: 240, overflowY: 'auto' }}>
               {campoTitolo && (
                 <div style={{ display: 'flex', gap: 11, alignItems: 'flex-start' }}>
-                  <button type="button" className="checkbox is-on is-disabled" disabled aria-pressed>
+                  <button type="button" className="checkbox is-on" disabled aria-pressed>
                     ✓
                   </button>
                   <div className="row__text">

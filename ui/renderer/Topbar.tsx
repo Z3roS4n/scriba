@@ -64,7 +64,7 @@ export function Topbar(props: {
       <span className="brand">Scriba</span>
 
       <div className={`status ${registrando ? 'is-recording' : ''}`}>
-        <i className="status__dot" />
+        <span className={`sq ${registrando ? 'sq--rec' : 'sq--hollow'}`} />
         {testoStato}
       </div>
 
@@ -79,7 +79,7 @@ export function Topbar(props: {
             non c'e' tempo per aprire un menu e cercare quello giusto. */}
         {schermi.length <= 1 ? (
           <button
-            className={`btn ${!registrando ? 'is-disabled' : ''}`}
+            className="btn"
             disabled={!registrando}
             onClick={() => onScreenshot()}
           >
@@ -89,7 +89,7 @@ export function Topbar(props: {
           schermi.map((s, i) => (
             <button
               key={s.id}
-              className={`btn ${!registrando ? 'is-disabled' : ''}`}
+              className="btn"
               disabled={!registrando}
               title={`${s.etichetta} — ${s.larghezza}×${s.altezza}${s.principale ? ' (principale)' : ''}`}
               onClick={() => onScreenshot(s.id)}

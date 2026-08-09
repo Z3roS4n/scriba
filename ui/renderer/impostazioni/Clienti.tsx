@@ -165,11 +165,11 @@ export function SezioneClienti({
 
         {errore && <div className="alert alert--inline"><p>{errore}</p></div>}
         {esito && (
-          <p style={{ fontSize: 'var(--fs-md)', color: 'var(--fg4)', margin: 0 }}>{esito}</p>
+          <p style={{ fontSize: 'var(--fs-md)', color: 'var(--fg-2)', margin: 0 }}>{esito}</p>
         )}
 
         {clienti.length === 0 ? (
-          <p style={{ fontSize: 'var(--fs-md)', color: 'var(--fg5)', lineHeight: 1.6 }}>
+          <p style={{ fontSize: 'var(--fs-md)', color: 'var(--fg-3)', lineHeight: 1.6 }}>
             Nessun cliente. Finché non ce n'è, l'archivio funziona lo stesso: le call restano
             cercabili per testo e per data.
           </p>

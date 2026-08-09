@@ -995,3 +995,25 @@ select.arow__c:hover { border-color:var(--line); }
 .pop__voce:hover { background:var(--bg-quiet); color:var(--fg); }
 .pop__voce.is-on { background:var(--act); color:var(--act-fg); font-weight:var(--w-bold); }
 .pop__vuoto { padding:var(--sp-2) var(--sp-3); font-size:var(--fs-sm); color:var(--fg-3); }
+
+/* La barra d'avviso quando quello che dice è un guasto, non una notizia: il
+   filo in testa diventa rosso. `.notice` da sola resta la barra neutra —
+   livello 1 del design, «non impedisce niente». */
+.notice--rosso::before { background:var(--red); }
+.notice--rosso { color:var(--fg); }
+
+/* Rifinitura: il handoff dà `.refine` e i suoi due testi, non gli stati. */
+.refine--esito, .refine--conferma { flex-wrap:wrap; }
+.refine__n--rosso { color:var(--red); }
+
+/* Coppie chiave/valore, per i riepiloghi delle impostazioni. */
+.kv { display:flex; flex-direction:column; gap:var(--sp-2); }
+.kv__row { display:flex; align-items:baseline; gap:var(--sp-3); font-size:var(--fs-sm); color:var(--fg-2); }
+.kv__row b { color:var(--fg); font-weight:var(--w-bold); }
+
+/* Overlay: le due varianti che il handoff non nomina. «Ferma» e «Apri Scriba»
+   sono le uniche azioni della striscia e vanno viste senza cercarle — restano
+   dentro i colori fissi dell'overlay, che sotto ha contenuto arbitrario. */
+.ovbtn--stop { border-color:var(--ov-line); color:var(--ov-fg); }
+.ovbtn--stop:hover { background:var(--ov-red); border-color:var(--ov-red); color:var(--ov-fg); }
+.overlay__empty { padding:var(--sp-4); font-size:var(--fs-xs); color:var(--ov-fg-3); }

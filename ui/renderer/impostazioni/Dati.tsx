@@ -103,7 +103,7 @@ export function SezioneDati({
       <div className="settings__head">Dati e privacy</div>
       <div className="settings__body">
         <Versione />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', margin: 'var(--sp-7) 0 18px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', margin: 'var(--sp-4) 0 18px' }}>
           {voci.map((v) => (
             <div className="pathrow" key={v.chiave}>
               <div className="pathrow__text">
@@ -172,7 +172,7 @@ export function SezioneDati({
             }}
           >
             {sessioni.length === 0 ? (
-              <p style={{ color: 'var(--fg5)', fontSize: 'var(--fs-sm)' }}>Nessuna call registrata.</p>
+              <p style={{ color: 'var(--fg-3)', fontSize: 'var(--fs-sm)' }}>Nessuna call registrata.</p>
             ) : (
               sessioni.map((s) => (
                 <button
