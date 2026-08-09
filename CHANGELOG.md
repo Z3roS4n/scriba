@@ -7,6 +7,18 @@ Each entry is split into three sections, and the highest one present decides
 the version bump: **Breaking changes** (major), **New features** (minor),
 **Fixes** (patch). A section with nothing in it is left out.
 
+## 0.6.1 — 8 August 2026
+
+### Fixes
+
+- **The overlay no longer shows up in screen sharing.** Sharing your screen
+  during a call put the strip — with the live transcript of what was being
+  said — in front of everyone in the meeting. A comment in the code promised
+  the opposite, but the call that would have made it true had never been
+  written. The strip is now excluded from capture, including Scriba's own
+  screenshots, where you want the slide underneath and not your transcript on
+  top. ([#69](https://github.com/Z3roS4n/scriba/issues/69))
+
 ## 0.6.0 — 7 August 2026
 
 ### New features

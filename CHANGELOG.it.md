@@ -7,6 +7,19 @@ Ogni voce è divisa in tre sezioni, ed è la più alta presente a decidere lo
 scatto di versione: **Cambiamenti che rompono** (maggiore), **Funzioni nuove**
 (minore), **Correzioni** (patch). Una sezione senza voci si lascia fuori.
 
+## 0.6.1 — 8 agosto 2026
+
+### Correzioni
+
+- **L'overlay non finisce più nella condivisione dello schermo.** Chi
+  condivideva lo schermo durante una call mostrava a tutti i presenti la
+  striscia con la trascrizione dal vivo di quello che si stavano dicendo. Nel
+  codice c'era un commento che prometteva il contrario, ma la chiamata che
+  serviva non era mai stata scritta. Ora la striscia è esclusa dalla cattura —
+  compresa quella degli scatti di Scriba, dove si vuole la slide che sta sotto
+  e non la propria trascrizione sopra.
+  ([#69](https://github.com/Z3roS4n/scriba/issues/69))
+
 ## 0.6.0 — 7 agosto 2026
 
 ### Funzioni nuove
