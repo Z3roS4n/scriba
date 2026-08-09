@@ -42,6 +42,8 @@ from pathlib import Path
 
 import httpx
 
+from .i18n import nota_modello
+
 log = logging.getLogger(__name__)
 
 HF_API = "https://huggingface.co/api/models"
@@ -486,10 +488,10 @@ class ModelsManager:
                 return True, byte, quando
         return False, 0, None
 
-    def descrivi(self, modello: ModelloDisponibile) -> dict:
+    def descrivi(self, modello: ModelloDisponibile, lingua: str = "it") -> dict:
         """Un `Modello` completo, nella forma esatta di `ui/renderer/tipi.ts`."""
         if modello.scaricatore is not None:
-            return self._descrivi_gestito(modello)
+            return self._descrivi_gestito(modello, lingua)
 
         percorso = self.percorso(modello)
         parziale = self._parziale(percorso)
@@ -551,13 +553,13 @@ class ModelsManager:
             "velocita_bps": rt.velocita_bps if rt else None,
             "secondi_rimanenti": rt.secondi_rimanenti if rt else None,
             "installato_at": int(percorso.stat().st_mtime * 1000) if installato else None,
-            "nota": modello.nota,
+            "nota": nota_modello(modello.id, modello.nota, lingua),
             "errore": rt.errore if rt else None,
             "endpoint": endpoint,
             "ram_bytes": ram_bytes,
         }
 
-    def _descrivi_gestito(self, modello: ModelloDisponibile) -> dict:
+    def _descrivi_gestito(self, modello: ModelloDisponibile, lingua: str = "it") -> dict:
         """`Modello` per un download che una libreria esterna gestisce da sola.
 
         Niente byte progressivi, niente velocità, niente pausa: onnx-asr non ci
@@ -607,16 +609,18 @@ class ModelsManager:
             # dell'integrità: qui non si sta verificando niente, si sta
             # scaricando. Una riga che descrive la cosa sbagliata è peggio di
             # una riga assente.
-            "nota": "scaricamento in corso · non si può sospendere"
+            "nota": nota_modello(
+                "@in_corso", "scaricamento in corso · non si può sospendere", lingua
+            )
             if stato == "in_verifica"
-            else modello.nota,
+            else nota_modello(modello.id, modello.nota, lingua),
             "errore": rt.errore if rt else None,
             "endpoint": None,
             "ram_bytes": None,
         }
 
-    def elenco_modelli(self) -> list[dict]:
-        return [self.descrivi(m) for m in self.catalogo]
+    def elenco_modelli(self, lingua: str = "it") -> list[dict]:
+        return [self.descrivi(m, lingua) for m in self.catalogo]
 
     def modello(self, model_id: str) -> dict:
         """`Modello` completo per un id. Solleva `ValueError` se non esiste."""

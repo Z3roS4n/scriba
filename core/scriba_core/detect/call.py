@@ -314,7 +314,7 @@ class RilevatoreCall:
 
             if nome in IGNORATE:
                 riga["esito"] = "escluso"
-                riga["perche"] = "è nell'elenco dei processi da ignorare"
+                riga["perche"] = "ignorato"
                 continue
 
             # Il microfono sta davvero registrando? Le sessioni di cattura non
@@ -329,10 +329,7 @@ class RilevatoreCall:
                 # esclude solo chi non ha mai dato segnale da quando lo si
                 # osserva.
                 riga["esito"] = "escluso"
-                riga["perche"] = (
-                    "ha una sessione microfono aperta ma non ha mai dato segnale: "
-                    "sembra una sessione vecchia, non una registrazione in corso"
-                )
+                riga["perche"] = "sessione_vecchia"
                 continue
 
             if pid in riproducono:
@@ -341,11 +338,8 @@ class RilevatoreCall:
                 riga["riproduce_un_figlio"] = True
                 candidati[pid] = nome
             else:
-                riga["esito"] = "in attesa"
-                riga["perche"] = (
-                    "usa il microfono ma non risulta riprodurre audio, né lui né un suo "
-                    "processo figlio: in una riunione qualcuno parla"
-                )
+                riga["esito"] = "in_attesa"
+                riga["perche"] = "senza_audio"
 
         # Chi ha smesso torna disponibile per la volta successiva: finita una
         # riunione, la prossima con la stessa applicazione va segnalata.
@@ -362,18 +356,18 @@ class RilevatoreCall:
             self._visto_da.setdefault(pid, adesso)
             riga = per_pid[pid]
             if pid in self._gia_segnalati:
-                riga["esito"] = "già proposta"
-                riga["perche"] = "la proposta è già stata fatta per questa riunione"
+                riga["esito"] = "gia_proposta"
+                riga["perche"] = "gia_proposta"
                 continue
             atteso = adesso - self._visto_da[pid]
             if atteso < self.conferma_s:
-                riga["esito"] = "in conferma"
-                riga["perche"] = "sembra una riunione: si aspetta che la situazione regga"
+                riga["esito"] = "in_conferma"
+                riga["perche"] = "in_conferma"
                 riga["mancano_s"] = round(self.conferma_s - atteso, 1)
                 continue
 
             riga["esito"] = "riunione"
-            riga["perche"] = "microfono in uso e audio in riproduzione da abbastanza tempo"
+            riga["perche"] = "riunione"
             self._gia_segnalati.add(pid)
             self.on_call(
                 Call(

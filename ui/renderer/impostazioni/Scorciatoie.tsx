@@ -14,21 +14,14 @@ import type { KeyboardEvent as TastoEvento } from 'react'
 
 import type { Impostazioni } from '../tipi'
 import { scorciatoiaLeggibile } from '../tipi'
+import { etichettaValore, useT } from '../lingua'
 
-const PREDEFINITE: Record<Voce['chiave'], string> = {
+const PREDEFINITE: Record<(typeof VOCI)[number], string> = {
   scorciatoia_overlay: 'Alt+R',
   scorciatoia_screenshot: 'CommandOrControl+Shift+S',
 }
 
-interface Voce {
-  chiave: 'scorciatoia_overlay' | 'scorciatoia_screenshot'
-  nome: string
-}
-
-const VOCI: Voce[] = [
-  { chiave: 'scorciatoia_overlay', nome: 'Mostra e nascondi la striscia' },
-  { chiave: 'scorciatoia_screenshot', nome: 'Scatta uno screenshot' },
-]
+const VOCI = ['scorciatoia_overlay', 'scorciatoia_screenshot'] as const
 
 /** Tasti il cui `KeyboardEvent.key` non coincide col nome che vuole Electron. */
 const MAPPA_TASTI: Record<string, string> = {
@@ -61,10 +54,11 @@ export function SezioneScorciatoie({
   impostazioni: Impostazioni
   onCambia: (patch: Partial<Impostazioni>) => Promise<boolean>
 }) {
-  const [catturando, setCatturando] = useState<Voce['chiave'] | null>(null)
-  const [conflitti, setConflitti] = useState<Partial<Record<Voce['chiave'], boolean>>>({})
+  const t = useT()
+  const [catturando, setCatturando] = useState<(typeof VOCI)[number] | null>(null)
+  const [conflitti, setConflitti] = useState<Partial<Record<(typeof VOCI)[number], boolean>>>({})
 
-  const applica = async (chiave: Voce['chiave'], combinazione: string) => {
+  const applica = async (chiave: (typeof VOCI)[number], combinazione: string) => {
     setCatturando(null)
 
     // Risposta immediata: senza aspettare il giro di salvataggio, perché
@@ -81,7 +75,7 @@ export function SezioneScorciatoie({
     setConflitti((c) => ({ ...c, [chiave]: attiva !== combinazione }))
   }
 
-  const cattura = (chiave: Voce['chiave']) => (e: TastoEvento<HTMLButtonElement>) => {
+  const cattura = (chiave: (typeof VOCI)[number]) => (e: TastoEvento<HTMLButtonElement>) => {
     e.preventDefault()
     const combinazione = combinazioneDaEvento(e)
     if (combinazione) applica(chiave, combinazione)
@@ -89,39 +83,37 @@ export function SezioneScorciatoie({
 
   return (
     <>
-      <div className="settings__head">Scorciatoie</div>
+      <div className="settings__head">{t('sco.titolo')}</div>
       <div className="settings__body">
         <p>
-          Si premono, non si scrivono: clicca il campo e digita la combinazione. Se è già presa da un’altra
-          applicazione lo diciamo subito, perché Windows la rifiuta in silenzio.
+          {t('sco.titolo_nota')}
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
-          {VOCI.map((v) => {
-            const valore = impostazioni.interfaccia[v.chiave]
-            const inConflitto = Boolean(conflitti[v.chiave])
+          {VOCI.map((chiave) => {
+            const valore = impostazioni.interfaccia[chiave]
+            const inConflitto = Boolean(conflitti[chiave])
             return (
-              <div key={v.chiave} className={`shortcut ${inConflitto ? 'has-conflict' : ''}`}>
+              <div key={chiave} className={`shortcut ${inConflitto ? 'has-conflict' : ''}`}>
                 <div className="shortcut__top">
-                  <span className="shortcut__name">{v.nome}</span>
+                  <span className="shortcut__name">{etichettaValore(t, 'sco_nome', chiave)}</span>
                   <button
-                    className={`keycap ${catturando === v.chiave ? 'is-capturing' : ''}`}
+                    className={`keycap ${catturando === chiave ? 'is-capturing' : ''}`}
                     onClick={(e) => {
-                      setCatturando(v.chiave)
+                      setCatturando(chiave)
                       e.currentTarget.focus()
                     }}
-                    onBlur={() => setCatturando((c) => (c === v.chiave ? null : c))}
-                    onKeyDown={catturando === v.chiave ? cattura(v.chiave) : undefined}
+                    onBlur={() => setCatturando((c) => (c === chiave ? null : c))}
+                    onKeyDown={catturando === chiave ? cattura(chiave) : undefined}
                   >
-                    {catturando === v.chiave ? 'Premi i tasti…' : scorciatoiaLeggibile(valore)}
+                    {catturando === chiave ? t('sco2.premi') : scorciatoiaLeggibile(valore)}
                   </button>
-                  <button className="btn btn--sm" onClick={() => applica(v.chiave, PREDEFINITE[v.chiave])}>
-                    Ripristina
+                  <button className="btn btn--sm" onClick={() => applica(chiave, PREDEFINITE[chiave])}>
+                    {t('sco.ripristina')}
                   </button>
                 </div>
                 {inConflitto && (
                   <p className="shortcut__conflict">
-                    Già usata da un’altra applicazione. Windows la rifiuta in silenzio: finché non la cambi, il
-                    tasto non fa niente.
+                    {t('sco.gia_usata')}
                   </p>
                 )}
               </div>

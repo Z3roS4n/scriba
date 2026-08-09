@@ -15,38 +15,43 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import type { DiagnosticaRilevamento, Impostazioni, ProcessoVisto } from '../tipi'
+import { etichettaValore, useT } from '../lingua'
 
 /** Il colore dell'esito. Solo «riunione» è verde: il resto è informazione. */
 const CLASSE_ESITO: Record<string, string> = {
   riunione: 'vis__esito vis__esito--ok',
-  'in conferma': 'vis__esito vis__esito--attesa',
-  'già proposta': 'vis__esito vis__esito--ok',
+  in_conferma: 'vis__esito vis__esito--attesa',
+  gia_proposta: 'vis__esito vis__esito--ok',
 }
 
 function Processo({ p }: { p: ProcessoVisto }) {
+  const t = useT()
   return (
     <div className="vis__riga">
       <span className="vis__nome">{p.processo}</span>
       <span className="vis__pid">pid {p.pid}</span>
       <span className={CLASSE_ESITO[p.esito ?? ''] ?? 'vis__esito'}>
-        {p.esito ?? 'in valutazione'}
-        {p.mancano_s != null && ` · ancora ${p.mancano_s}s`}
+        {p.esito ? etichettaValore(t, 'ril_esito', p.esito) : t('ril2.in_valutazione')}
+        {p.mancano_s != null && t('ril2.ancora_s', { s: p.mancano_s })}
       </span>
       <span className="vis__segnale">
-        microfono {p.picco > 0 ? `attivo (${p.picco.toFixed(3)})` : 'muto'}
+        {p.picco > 0 ? t('ril2.mic_attivo', { picco: p.picco.toFixed(3) }) : t('ril2.mic_muto')}
         {' · '}
-        {p.riproduce
-          ? 'riproduce audio'
-          : p.riproduce_un_figlio
-            ? 'riproduce (da un processo figlio)'
-            : 'non riproduce'}
+        {t(
+          p.riproduce
+            ? 'ril2.riproduce'
+            : p.riproduce_un_figlio
+              ? 'ril2.riproduce_figlio'
+              : 'ril2.non_riproduce',
+        )}
       </span>
-      {p.perche && <span className="vis__perche">{p.perche}</span>}
+      {p.perche && <span className="vis__perche">{etichettaValore(t, 'ril_perche', p.perche)}</span>}
     </div>
   )
 }
 
 function Diagnostica() {
+  const t = useT()
   const [d, setD] = useState<DiagnosticaRilevamento | null>(null)
   const [aperto, setAperto] = useState(false)
 
@@ -69,14 +74,13 @@ function Diagnostica() {
     return (
       <div className="row">
         <div className="row__t">
-          <b>Cosa sta vedendo adesso</b>
+          <b>{t('ril.vede_ora')}</b>
           <span>
-            Se una riunione non viene riconosciuta, qui si legge quale delle condizioni non è
-            soddisfatta invece di doverlo indovinare.
+            {t('ril.vede_nota')}
           </span>
         </div>
         <button className="btn" onClick={() => setAperto(true)}>
-          Mostra
+          {t('ril.mostra')}
         </button>
       </div>
     )
@@ -86,21 +90,20 @@ function Diagnostica() {
     <>
       <div className="row">
         <div className="row__t">
-          <b>Cosa sta vedendo adesso</b>
-          <span>Si aggiorna da solo ogni due secondi, finché resta aperto.</span>
+          <b>{t('ril2.vede')}</b>
+          <span>{t('ril.aggiorna')}</span>
         </div>
         <button className="btn" onClick={() => setAperto(false)}>
-          Nascondi
+          {t('ril.nascondi')}
         </button>
       </div>
 
       {d === null ? (
-        <p className="vis__nota">Chiedo al core…</p>
+        <p className="vis__nota">{t('ril.chiedo')}</p>
       ) : d.spento ? (
         <div className="alert alert--inline">
           <p>
-            Il rilevamento è spento nell'interruttore qui sopra: nessuna applicazione viene
-            osservata, e nessuna riunione può essere proposta.
+            {t('ril.spento')}
           </p>
         </div>
       ) : (
@@ -108,26 +111,25 @@ function Diagnostica() {
           <div className="vis__stato">
             <span>
               {d.sonda?.viva
-                ? 'Sonda audio attiva'
+                ? t('ril2.sonda_attiva')
                 : d.in_ascolto
-                  ? 'Sonda audio non attiva'
-                  : 'Rilevamento non in ascolto'}
+                  ? t('ril2.sonda_spenta')
+                  : t('ril2.non_in_ascolto')}
             </span>
             {d.sonda?.ultima_lettura_fa_s != null && (
-              <span>ultima lettura {d.sonda.ultima_lettura_fa_s}s fa</span>
+              <span>{t('ril2.ultima_lettura', { s: d.sonda.ultima_lettura_fa_s })}</span>
             )}
-            {d.conferma_s != null && <span>conferma dopo {d.conferma_s}s</span>}
+            {d.conferma_s != null && <span>{t('ril2.conferma_dopo', { s: d.conferma_s })}</span>}
             {d.sonda != null && d.sonda.ripartenze > 0 && (
-              <span>{d.sonda.ripartenze} ripartenze</span>
+              <span>{t('ril2.ripartenze', { n: d.sonda.ripartenze })}</span>
             )}
           </div>
 
           {d.sonda?.rinunciato && (
             <div className="alert alert--inline">
               <p>
-                La sonda audio non è riuscita a restare in piedi e il rilevamento si è sospeso:
-                fino al prossimo riavvio di Scriba nessuna riunione verrà proposta.
-                {d.sonda.ultimo_motivo ? ` Ultimo motivo: ${d.sonda.ultimo_motivo}` : ''}
+                {t('ril2.rinunciato')}
+                {d.sonda.ultimo_motivo ? ` ${t('ril2.ultimo_motivo', { m: d.sonda.ultimo_motivo })}` : ''}
               </p>
             </div>
           )}
@@ -138,22 +140,18 @@ function Diagnostica() {
               Distinguerle è metà del motivo per cui questo pannello esiste. */}
           {d.sonda != null && d.sonda.ultima_lettura_fa_s === null ? (
             <p className="vis__nota">
-              La sonda è partita ma non ha ancora riferito niente. Se resta così per più di
-              qualche secondo non è una stanza silenziosa: è la sonda che non sta parlando.
+              {t('ril.sonda_muta')}
             </p>
           ) : d.sonda != null &&
             d.intervallo_s != null &&
             d.sonda.ultima_lettura_fa_s != null &&
             d.sonda.ultima_lettura_fa_s > d.intervallo_s * 3 ? (
             <p className="vis__nota">
-              L'ultima lettura è di {d.sonda.ultima_lettura_fa_s}s fa, e ne dovrebbe arrivare una
-              ogni {d.intervallo_s}s: la sonda ha smesso di riferire.
+              {t('ril2.sonda_zitta', { s: d.sonda.ultima_lettura_fa_s, ogni: d.intervallo_s })}
             </p>
           ) : d.processi.length === 0 ? (
             <p className="vis__nota">
-              Nessuna applicazione sta usando il microfono in questo momento. Entra in una
-              riunione e questa riga cambia entro un paio di secondi: se non cambia, il problema è
-              a monte del rilevamento.
+              {t('ril.nessuna_app')}
             </p>
           ) : (
             d.processi.map((p) => <Processo key={p.pid} p={p} />)
@@ -177,17 +175,18 @@ export function SezioneRilevamento({
   impostazioni: Impostazioni
   onCambia: (patch: Partial<Impostazioni>) => void
 }) {
+  const t = useT()
   const r = impostazioni.rilevamento
   const cambia = (patch: Partial<Impostazioni['rilevamento']>) => onCambia({ rilevamento: { ...r, ...patch } })
 
   return (
     <>
-      <div className="settings__head">Rilevamento automatico delle call</div>
+      <div className="settings__head">{t('ril.titolo')}</div>
       <div className="settings__body">
         <div className="row">
           <div className="row__t">
-            <b>Accorgiti da solo quando entro in call</b>
-            <span>Guarda quali applicazioni stanno usando il microfono. Non legge il contenuto della riunione.</span>
+            <b>{t('ril.accorgiti')}</b>
+            <span>{t('ril.accorgiti_nota')}</span>
           </div>
           <button
             className={`switch ${r.attivo ? 'is-on' : ''}`}
@@ -200,8 +199,8 @@ export function SezioneRilevamento({
         </div>
         <div className="row">
           <div className="row__t">
-            <b>Aspetta prima di propormelo</b>
-            <span>Evita la proposta per le chiamate di dieci secondi.</span>
+            <b>{t('ril.aspetta')}</b>
+            <span>{t('ril.aspetta_nota')}</span>
           </div>
           <div className="stepper">
             <button onClick={() => cambia({ conferma_s: Math.max(0, r.conferma_s - 5) })}>−</button>
@@ -211,15 +210,15 @@ export function SezioneRilevamento({
         </div>
         <div className="row">
           <div className="row__t">
-            <b>Cosa fare quando la rileva</b>
-            <span>Anche avviando da sola, il consenso resta obbligatorio: la registrazione parte solo dopo la spunta.</span>
+            <b>{t('ril.cosa_fare')}</b>
+            <span>{t('ril.cosa_fare_nota')}</span>
           </div>
           <div className="picker">
             <button className={!r.avvio_automatico ? 'is-on' : ''} onClick={() => cambia({ avvio_automatico: false })}>
-              Proponi
+              {t('ril.proponi')}
             </button>
             <button className={r.avvio_automatico ? 'is-on' : ''} onClick={() => cambia({ avvio_automatico: true })}>
-              Avvia da sola
+              {t('ril.avvia')}
             </button>
           </div>
         </div>

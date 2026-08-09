@@ -10,6 +10,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Riquadro } from './Dialoghi'
+import { etichettaValore, useLocale, useT, type Traduci } from './lingua'
 import { NotaDiLavoro } from './NotaDiLavoro'
 import { ControlloRifinitura, useRifinitura } from './Rifinitura'
 import type { Analisi, FaseAnalisi, Provider, Segmento, Sessione, StatoAnalisi, StatoTask, Task } from './tipi'
@@ -85,10 +86,10 @@ const CHIP_PRIORITA: Record<string, string> = {
 }
 
 /** «14 ago 2026». Solo per le task: la trascrizione usa tempo(), non date. */
-function dataEstesa(iso: string): string {
+function dataEstesa(iso: string, locale: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }).replace('.', '')
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' }).replace('.', '')
 }
 
 /** «X,XX $».
@@ -115,15 +116,20 @@ function formattaDurataMeta(ms: number): string {
   return `${Math.floor(totale / 60)}m ${totale % 60}s`
 }
 
-function oraCorrente(): string {
-  return new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+function oraCorrente(locale: string): string {
+  return new Date().toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
 }
 
 /** Scadenza risolta, detta a voce, o assente — la stessa logica del chip e
  * del campo in rassegna, quindi vive qui una volta sola. */
-function testoScadenza(t: Pick<Task, 'due_date' | 'due_raw'>): string | null {
-  if (t.due_date) return `${dataEstesa(t.due_date)}${t.due_raw ? ` · «${t.due_raw}»` : ''}`
-  if (t.due_raw) return `solo a voce: «${t.due_raw}»`
+function testoScadenza(
+  task: Pick<Task, 'due_date' | 'due_raw'>,
+  tr: Traduci,
+  locale: string,
+): string | null {
+  if (task.due_date)
+    return `${dataEstesa(task.due_date, locale)}${task.due_raw ? ` · «${task.due_raw}»` : ''}`
+  if (task.due_raw) return tr('pan.solo_a_voce', { q: task.due_raw })
   return null
 }
 
@@ -142,6 +148,8 @@ function SchedeTask({
   onProve: (task: Task) => void
   onRassegna: (indice: number) => void
 }) {
+  const tr = useT()
+  const locale = useLocale()
   const daConfermare = tasks.filter((t) => t.needs_review && t.stato === 'proposed').length
 
   return (
@@ -154,11 +162,11 @@ function SchedeTask({
         <div className="review">
           <div>
             <div className="review__n num">{daConfermare}</div>
-            <div className="review__t">task da confermare</div>
+            <div className="review__t">{tr('pan.da_confermare')}</div>
           </div>
           {daConfermare > 5 && (
             <button className="btn btn--primary btn--sm" onClick={() => onRassegna(0)}>
-              Passa in rassegna
+              {tr('pan.rassegna')}
             </button>
           )}
         </div>
@@ -174,7 +182,7 @@ function SchedeTask({
           ]
             .filter(Boolean)
             .join(' ')
-          const scadenza = testoScadenza(t)
+          const scadenza = testoScadenza(t, tr, locale)
 
           return (
             <article key={t.id} className={classi} tabIndex={0} onClick={() => onSeleziona(t.id)}>
@@ -186,20 +194,24 @@ function SchedeTask({
                   sono due cose diverse, e solo la seconda si va a chiedere. */}
               <div className="task__fields">
                 <span className={`field${t.assignee_text ? '' : ' is-missing'}`}>
-                  <span className="field__k">chi</span>
-                  {t.assignee_text || 'non detto'}
+                  <span className="field__k">{tr('pan.chi')}</span>
+                  {t.assignee_text || tr('pan.non_detto')}
                 </span>
                 <span className={`field${scadenza ? '' : ' is-missing'}`}>
-                  <span className="field__k">entro</span>
+                  <span className="field__k">{tr('pan.entro')}</span>
                   {t.due_date ? (
-                    <span className="num">{dataEstesa(t.due_date)}</span>
+                    <span className="num">{dataEstesa(t.due_date, locale)}</span>
                   ) : t.due_raw ? (
                     <span className="field__raw">{t.due_raw}</span>
                   ) : (
-                    'non detta'
+                    tr('pan.non_detta')
                   )}
                 </span>
-                {t.priorita && <span className={CHIP_PRIORITA[t.priorita] ?? 'chip'}>{t.priorita}</span>}
+                {t.priorita && (
+                  <span className={CHIP_PRIORITA[t.priorita] ?? 'chip'}>
+                    {etichettaValore(tr, 'priorita', t.priorita)}
+                  </span>
+                )}
               </div>
               <div className="task__row">
                 <button
@@ -209,7 +221,7 @@ function SchedeTask({
                     onProve(t)
                   }}
                 >
-                  {t.evidence.length === 1 ? '1 prova' : `${t.evidence.length} prove`}
+                  {tr(t.evidence.length === 1 ? 'pan.prova_1' : 'pan.prove_n', { n: t.evidence.length })}
                 </button>
                 {t.stato === 'proposed' && (
                   <>
@@ -220,7 +232,7 @@ function SchedeTask({
                         onImposta(t, 'confirmed')
                       }}
                     >
-                      Conferma
+                      {tr('pan.conferma')}
                     </button>
                     <button
                       className="btn btn--sm"
@@ -229,7 +241,7 @@ function SchedeTask({
                         onImposta(t, 'rejected')
                       }}
                     >
-                      Scarta
+                      {tr('pan.scarta')}
                     </button>
                     <button
                       className="btn btn--quiet btn--sm"
@@ -238,7 +250,7 @@ function SchedeTask({
                         onRassegna(tasks.findIndex((x) => x.id === t.id))
                       }}
                     >
-                      Modifica
+                      {tr('pan.modifica')}
                     </button>
                   </>
                 )}
@@ -252,7 +264,7 @@ function SchedeTask({
               {t.stato !== 'proposed' && (
                 // Annullabile dalla riga stessa: nessuna conferma modale.
                 <div className="task__settled">
-                  {t.stato === 'confirmed' ? 'confermata' : 'scartata'}
+                  {tr(t.stato === 'confirmed' ? 'pan.confermata' : 'pan.scartata')}
                   <button
                     className="btn--link"
                     onClick={(e) => {
@@ -260,7 +272,7 @@ function SchedeTask({
                       onImposta(t, 'proposed')
                     }}
                   >
-                    Annulla
+                    {tr('pan.annulla')}
                   </button>
                 </div>
               )}
@@ -324,6 +336,7 @@ function ControlloDiarizzazione({
   onAnnullaConferma: () => void
   onAvvia: () => void
 }) {
+  const t = useT()
   const inCorsoQui = stato?.fase === 'in_corso' && stato.sessionId === sessione.id
   const inCorsoAltrove =
     stato?.fase === 'in_corso_altrove' || (stato?.fase === 'in_corso' && stato.sessionId !== sessione.id)
@@ -335,8 +348,7 @@ function ControlloDiarizzazione({
     // "Voce 2" non diventa mai un nome.
     return (
       <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg-3)', margin: 0 }}>
-        Distinguere le voci dentro «altri» non è disponibile: manca pyannote.audio, non incluso nel
-        pacchetto. Va installato a parte.
+        {t('pan.no_pyannote')}
       </p>
     )
   }
@@ -344,7 +356,7 @@ function ControlloDiarizzazione({
   if (disponibile !== true) return null
 
   if (giaDiarizzata) {
-    return <span className="chip chip--quiet">voci distinte</span>
+    return <span className="chip chip--quiet">{t('pan.voci_distinte')}</span>
   }
 
   if (inCorsoQui) {
@@ -374,22 +386,21 @@ function ControlloDiarizzazione({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', maxWidth: 320 }}>
         <div className="kv">
           <div className="kv__row">
-            <span>Durata stimata</span>
+            <span>{t('pan.durata_stimata')}</span>
             <b>
               {min}-{max} min
             </b>
           </div>
         </div>
         <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg-3)', margin: 0 }}>
-          Misurati davvero su questa macchina. Gira in locale: nessun dato esce dal computer. Puoi
-          chiudere la finestra, il lavoro continua e lo ritrovi finito.
+          {t('pan.misurati')}
         </p>
         <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
           <button className="btn btn--primary btn--sm" onClick={onAvvia}>
-            Avvia
+            {t('pan.avvia')}
           </button>
           <button className="btn btn--sm" onClick={onAnnullaConferma}>
-            Annulla
+            {t('pan.annulla')}
           </button>
         </div>
       </div>
@@ -401,7 +412,7 @@ function ControlloDiarizzazione({
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}>
         <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--red)' }}>{erroreQui.messaggio}</span>
         <button className="btn btn--sm" onClick={onChiediConferma}>
-          Riprova
+          {t('pan.riprova')}
         </button>
       </div>
     )
@@ -409,7 +420,7 @@ function ControlloDiarizzazione({
 
   return (
     <button className="btn btn--sm" onClick={onChiediConferma}>
-      Distingui le voci
+      {t('pan.distingui')}
     </button>
   )
 }
@@ -440,6 +451,8 @@ export function PannelloAnalisi({
    * quando si sospetta che sia finita ma potrebbe essere passato un evento. */
   onRicaricaSegmenti: () => void
 }) {
+  const t = useT()
+  const locale = useLocale()
   const [analisi, setAnalisi] = useState<Analisi | null>(null)
   const [scheda, setScheda] = useState<'sum' | 'high' | 'task'>('sum')
   const [inCorso, setInCorso] = useState(false)
@@ -505,7 +518,7 @@ export function PannelloAnalisi({
         setDiarizStato((c) => (c?.fase === 'in_corso' && c.sessionId === ev.session_id ? null : c))
       } else if (ev.stato === 'errore') {
         setDiarizStato((c) => (c?.fase === 'in_corso' && c.sessionId === ev.session_id ? null : c))
-        setDiarizErrore({ sessionId: ev.session_id, messaggio: ev.dettaglio ?? 'Diarizzazione non riuscita.' })
+        setDiarizErrore({ sessionId: ev.session_id, messaggio: ev.dettaglio ?? t('pan.diariz_fallita') })
       }
     })
   }, [])
@@ -547,7 +560,7 @@ export function PannelloAnalisi({
         setDiarizStato((c) => (c?.fase === 'in_corso' && c.sessionId === idSessione ? null : c))
         setDiarizErrore({
           sessionId: idSessione,
-          messaggio: r.body?.detail ?? `Diarizzazione non riuscita (${r.status}).`,
+          messaggio: r.body?.detail ?? t('pan.diariz_fallita_n', { n: r.status }),
         })
       }
     }
@@ -595,7 +608,7 @@ export function PannelloAnalisi({
       } else {
         setInCorso(false)
         if (ev.stato === 'errore') {
-          setErrore({ messaggio: ev.dettaglio ?? 'Analisi non riuscita.', ora: oraCorrente() })
+          setErrore({ messaggio: ev.dettaglio ?? t('pan.fallita'), ora: oraCorrente(locale) })
         } else {
           carica(ev.session_id)
         }
@@ -636,12 +649,12 @@ export function PannelloAnalisi({
       const r = await window.scriba.post<{ detail?: string }>(`/sessions/${sessione.id}/analyze`)
       if (!r.ok) {
         setInCorso(false)
-        setErrore({ messaggio: r.body?.detail ?? `Analisi non riuscita (${r.status}).`, ora: oraCorrente() })
+        setErrore({ messaggio: r.body?.detail ?? t('pan.fallita_n', { n: r.status }), ora: oraCorrente(locale) })
       }
     } catch (e) {
       // Senza questo, un errore lasciava la spia accesa per sempre.
       setInCorso(false)
-      setErrore({ messaggio: e instanceof Error ? e.message : String(e), ora: oraCorrente() })
+      setErrore({ messaggio: e instanceof Error ? e.message : String(e), ora: oraCorrente(locale) })
     }
   }, [sessione])
 
@@ -726,9 +739,9 @@ export function PannelloAnalisi({
     return (
       <section className="side">
         <div className="pad">
-          <span className="label">ANALISI</span>
+          <span className="label">{t('pan.label')}</span>
           <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-2)' }}>
-            Seleziona una call per vederne l'analisi.
+            {t('pan.scegli_call')}
           </p>
         </div>
       </section>
@@ -751,9 +764,9 @@ export function PannelloAnalisi({
               e questa colonna durante la registrazione non deve chiamare
               l'attenzione. Ma spenta non vuol dire vuota. */}
           <NotaDiLavoro sessionId={sessione.id} registrando={registrando} />
-          <span className="label">ANALISI</span>
+          <span className="label">{t('pan.label')}</span>
           <p style={{ fontSize: 'var(--fs-md)', lineHeight: 1.6, color: 'var(--fg-2)' }}>
-            Si fa a call finita. Riassunto, punti salienti e task su tutta la registrazione, non a pezzi.
+            {t('pan.a_call_finita')}
           </p>
           {providerAttivo?.esce_dal_computer && (
             <div className="callout callout--inline">
@@ -769,7 +782,7 @@ export function PannelloAnalisi({
     return (
       <section className="side">
         <div className="pad">
-          <span className="label">ANALISI IN CORSO</span>
+          <span className="label">{t('pan.label_in_corso')}</span>
           <div className="progress">
             <i></i>
           </div>
@@ -786,13 +799,13 @@ export function PannelloAnalisi({
             ))}
           </div>
           <div className="kv">
-            <p style={{ fontSize: 'var(--fs-ui)', color: 'var(--fg-body)' }}>Puoi chiudere la finestra.</p>
+            <p style={{ fontSize: 'var(--fs-ui)', color: 'var(--fg-body)' }}>{t('pan.puoi_chiudere')}</p>
             <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg-2)' }}>
-              Il lavoro continua e lo ritrovi finito. Ti avvisiamo quando è pronto.
+              {t('pan.lavoro_continua')}
             </p>
           </div>
           <button className="btn" style={{ alignSelf: 'flex-start' }} onClick={interrompi}>
-            Interrompi
+            {t('pan.interrompi')}
           </button>
         </div>
       </section>
@@ -805,7 +818,7 @@ export function PannelloAnalisi({
         <div className="side__head">
           <div className="side__eyebrow">
             <span className="thread" />
-            <span className="label">Analisi</span>
+            <span className="label">{t('pan.titolo')}</span>
           </div>
         </div>
         <div className="side__body">
@@ -824,12 +837,12 @@ export function PannelloAnalisi({
                 motore non è un gesto che questo pannello possa fare da solo, e
                 far finta di sì manderebbe a cercare il comando dove non c'è. */}
             <Riquadro
-              titolo="Analisi non riuscita"
-              testo={`${errore.messaggio}${errore.ora ? ` · ultimo tentativo ${errore.ora}` : ''}`}
+              titolo={t('pan.fallita_titolo')}
+              testo={`${errore.messaggio}${errore.ora ? ` · ${t('pan.ultimo_tentativo', { ora: errore.ora })}` : ''}`}
               azioni={[
-                { etichetta: 'Riprova', primaria: true, onClick: analizza },
-                { etichetta: 'Avvia il modello locale…', onClick: () => window.scriba.apriImpostazioni() },
-                { etichetta: 'Usa un altro motore…', onClick: () => window.scriba.apriImpostazioni() },
+                { etichetta: t('pan.riprova'), primaria: true, onClick: analizza },
+                { etichetta: t('pan.avvia_locale'), onClick: () => window.scriba.apriImpostazioni() },
+                { etichetta: t('pan.altro_motore'), onClick: () => window.scriba.apriImpostazioni() },
               ]}
             />
           </div>
@@ -842,8 +855,8 @@ export function PannelloAnalisi({
     return (
       <section className="side">
         <div className="pad">
-          <span className="label">ANALISI</span>
-          <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-2)' }}>Carico l'analisi…</p>
+          <span className="label">{t('pan.label')}</span>
+          <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-2)' }}>{t('pan.carico')}</p>
         </div>
       </section>
     )
@@ -874,24 +887,24 @@ export function PannelloAnalisi({
               che ha qualcosa da dire, e a call appena finita e' quello che
               c'e' finche' il riassunto non arriva. */}
           <NotaDiLavoro sessionId={sessione.id} registrando={registrando} />
-          <span className="label">ANALISI</span>
+          <span className="label">{t('pan.label')}</span>
           <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-body)' }}>
-            Questa call non è ancora stata analizzata.
+            {t('pan.non_analizzata')}
           </p>
           <button className="btn btn--primary btn--block" onClick={analizza} disabled={registrando}>
-            Analizza la call
+            {t('pan.analizza')}
           </button>
           <div className="kv">
             <div className="kv__row">
-              <span>Motore</span>
+              <span>{t('pan.motore')}</span>
               <b>{providerAttivo?.etichetta ?? '—'}</b>
             </div>
             <div className="kv__row">
-              <span>Durata stimata</span>
+              <span>{t('pan.durata_stimata')}</span>
               <b>{minutiStimati != null ? `circa ${minutiStimati} min` : '—'}</b>
             </div>
             <div className="kv__row">
-              <span>Costo stimato</span>
+              <span>{t('pan.costo')}</span>
               <b>{costoTesto}</b>
             </div>
           </div>
@@ -899,8 +912,7 @@ export function PannelloAnalisi({
           {providerAttivo?.esce_dal_computer && (
             <div className="callout">
               <p>
-                La trascrizione di {minutiSessione} minuti esce da questo computer e viene inviata a{' '}
-                {providerAttivo.etichetta}.
+                {t('pan.esce_dal_computer', { min: minutiSessione, dove: providerAttivo.etichetta })}
               </p>
             </div>
           )}
@@ -946,10 +958,10 @@ export function PannelloAnalisi({
       <div className="side__head">
         <div className="side__eyebrow">
           <span className="thread" />
-          <span className="label">Analisi</span>
+          <span className="label">{t('pan.titolo')}</span>
           <div className="side__actions">
             <button className="btn btn--sm" onClick={analizza} disabled={registrando}>
-              Rianalizza
+              {t('pan.rianalizza')}
             </button>
           </div>
         </div>
@@ -968,13 +980,13 @@ export function PannelloAnalisi({
 
       <div className="tabs" role="tablist">
           <button className={`tab${scheda === 'sum' ? ' is-on' : ''}`} onClick={() => setScheda('sum')}>
-            Riassunto
+            {t('pan.riassunto')}
           </button>
           <button className={`tab${scheda === 'high' ? ' is-on' : ''}`} onClick={() => setScheda('high')}>
-            Punti salienti<span className="tab__n num">{salienti.length}</span>
+            {t('pan.salienti')}<span className="tab__n num">{salienti.length}</span>
           </button>
           <button className={`tab${scheda === 'task' ? ' is-on' : ''}`} onClick={() => setScheda('task')}>
-            Task<span className="tab__n num">{tasks.length}</span>
+            {t('pan.task')}<span className="tab__n num">{tasks.length}</span>
           </button>
       </div>
 
@@ -1036,7 +1048,7 @@ export function PannelloAnalisi({
       <div className="side__body" hidden={scheda !== 'task'}>
         {tasks.length === 0 ? (
           <p className="sum__p" style={{ padding: 'var(--sp-5) var(--sp-6)' }}>
-            Nessun impegno individuato.
+            {t('pan.nessun_impegno')}
           </p>
         ) : (
           <SchedeTask

@@ -15,6 +15,8 @@ import { useSchermi } from './schermi'
 import { useTema } from './tema'
 import type { Impostazioni, Traccia } from './tipi'
 import { scorciatoiaLeggibile, tempo } from './tipi'
+import { ContestoLingua, useLingua } from './lingua'
+import { useT } from './lingua'
 
 interface Riga {
   chiave: string
@@ -49,6 +51,7 @@ function LineaOverlay({ riga, conMinuto }: { riga: Riga; conMinuto: boolean }) {
 }
 
 function App() {
+  const t = useT()
   const [righe, setRighe] = useState<Riga[]>([])
   const [registrando, setRegistrando] = useState(false)
   const [trascorsi, setTrascorsi] = useState(0)
@@ -179,9 +182,9 @@ function App() {
         {registrando ? (
           <span className="overlay__timer">{tempo(trascorsi)}</span>
         ) : (
-          <span style={{ fontSize: 'var(--fs-md)' }}>Scriba</span>
+          <span style={{ fontSize: 'var(--fs-md)' }}>{t('ovl.nome')}</span>
         )}
-        {scattoRecente && <span className="overlay__flash">Salvato nella trascrizione</span>}
+        {scattoRecente && <span className="overlay__flash">{t('ovl.salvato')}</span>}
         <div className="overlay__spacer" />
         {registrando ? (
           ridotto ? (
@@ -189,16 +192,16 @@ function App() {
               {/* Nella striscia ridotta resta un pulsante solo, sul principale:
                   sono 420 px, e riempirli di numeri toglierebbe spazio proprio
                   alla trascrizione, che è il motivo per cui la striscia esiste. */}
-              <button className="ovbtn ovbtn--icon" aria-label="Scatta" onClick={() => scatta()}>
+              <button className="ovbtn ovbtn--icon" aria-label={t('ovl.scatta')} onClick={() => scatta()}>
                 ◎
               </button>
-              <button className="ovbtn ovbtn--icon" aria-label="Ferma" onClick={ferma}>
+              <button className="ovbtn ovbtn--icon" aria-label={t('ovl.ferma')} onClick={ferma}>
                 ■
               </button>
-              <button className="ovbtn ovbtn--icon" aria-label="Ingrandisci la striscia" onClick={alternaRidotto}>
+              <button className="ovbtn ovbtn--icon" aria-label={t('ovl.ingrandisci')} onClick={alternaRidotto}>
                 ▢
               </button>
-              <button className="ovbtn ovbtn--icon" aria-label="Chiudi" onClick={nascondi}>
+              <button className="ovbtn ovbtn--icon" aria-label={t('ovl.chiudi')} onClick={nascondi}>
                 ✕
               </button>
             </>
@@ -208,7 +211,7 @@ function App() {
                   senza uscire dalla call per cercare una finestra. */}
               {schermi.length <= 1 ? (
                 <button className="ovbtn" onClick={() => scatta()}>
-                  Scatta
+                  {t('ovl.scatta')}
                 </button>
               ) : (
                 schermi.map((s, i) => (
@@ -218,17 +221,17 @@ function App() {
                     title={`${s.etichetta} — ${s.larghezza}×${s.altezza}${s.principale ? ' (principale)' : ''}`}
                     onClick={() => scatta(s.id)}
                   >
-                    Scatta {i + 1}
+                    {t('ovl.scatto_n', { n: i + 1 })}
                   </button>
                 ))
               )}
               <button className="ovbtn ovbtn--stop" onClick={ferma}>
-                Ferma
+                {t('ovl.ferma')}
               </button>
-              <button className="ovbtn ovbtn--icon" aria-label="Riduci la striscia" onClick={alternaRidotto}>
+              <button className="ovbtn ovbtn--icon" aria-label={t('ovl.riduci')} onClick={alternaRidotto}>
                 ▢
               </button>
-              <button className="ovbtn ovbtn--icon" aria-label="Chiudi" onClick={nascondi}>
+              <button className="ovbtn ovbtn--icon" aria-label={t('ovl.chiudi')} onClick={nascondi}>
                 ✕
               </button>
             </>
@@ -236,9 +239,9 @@ function App() {
         ) : (
           <>
             <button className="ovbtn ovbtn--stop" onClick={apriPrincipale}>
-              Registra
+              {t('ovl.registra')}
             </button>
-            <button className="ovbtn ovbtn--icon" aria-label="Chiudi" onClick={nascondi}>
+            <button className="ovbtn ovbtn--icon" aria-label={t('ovl.chiudi')} onClick={nascondi}>
               ✕
             </button>
           </>
@@ -249,7 +252,7 @@ function App() {
         scattoRecente && !ridotto ? (
           <div className="overlay__shot">
             <i />
-            <span>Lo screenshot finisce nella trascrizione al minuto in cui è stato preso.</span>
+            <span>{t('ovl.scatto_nota')}</span>
           </div>
         ) : (
           <div className="overlay__lines">
@@ -260,7 +263,7 @@ function App() {
         )
       ) : (
         <div className="overlay__empty">
-          <span>Non sto registrando.</span>
+          <span>{t('ovl.fermo')}</span>
           <small>
             {scorciatoiaLeggibile(scorciatoie.overlay)} nasconde · {scorciatoiaLeggibile(scorciatoie.screenshot)}{' '}
             scatta
@@ -271,4 +274,19 @@ function App() {
   )
 }
 
-createRoot(document.getElementById('root')!).render(<App />)
+/**
+ * La lingua avvolge tutto l'albero. Un contesto e non una variabile di modulo:
+ * i componenti sotto `memo` non si ridisegnerebbero al cambio, perché le loro
+ * prop non cambiano — e una schermata che resta nella lingua di prima è il
+ * modo in cui una traduzione si dimentica un pezzo senza che nessuno lo veda.
+ */
+function ConLingua({ children }: { children: React.ReactNode }) {
+  const { risolta } = useLingua()
+  return <ContestoLingua.Provider value={risolta}>{children}</ContestoLingua.Provider>
+}
+
+createRoot(document.getElementById('root')!).render(
+  <ConLingua>
+    <App />
+  </ConLingua>,
+)

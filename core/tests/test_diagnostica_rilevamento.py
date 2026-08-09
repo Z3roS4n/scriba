@@ -48,7 +48,7 @@ def test_all_inizio_non_ha_visto_niente(rilevatore: RilevatoreCall) -> None:
 def test_un_processo_escluso_dice_di_esserlo(rilevatore: RilevatoreCall) -> None:
     rilevatore._giro(lettura(voce(10, "scriba.exe")))
     assert riga(rilevatore, 10)["esito"] == "escluso"
-    assert "ignorare" in riga(rilevatore, 10)["perche"]
+    assert riga(rilevatore, 10)["perche"] == "ignorato"
 
 
 def test_microfono_senza_segnale(rilevatore: RilevatoreCall) -> None:
@@ -56,22 +56,22 @@ def test_microfono_senza_segnale(rilevatore: RilevatoreCall) -> None:
     rilevatore._giro(lettura(voce(11, "chrome.exe", picco=0.0), riproducono=(11,)))
     r = riga(rilevatore, 11)
     assert r["esito"] == "escluso"
-    assert "mai dato segnale" in r["perche"]
+    assert r["perche"] == "sessione_vecchia"
 
 
 def test_microfono_ma_nessuno_parla(rilevatore: RilevatoreCall) -> None:
     """Microfono acceso e nessun audio in uscita: dettatura, non riunione."""
     rilevatore._giro(lettura(voce(12, "chrome.exe")))
     r = riga(rilevatore, 12)
-    assert r["esito"] == "in attesa"
-    assert "riprodurre audio" in r["perche"]
+    assert r["esito"] == "in_attesa"
+    assert r["perche"] == "senza_audio"
     assert r["riproduce"] is False
 
 
 def test_in_conferma_dice_quanto_manca(rilevatore: RilevatoreCall) -> None:
     rilevatore._giro(lettura(voce(13, "zoom.exe"), riproducono=(13,)))
     r = riga(rilevatore, 13)
-    assert r["esito"] == "in conferma"
+    assert r["esito"] == "in_conferma"
     # Il primo giro non consuma attesa: manca ancora tutta.
     assert r["mancano_s"] == pytest.approx(5.0, abs=0.2)
 
@@ -86,7 +86,7 @@ def test_dopo_la_proposta_non_ripete(rilevatore: RilevatoreCall) -> None:
     rilevatore.conferma_s = 0.0
     rilevatore._giro(lettura(voce(15, "zoom.exe"), riproducono=(15,)))
     rilevatore._giro(lettura(voce(15, "zoom.exe"), riproducono=(15,)))
-    assert riga(rilevatore, 15)["esito"] == "già proposta"
+    assert riga(rilevatore, 15)["esito"] == "gia_proposta"
 
 
 def test_il_picco_si_riporta_come_lo_riferisce_la_sonda(rilevatore: RilevatoreCall) -> None:

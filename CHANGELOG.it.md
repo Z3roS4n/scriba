@@ -7,6 +7,27 @@ Ogni voce è divisa in tre sezioni, ed è la più alta presente a decidere lo
 scatto di versione: **Cambiamenti che rompono** (maggiore), **Funzioni nuove**
 (minore), **Correzioni** (patch). Una sezione senza voci si lascia fuori.
 
+## 1.1.0 — 10 agosto 2026
+
+### Funzioni nuove
+
+- **Scriba parla inglese.** Impostazioni → Aspetto → Lingua dell'interfaccia:
+  italiano, inglese, o come il sistema. Vale subito, senza riavviare, per la
+  finestra principale, le impostazioni, la striscia sopra la call, il menu
+  della barra e il messaggio che compare se il core non parte. Non tocca la
+  lingua delle call, che resta in Trascrizione: un'interfaccia in inglese
+  sopra una riunione in italiano è il caso normale, non un errore.
+- Date, ore e dimensioni seguono la lingua: «14 ago 2026» e «6,4 GB» in
+  inglese diventano "14 Aug 2026" e "6.4 GB".
+- Anche i testi che nascono nel core tornano nella stessa lingua: i motori di
+  analisi con i loro rimedi, le fasi dell'analisi, la nota sotto ogni modello
+  locale, l'elenco dei campi Notion, il modello dati del database remoto e i
+  messaggi d'errore. La lingua viaggia in `Accept-Language`, aggiunta in un
+  punto solo: nessuna rotta può dimenticarsene.
+- Quello che Scriba confronta non si traduce. `local`, `confirmed`, `mic` e
+  gli altri identificatori restano uguali nelle due lingue: si etichettano
+  dove si mostrano, mai dove si controllano.
+
 ## 1.0.0 — 9 agosto 2026
 
 ### Cambiamenti che rompono

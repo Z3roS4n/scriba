@@ -190,7 +190,7 @@ export interface Segmento {
    * ed è l'unica cosa che non può sbagliare. Questo campo la raffina, non la
    * sostituisce.
    */
-  speaker?: { id: number; label: string; nome_reale: string | null } | null
+  speaker?: { id: number; label: string; numero?: number | null; nome_reale: string | null } | null
   /**
    * Il microfono ha ripreso l'altoparlante: queste parole ci sono già sulla
    * traccia degli altri, dette da chi le ha dette.
@@ -222,7 +222,12 @@ export interface Scatto {
 export interface Voce {
   id: number
   ruolo: 'me' | 'them'
+  /** Come sta scritta nel database: «Voce 3», «io», «altri». **Non si mostra**
+   *  — è un identificatore che il core genera e rilegge. Per mostrarla si usa
+   *  `numero` con `etichettaVoce`. */
   label: string
+  /** Il numero della voce, quando ne ha uno. null per «io» e «altri». */
+  numero?: number | null
   nome_reale: string | null
   confermato: boolean
 }
@@ -444,6 +449,9 @@ export interface Impostazioni {
     overlay_ridotto?: boolean
     /** 'scuro' | 'chiaro' | 'sistema'. Vedi renderer/tema.ts. */
     tema?: string
+    /** Lingua del chrome: 'sistema' | 'it' | 'en'. Non è `stt.lingua`, che è
+     *  la lingua della call e decide riassunto e task. */
+    lingua?: string
   }
   rilevamento: {
     attivo: boolean
@@ -571,7 +579,10 @@ export function tempo(ms: number): string {
 }
 
 /** «12 ago · 14:05». Oggi diventa «oggi», che è come lo si direbbe a voce. */
-export function giornoBreve(epochMs: number): string {
+/** `oggi` arriva da fuori perché è una parola, non un formato: `Intl` non ce
+ *  l'ha, e lasciarla scritta qui la faceva restare italiana dentro una data
+ *  inglese — "oggi · 41:52" accanto a "12 Aug · 52:14". */
+export function giornoBreve(epochMs: number, locale = 'it-IT', oggiTesto = 'oggi'): string {
   const d = new Date(epochMs)
   const oggi = new Date()
   const stessoGiorno =
@@ -579,8 +590,8 @@ export function giornoBreve(epochMs: number): string {
     d.getMonth() === oggi.getMonth() &&
     d.getDate() === oggi.getDate()
   return stessoGiorno
-    ? 'oggi'
-    : d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).replace('.', '')
+    ? oggiTesto
+    : d.toLocaleDateString(locale, { day: 'numeric', month: 'short' }).replace('.', '')
 }
 
 /** «12 ago · 14:05». Dove serve anche l'ora del giorno.
@@ -588,14 +599,17 @@ export function giornoBreve(epochMs: number): string {
  *  Non nell'elenco call: li' la riga porta giorno e **durata**, e infilarci in
  *  mezzo anche l'ora faceva tre voci separate da due puntini dove il design ne
  *  ha due (comportamento.md, 0-bis: meno elementi, non solo piu' spazio). */
-export function dataBreve(epochMs: number): string {
+export function dataBreve(epochMs: number, locale = 'it-IT', oggiTesto = 'oggi'): string {
   const d = new Date(epochMs)
-  const ora = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-  return `${giornoBreve(epochMs)} · ${ora}`
+  const ora = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
+  return `${giornoBreve(epochMs, locale, oggiTesto)} · ${ora}`
 }
 
-/** «6,4 GB», «312 MB». Virgola decimale: l'interfaccia è in italiano. */
-export function dimensione(bytes: number): string {
+/** «6,4 GB», «312 MB» — o «6.4 GB» in inglese: il separatore decimale lo
+ *  decide la lingua, non il file. Il valore di riserva resta l'italiano
+ *  perché è la lingua in cui questa funzione è nata e in cui è già chiamata
+ *  da posti che una lingua a portata di mano non ce l'hanno. */
+export function dimensione(bytes: number, locale = 'it-IT'): string {
   if (bytes < 1024) return `${bytes} B`
   const unita = ['KB', 'MB', 'GB', 'TB']
   let valore = bytes / 1024
@@ -605,7 +619,8 @@ export function dimensione(bytes: number): string {
     i += 1
   }
   const cifre = valore < 10 && i >= 2 ? 1 : 0
-  return `${valore.toFixed(cifre).replace('.', ',')} ${unita[i]}`
+  const n = valore.toLocaleString(locale, { minimumFractionDigits: cifre, maximumFractionDigits: cifre })
+  return `${n} ${unita[i]}`
 }
 
 /** «Alt + R»: come sta sul tasto, non come lo scrive Electron. */

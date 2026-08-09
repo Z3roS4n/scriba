@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ...db.store import Store
+from ...i18n import colonna_sql, tabella_sql
 
 # I tipi che il modello conosce. Il dialetto li traduce nei tipi veri del
 # motore: qui restano astratti perché lo stesso campo deve poter finire in un
@@ -163,22 +164,22 @@ def tabella(chiave: str) -> Tabella | None:
     return next((t for t in TABELLE if t.chiave == chiave), None)
 
 
-def descrivi() -> list[dict[str, Any]]:
+def descrivi(lingua: str = "it") -> list[dict[str, Any]]:
     """Il modello in forma serializzabile, per l'interfaccia."""
     return [
         {
             "chiave": t.chiave,
-            "etichetta": t.etichetta,
-            "descrizione": t.descrizione,
+            "etichetta": tabella_sql(t.chiave, t.etichetta, t.descrizione, lingua)[0],
+            "descrizione": tabella_sql(t.chiave, t.etichetta, t.descrizione, lingua)[1],
             "predefinita": t.predefinita,
             "voluminosa": t.voluminosa,
             "chiave_naturale": list(t.chiave_naturale),
             "campi": [
                 {
                     "chiave": c.chiave,
-                    "etichetta": c.etichetta,
+                    "etichetta": colonna_sql(t.chiave, c.chiave, c.etichetta, c.descrizione, lingua)[0],
                     "tipo": c.tipo,
-                    "descrizione": c.descrizione,
+                    "descrizione": colonna_sql(t.chiave, c.chiave, c.etichetta, c.descrizione, lingua)[1],
                     "chiave_naturale": c.chiave_naturale,
                 }
                 for c in t.campi

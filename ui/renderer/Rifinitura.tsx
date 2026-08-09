@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import type { Sessione } from './tipi'
+import { etichettaValore, useT } from './lingua'
 
 export interface StatoRifinitura {
   in_corso: boolean
@@ -34,8 +35,6 @@ export interface StatoRifinitura {
     >
   } | null
 }
-
-const NOME_TRACCIA: Record<string, string> = { mic: 'la tua voce', loopback: 'gli altri' }
 
 /** Da 6,1x realtime misurati, sulla frazione di call in cui qualcuno parla. */
 function stima(durata_ms: number | null): { min: number; max: number } {
@@ -88,6 +87,7 @@ export function ControlloRifinitura({
   /** Chiamata quando la passata finisce: la trascrizione a video è vecchia. */
   onFinita?: () => void
 }) {
+  const t = useT()
   const [conferma, setConferma] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
 
@@ -105,7 +105,7 @@ export function ControlloRifinitura({
     setErrore(null)
     setConferma(false)
     const r = await window.scriba.post(`/sessions/${sessione.id}/rifinisci`)
-    if (!r.ok) setErrore((r.body as any)?.detail ?? `Non è partita (${r.status}).`)
+    if (!r.ok) setErrore((r.body as any)?.detail ?? t('rif2.non_partita', { n: r.status }))
   }
 
   if (stato?.modello_pronto === false) {
@@ -127,34 +127,37 @@ export function ControlloRifinitura({
           <i style={{ width: `${quota}%` }}></i>
         </div>
         <span className="refine__n">
-          rifaccio {NOME_TRACCIA[stato?.traccia ?? ''] ?? 'la trascrizione'} · {stato?.fatte} di{' '}
-          {stato?.totale}
+          {t('rif2.rifaccio', {
+            cosa: etichettaValore(t, 'traccia', stato?.traccia ?? ''),
+            fatte: stato?.fatte ?? 0,
+            totale: stato?.totale ?? 0,
+          })}
         </span>
         <button className="btn btn--sm" onClick={() => window.scriba.post('/rifinitura/interrompi')}>
-          Interrompi
+          {t('rif.interrompi')}
         </button>
       </div>
     )
   }
 
   if (inCorsoAltrove) {
-    return <span className="refine__n">C’è già una rifinitura in corso, su un’altra call.</span>
+    return <span className="refine__n">{t('rif.gia_in_corso')}</span>
   }
 
   if (esito) {
-    const rifiutate = Object.entries(esito.tracce).filter(([, t]) => t.stato === 'non_allineata')
+    const rifiutate = Object.entries(esito.tracce).filter(([, x]) => x.stato === 'non_allineata')
     return (
       <div className="refine refine--esito">
         <span className="chip chip--quiet">
-          {esito.riscritte === 0 ? 'nessuna riga cambiata' : `${esito.riscritte} righe rifatte`}
+          {esito.riscritte === 0 ? t('rif2.nessuna_riga') : t('rif2.righe_rifatte', { n: esito.riscritte })}
         </span>
-        {rifiutate.map(([nome, t]) => (
+        {rifiutate.map(([nome, tr]) => (
           <p key={nome} className="refine__n refine__n--rosso">
-            <b>{NOME_TRACCIA[nome] ?? nome}</b>: non rifatta. {t.motivo}
+            <b>{etichettaValore(t, 'traccia', nome)}</b>{t('rif2.non_rifatta')} {tr.motivo}
           </p>
         ))}
         <button className="btn btn--sm" onClick={() => setConferma(true)}>
-          Rifai
+          {t('rif.rifai')}
         </button>
       </div>
     )
@@ -166,23 +169,21 @@ export function ControlloRifinitura({
       <div className="refine refine--conferma">
         <div className="kv">
           <div className="kv__row">
-            <span>Durata stimata</span>
+            <span>{t('rif.durata')}</span>
             <b>
               {min}-{max} min
             </b>
           </div>
         </div>
         <p className="refine__n">
-          Ripassa ogni riga con un modello più preciso, a cui la lingua si può imporre davvero: è la
-          correzione per le frasi finite in un’altra lingua. Il testo di adesso resta salvato. Gira in
-          locale, e puoi chiudere la finestra.
+          {t('rif.conferma_nota')}
         </p>
         <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
           <button className="btn btn--primary btn--sm" onClick={avvia}>
-            Avvia
+            {t('rif.avvia')}
           </button>
           <button className="btn btn--sm" onClick={() => setConferma(false)}>
-            Annulla
+            {t('rif.annulla')}
           </button>
         </div>
       </div>
@@ -192,7 +193,7 @@ export function ControlloRifinitura({
   return (
     <div className="refine">
       <button className="btn btn--sm" onClick={() => setConferma(true)}>
-        Rifai la trascrizione
+        {t('rif.rifai_trascrizione')}
       </button>
       {errore && <span className="refine__n refine__n--rosso">{errore}</span>}
     </div>

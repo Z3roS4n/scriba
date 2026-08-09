@@ -28,9 +28,20 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi.exception_handlers import http_exception_handler
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.requests import Request
 from pydantic import BaseModel
 
 from .api import traduci_stato_sessione as _traduci_stato_sessione
+from .api.diarizzazione import numero_voce
+from .i18n import (
+    LinguaUI,
+    errore as _errore,
+    fase as _fase,
+    lingua_da_header,
+    motore as _motore,
+)
 from .db import manutenzione
 from .db.store import Store
 from .recorder import Recorder
@@ -411,6 +422,23 @@ def create_app(
     secondi e aprire i device audio veri legherebbe i test all'hardware.
     """
     app = FastAPI(title="Scriba core", docs_url=None, redoc_url=None)
+
+    # I messaggi d'errore si traducono all'uscita, non dove nascono. `ErroreSql`
+    # viene sollevato in fondo al modulo Postgres e arriva qui tre livelli più
+    # su: per dargli la lingua bisognerebbe passarla a mezza libreria. Qui la
+    # richiesta c'è — quindi `Accept-Language` — e il testo è già scritto. Vale
+    # per tutte le rotte, comprese quelle che nessuno ha ancora scritto.
+    @app.exception_handler(StarletteHTTPException)
+    async def _errore_tradotto(richiesta: Request, exc: StarletteHTTPException):
+        lingua = lingua_da_header(richiesta.headers.get("accept-language"))
+        if isinstance(exc.detail, str):
+            exc = StarletteHTTPException(
+                status_code=exc.status_code,
+                detail=_errore(exc.detail, lingua),
+                headers=exc.headers,
+            )
+        return await http_exception_handler(richiesta, exc)
+
     broadcaster = Broadcaster()
 
     # Prima di aprirlo per scriverci: un database che non si legge non si usa.
@@ -1041,7 +1069,7 @@ def create_app(
         return settings.tutto()
 
     @app.get("/providers", dependencies=[Depends(check_token)])
-    async def providers() -> list[dict[str, Any]]:
+    async def providers(lingua: LinguaUI) -> list[dict[str, Any]]:
         """Quali motori di analisi sono utilizzabili in questo momento.
 
         Non basta elencarli: un motore locale spento e un `claude` non
@@ -1054,8 +1082,10 @@ def create_app(
         elenco = [
             {
                 "id": id_,
-                "etichetta": info["etichetta"],
-                "descrizione": info["descrizione"],
+                # I tre testi che l'utente legge passano dal catalogo; `id_`,
+                # `model` e le bandierine no — quelli si confrontano.
+                "etichetta": _motore(info, id_, lingua)["etichetta"],
+                "descrizione": _motore(info, id_, lingua)["descrizione"],
                 "model": attuale.get("model") if attuale.get("provider") == id_ else info["model"],
                 "esce_dal_computer": info["esce_dal_computer"],
                 "costo_ora_usd": info["costo_ora_usd"],
@@ -1092,7 +1122,7 @@ def create_app(
             voce["rimedio"] = (
                 None
                 if voce["disponibile"] or voce["in_avvio"]
-                else PROVIDERS_INFO[voce["id"]]["rimedio"]
+                else _motore(PROVIDERS_INFO[voce["id"]], voce["id"], lingua)["rimedio"]
             )
         return elenco
 
@@ -1190,6 +1220,11 @@ def create_app(
                     {
                         "id": s.speaker_id,
                         "label": s.speaker_label,
+                        # Come in /voci: il numero separato dall'etichetta, che
+                        # e' una stringa che il core genera e rilegge. Chi la
+                        # mostra se la compone nella lingua in cui sta
+                        # guardando, invece di stampare l'italiano salvato.
+                        "numero": numero_voce(s.speaker_label),
                         "nome_reale": s.speaker_nome_reale,
                     }
                     if diarizzata and s.speaker_id is not None

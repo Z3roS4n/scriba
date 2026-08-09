@@ -15,6 +15,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from . import Contesto
+from ..i18n import LinguaUI
 from ..export import esporta
 # Alias: in questo file `Contesto` e' gia' la dataclass del contesto delle
 # rotte, e due nomi che differiscono solo per una maiuscola si leggono male.
@@ -142,8 +143,8 @@ def crea_router(ctx: Contesto) -> APIRouter:
         return await asyncio.to_thread(notion_stato, ctx.store)
 
     @router.get("/export/notion/campi")
-    async def notion_campi_rotta() -> list[dict[str, Any]]:
-        return notion_campi()
+    async def notion_campi_rotta(lingua: LinguaUI) -> list[dict[str, Any]]:
+        return notion_campi(lingua)
 
     @router.post("/export/notion/destinazioni")
     async def notion_destinazioni_rotta(req: NotionTokenRequest) -> dict[str, Any]:

@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { tempo } from './tipi'
+import { useT } from './lingua'
 
 interface Nota {
   id: number
@@ -84,6 +85,7 @@ export function NotaDiLavoro({
   sessionId: number | null
   registrando: boolean
 }) {
+  const t = useT()
   const [dati, setDati] = useState<Risposta | null>(null)
   const [inCorso, setInCorso] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
@@ -114,7 +116,7 @@ export function NotaDiLavoro({
         carica()
       } else if (ev.stato === 'errore') {
         setInCorso(false)
-        setErrore(ev.dettaglio || 'Il modello non ha risposto.')
+        setErrore(ev.dettaglio || t('not2.no_risposta'))
       }
     })
   }, [sessionId, carica])
@@ -129,8 +131,8 @@ export function NotaDiLavoro({
   return (
     <div className="nota">
       <div className="nota__testa">
-        <span className="label">NOTA DI LAVORO</span>
-        {inCorso && <span className="nota__stato">sto aggiornando…</span>}
+        <span className="label">{t('not.titolo')}</span>
+        {inCorso && <span className="nota__stato">{t('not.aggiorno')}</span>}
         {!inCorso && ultima?.scope_end_ms != null && (
           <span className="nota__stato">fino a {tempo(ultima.scope_end_ms)}</span>
         )}
@@ -143,15 +145,15 @@ export function NotaDiLavoro({
           <Corpo testo={tutte ? note.map((n) => n.content_md).join('\n\n') : ultima.content_md} />
           {note.length > 1 && (
             <button className="btn--link" onClick={() => setTutte((v) => !v)}>
-              {tutte ? 'solo l’ultima' : `tutte e ${note.length}`}
+              {tutte ? t('not2.solo_ultima') : t('not2.tutte_e', { n: note.length })}
             </button>
           )}
         </>
       ) : (
         <p className="nota__par nota__attesa">
           {registrando
-            ? 'La prima arriva dopo i primi dieci minuti di call.'
-            : 'Questa call è finita prima che ne venisse scritta una.'}
+            ? t('not2.la_prima')
+            : t('not2.finita_prima')}
         </p>
       )}
     </div>

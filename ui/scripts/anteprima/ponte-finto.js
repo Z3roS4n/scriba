@@ -38,8 +38,8 @@
   // "Voce 3" compaiono nell'anteprima senza dover simulare l'intero lavoro.
   const SPEAKER = {
     io: { id: 100, label: 'io', nome_reale: null },
-    voce2: { id: 101, label: 'Voce 2', nome_reale: 'Marco' },
-    voce3: { id: 102, label: 'Voce 3', nome_reale: null },
+    voce2: { id: 101, label: 'Voce 2', numero: 2, nome_reale: 'Marco' },
+    voce3: { id: 102, label: 'Voce 3', numero: 3, nome_reale: null },
   }
   const speakerRighe = [
     SPEAKER.voce2, null, SPEAKER.voce2, null, SPEAKER.voce3, null,
@@ -61,8 +61,8 @@
   const voci24 = [
     { id: 1, ruolo: 'me', label: 'io', nome_reale: null, confermato: false },
     { id: 2, ruolo: 'them', label: 'altri', nome_reale: null, confermato: false },
-    { id: SPEAKER.voce2.id, ruolo: 'them', label: 'Voce 2', nome_reale: 'Marco', confermato: true },
-    { id: SPEAKER.voce3.id, ruolo: 'them', label: 'Voce 3', nome_reale: null, confermato: false },
+    { id: SPEAKER.voce2.id, ruolo: 'them', label: 'Voce 2', numero: 2, nome_reale: 'Marco', confermato: true },
+    { id: SPEAKER.voce3.id, ruolo: 'them', label: 'Voce 3', numero: 3, nome_reale: null, confermato: false },
   ]
   const vociVuote = [
     { id: 1, ruolo: 'me', label: 'io', nome_reale: null, confermato: false },
@@ -364,6 +364,8 @@
     return { ok: true, status: 200, body: { id, nome_reale: body?.nome_reale, confermato: true } }
   }
 
+  const ascoltatori = new Set()
+
   window.scriba = {
     endpoint: () => Promise.resolve({ port: 1234 }),
     paths: () => Promise.resolve({ dataDir: 'C:\\finto', screenshotDir: 'C:\\finto\\shots' }),
@@ -390,6 +392,21 @@
     },
     registraScorciatoie: () => Promise.resolve({ overlay: 'Alt+R', screenshot: 'CommandOrControl+Shift+S' }),
     provaScorciatoia: () => Promise.resolve(true),
-    on: () => () => {},
+
+    // Tema e lingua arrivano dal processo principale, che qui non c'e'. Senza
+    // questi due l'anteprima parte con `undefined` e cade sul ripiego, che e'
+    // il caso peggiore per accorgersi di un difetto: sembra funzionare.
+    temaIniziale: 'scuro',
+    annunciaTema: () => Promise.resolve(),
+    linguaIniziale: 'it',
+    annunciaLingua: (l) => { ascoltatori.forEach((f) => f(l)); return Promise.resolve() },
+
+    // Un solo canale, quello della lingua: serve a provare che cambiandola le
+    // schermate si ridisegnano davvero, contesto compreso.
+    on: (canale, cb) => {
+      if (canale !== 'lingua:cambiata') return () => {}
+      ascoltatori.add(cb)
+      return () => ascoltatori.delete(cb)
+    },
   }
 })()

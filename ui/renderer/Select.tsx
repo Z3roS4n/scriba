@@ -18,6 +18,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { useT } from './lingua'
 
 export interface OpzioneSelect {
   id: string
@@ -38,6 +39,7 @@ export function Select({
   /** Larghezza minima del menù, quando le etichette sono più lunghe del grilletto. */
   larghezza?: number
 }) {
+  const t = useT()
   const [aperto, setAperto] = useState(false)
   const contenitore = useRef<HTMLDivElement>(null)
 
@@ -84,7 +86,7 @@ export function Select({
       {aperto && (
         <div className="pop" role="listbox" style={larghezza ? { minWidth: larghezza } : undefined}>
           {opzioni.length === 0 ? (
-            <div className="pop__vuoto">Nessuna opzione disponibile</div>
+            <div className="pop__vuoto">{t('sel.vuoto')}</div>
           ) : (
             opzioni.map((o) => (
               <button

@@ -14,6 +14,7 @@ import { join, resolve, sep } from 'node:path'
 import { Impostazioni } from './impostazioni'
 import { Overlay } from './overlay'
 import { Sidecar } from './sidecar'
+import { testo } from './lingua'
 
 const PROJECT_ROOT = resolve(app.getAppPath(), '..')
 const DATA_DIR = join(app.getPath('userData'), 'data')
@@ -83,7 +84,12 @@ const sidecar = new Sidecar(PROJECT_ROOT, join(DATA_DIR, 'scriba.sqlite'), versi
 
 const cartellaRisorse = __dirname.replace(/[\\/]main$/, '')
 const overlay = new Overlay(cartellaRisorse, join(DATA_DIR, 'overlay.json'))
-const impostazioni = new Impostazioni(cartellaRisorse, ICONA, () => coloreDiFondo())
+const impostazioni = new Impostazioni(
+  cartellaRisorse,
+  ICONA,
+  () => coloreDiFondo(),
+  () => linguaEffettiva(),
+)
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -110,6 +116,22 @@ let cartellaExportScelta: string | null = null
  * colore di fondo va deciso al momento della creazione della finestra, non
  * dopo.
  */
+/**
+ * La lingua dell'interfaccia salvata su disco.
+ *
+ * Stessa strada del tema, e per lo stesso motivo: il preload la chiede prima
+ * che il core sia partito, quindi non puo' passare da `GET /settings`.
+ */
+function linguaSalvata(): string {
+  try {
+    const dati = JSON.parse(readFileSync(join(DATA_DIR, 'settings.json'), 'utf-8'))
+    const lingua = dati?.interfaccia?.lingua
+    return lingua === 'it' || lingua === 'en' ? lingua : 'sistema'
+  } catch {
+    return 'sistema'
+  }
+}
+
 function temaSalvato(): string {
   try {
     const dati = JSON.parse(readFileSync(join(DATA_DIR, 'settings.json'), 'utf-8'))
@@ -194,12 +216,13 @@ function voceScreenshot(): Electron.MenuItemConstructorOptions[] {
   const schermi = elencaSchermi()
 
   if (schermi.length <= 1) {
-    return [{ label: combo ? `Screenshot (${combo})` : 'Screenshot', click: () => captureScreenshot() }]
+    const nome = testo(linguaEffettiva(), 'tray.screenshot')
+    return [{ label: combo ? `${nome} (${combo})` : nome, click: () => captureScreenshot() }]
   }
 
   return [
     {
-      label: 'Screenshot',
+      label: testo(linguaEffettiva(), 'tray.screenshot'),
       submenu: schermi.map((s) => ({
         // La scorciatoia si scrive solo accanto al principale perche' e' quello
         // che cattura davvero: scriverla su tutti prometterebbe il falso.
@@ -237,22 +260,23 @@ function aggiornaIconaTray(inRegistrazione = registrazioneInCorso): void {
 
   const immagine = nativeImage.createFromPath(iconaTray())
   if (!immagine.isEmpty()) tray.setImage(immagine)
-  tray.setToolTip(inRegistrazione ? 'Scriba — registrazione in corso' : 'Scriba')
+  tray.setToolTip(testo(linguaEffettiva(), inRegistrazione ? 'tray.tooltip_rec' : 'tray.tooltip'))
 }
 
 /** Il menu dell'area di notifica. Si ricostruisce quando cambiano le voci. */
 function menuTray(): Menu {
+  const lingua = linguaEffettiva()
   return Menu.buildFromTemplate([
-    { label: 'Apri Scriba', click: showWindow },
+    { label: testo(lingua, 'tray.apri'), click: showWindow },
     {
-      label: `Trascrizione sovrapposta (${(scorciatoiaOverlay ?? 'Alt+R').replace('CommandOrControl', 'Ctrl')})`,
+      label: `${testo(lingua, 'tray.overlay')} (${(scorciatoiaOverlay ?? 'Alt+R').replace('CommandOrControl', 'Ctrl')})`,
       click: () => overlay.alterna(),
     },
     { type: 'separator' },
     ...voceScreenshot(),
     { type: 'separator' },
     {
-      label: 'Esci',
+      label: testo(linguaEffettiva(), 'tray.esci'),
       click: () => {
         quitting = true
         app.quit()
@@ -292,19 +316,39 @@ function createTray(): void {
   const daFile = nativeImage.createFromPath(iconaTray())
   const icon = daFile.isEmpty() ? nativeImage.createFromDataURL(ICONA_RIPIEGO) : daFile
   tray = new Tray(icon)
-  tray.setToolTip(registrazioneInCorso ? 'Scriba — registrazione in corso' : 'Scriba')
+  tray.setToolTip(testo(linguaEffettiva(), registrazioneInCorso ? 'tray.tooltip_rec' : 'tray.tooltip'))
   tray.setContextMenu(menuTray())
   tray.on('double-click', showWindow)
 }
 
 /** Chiamata al core, con il token che solo questo processo conosce. */
+/**
+ * La lingua dell'interfaccia, risolta.
+ *
+ * `sistema` lo scioglie questo processo e non il core: la lingua del sistema
+ * operativo la conosce lui, e far indovinare al core una cosa che qualcun
+ * altro sa e' il modo piu' sicuro di farli divergere.
+ */
+function linguaEffettiva(): string {
+  const scelta = linguaSalvata()
+  if (scelta === 'it' || scelta === 'en') return scelta
+  return app.getLocale().toLowerCase().startsWith('en') ? 'en' : 'it'
+}
+
 async function coreFetch(path: string, init?: RequestInit): Promise<Response> {
   const endpoint = sidecar.address
   if (!endpoint) throw new Error('Il core non e\' pronto')
   const separator = path.includes('?') ? '&' : '?'
   return fetch(`${sidecar.baseUrl}${path}${separator}token=${endpoint.token}`, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      // In un punto solo, e quindi su TUTTE le richieste. Passarla rotta per
+      // rotta vorrebbe dire dimenticarsene alla prossima: qui o c'e' per
+      // tutte, o per nessuna.
+      'Accept-Language': linguaEffettiva(),
+      ...(init?.headers ?? {}),
+    },
   })
 }
 
@@ -604,6 +648,24 @@ function registerIpc(): void {
     evento.returnValue = temaSalvato()
   })
 
+  ipcMain.on('lingua:iniziale', (evento) => {
+    evento.returnValue = linguaSalvata()
+  })
+
+  ipcMain.handle('lingua:annuncia', (_evento, lingua: string) => {
+    // Come per il tema: tre processi, e una finestra in inglese accanto a una
+    // in italiano e' peggio che non poter scegliere.
+    trasmettiATutte('lingua:cambiata', lingua)
+    // Il menu dell'area di notifica e' un menu di SISTEMA: non si ridisegna
+    // perche' e' cambiato uno stato, va ricostruito. Senza questa riga
+    // resterebbe nella lingua di quando l'applicazione e' partita, ed e'
+    // l'ultimo posto in cui uno andrebbe a cercare il motivo.
+    if (tray && !tray.isDestroyed()) {
+      tray.setContextMenu(menuTray())
+      tray.setToolTip(testo(lingua, registrazioneInCorso ? 'tray.tooltip_rec' : 'tray.tooltip'))
+    }
+  })
+
   ipcMain.handle('tema:annuncia', (_evento, tema: string) => {
     // Le tre finestre sono tre processi: chi cambia il tema nelle impostazioni
     // non cambia la principale ne' l'overlay. Vederne due di colori diversi
@@ -750,7 +812,7 @@ app.whenReady().then(async () => {
     overlay.impostaVariante(Boolean(impostazioniLette?.interfaccia?.overlay_ridotto))
   } catch (error) {
     dialog.showErrorBox(
-      'Scriba non riesce ad avviare il core',
+      testo(linguaEffettiva(), 'errore.core_titolo'),
       error instanceof Error ? error.message : String(error),
     )
   }

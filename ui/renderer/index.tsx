@@ -21,6 +21,8 @@ import { Archivio } from './Archivio'
 import { useSchermi } from './schermi'
 import { useTema } from './tema'
 import { scorciatoiaLeggibile, type Cliente, type DbDanneggiato, type EventoCore, type Scatto, type Segmento, type Sessione, type Task } from './tipi'
+import { ContestoLingua, useLingua } from './lingua'
+import { useT } from './lingua'
 
 interface Avviso {
   testo: string
@@ -28,6 +30,7 @@ interface Avviso {
 }
 
 function App() {
+  const t = useT()
   const [corePronto, setCorePronto] = useState(false)
   const [modello, setModello] = useState<StatoModello>('in_attesa')
   const [registrando, setRegistrando] = useState(false)
@@ -212,7 +215,7 @@ function App() {
         titolo: titolo.trim() || null,
         consenso_confermato: consenso,
       })
-      if (!r.ok) mostraAvviso(`Avvio non riuscito (${r.status}).`)
+      if (!r.ok) mostraAvviso(t('idx2.avvio', { n: r.status }))
     },
     [mostraAvviso],
   )
@@ -224,7 +227,7 @@ function App() {
 
   const ferma = useCallback(async () => {
     const r = await window.scriba.post('/session/stop')
-    if (!r.ok) mostraAvviso(`Arresto non riuscito (${r.status}).`)
+    if (!r.ok) mostraAvviso(t('idx2.arresto', { n: r.status }))
   }, [mostraAvviso])
 
   const esporta = useCallback(async () => {
@@ -241,7 +244,7 @@ function App() {
         await window.scriba.mostraFile(r.body.percorso)
         mostraAvviso(`Esportato in ${r.body.percorso}`)
       } else {
-        mostraAvviso(`Export non riuscito (${r.status}).`)
+        mostraAvviso(t('idx2.export', { n: r.status }))
       }
     } finally {
       setEsportando(false)
@@ -357,7 +360,7 @@ function App() {
         } else if (ev.type === 'modello') {
           const e = ev as Extract<EventoCore, { type: 'modello' }>
           setModello(e.stato)
-          if (e.stato === 'errore') mostraAvviso(`Modello non caricato: ${e.dettaglio ?? ''}`)
+          if (e.stato === 'errore') mostraAvviso(t('idx2.modello', { d: e.dettaglio ?? '' }))
         } else if (ev.type === 'diarizzazione') {
           const e = ev as Extract<EventoCore, { type: 'diarizzazione' }>
           // Solo "fatto": e' l'unico momento in cui `speaker` sui segmenti
@@ -372,7 +375,7 @@ function App() {
       }),
 
       window.scriba.on('screenshot:ignorato', () =>
-        mostraAvviso('Screenshot non salvato: nessuna registrazione in corso.'),
+        mostraAvviso(t('idx2.scatto_senza_call')),
       ),
     ]
 
@@ -565,16 +568,14 @@ function App() {
           // Prima dell'avviso normale: se ci sono tutti e due, questo è quello
           // che cambia cosa l'utente sta guardando.
           <div className="notice notice--rosso">
-            Il database non si leggeva e Scriba è ripartito
-            {dbDanneggiato.ripristinato ? ' da un backup' : ' da vuoto'}: le call registrate dopo
-            non compaiono più. I file originali non sono stati cancellati.
+            {t(dbDanneggiato.ripristinato ? 'idx2.db_da_backup' : 'idx2.db_da_vuoto')}
             <span className="notice__spacer" />
             <button
               type="button"
               className="btn btn--sm"
               onClick={() => window.scriba.apriCartella(dbDanneggiato.quarantena)}
             >
-              Apri la cartella
+              {t('idx.apri_cartella')}
             </button>
             <button type="button" className="btn--link" onClick={() => setDbDanneggiato(null)}>
               ✕
@@ -597,7 +598,7 @@ function App() {
                 className="toolbar"
                 style={{ justifyContent: 'flex-end', padding: 'var(--sp-2)', borderBottom: '1px solid var(--line)' }}
               >
-                <button className="btn btn--icon" aria-label="Nascondi elenco call" onClick={() => setCallsForzate(false)}>
+                <button className="btn btn--icon" aria-label={t('idx.nascondi_call')} onClick={() => setCallsForzate(false)}>
                   ‹
                 </button>
               </div>
@@ -614,7 +615,7 @@ function App() {
             className="toolbar"
             style={{ flexDirection: 'column', flex: 'none', padding: 'var(--sp-3) 0', borderRight: '1px solid var(--line)' }}
           >
-            <button className="btn btn--icon" aria-label="Mostra elenco call" onClick={() => setCallsForzate(true)}>
+            <button className="btn btn--icon" aria-label={t('idx.mostra_call')} onClick={() => setCallsForzate(true)}>
               ›
             </button>
           </div>
@@ -646,7 +647,7 @@ function App() {
                 className="toolbar"
                 style={{ justifyContent: 'flex-start', padding: 'var(--sp-2)', borderBottom: '1px solid var(--line)' }}
               >
-                <button className="btn btn--icon" aria-label="Nascondi pannello analisi" onClick={() => setAnalisiForzata(false)}>
+                <button className="btn btn--icon" aria-label={t('idx.nascondi_analisi')} onClick={() => setAnalisiForzata(false)}>
                   ›
                 </button>
               </div>
@@ -663,7 +664,7 @@ function App() {
             className="toolbar"
             style={{ flexDirection: 'column', flex: 'none', padding: 'var(--sp-3) 0', borderLeft: '1px solid var(--line)' }}
           >
-            <button className="btn btn--icon" aria-label="Mostra pannello analisi" onClick={() => setAnalisiForzata(true)}>
+            <button className="btn btn--icon" aria-label={t('idx.mostra_analisi')} onClick={() => setAnalisiForzata(true)}>
               ‹
             </button>
           </div>
@@ -724,8 +725,21 @@ function App() {
   )
 }
 
+/**
+ * La lingua avvolge tutto l'albero. Un contesto e non una variabile di modulo:
+ * i componenti sotto `memo` non si ridisegnerebbero al cambio, perché le loro
+ * prop non cambiano — e una schermata che resta nella lingua di prima è il
+ * modo in cui una traduzione si dimentica un pezzo senza che nessuno lo veda.
+ */
+function ConLingua({ children }: { children: React.ReactNode }) {
+  const { risolta } = useLingua()
+  return <ContestoLingua.Provider value={risolta}>{children}</ContestoLingua.Provider>
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ConLingua>
+      <App />
+    </ConLingua>
   </StrictMode>,
 )

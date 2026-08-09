@@ -27,6 +27,8 @@ import { SezioneMotore } from './impostazioni/Motore'
 import { SezioneRilevamento } from './impostazioni/Rilevamento'
 import { SezioneScorciatoie } from './impostazioni/Scorciatoie'
 import { SezioneTrascrizione } from './impostazioni/Trascrizione'
+import { useT, type Chiave } from './lingua'
+// gia importato
 
 type Sezione =
   | 'motore'
@@ -41,24 +43,27 @@ type Sezione =
   | 'dati'
   | 'export'
 
-const NAV: { id: Sezione; etichetta: string }[] = [
-  { id: 'motore', etichetta: 'Motore di analisi' },
-  { id: 'modelli', etichetta: 'Modelli locali' },
-  { id: 'trascrizione', etichetta: 'Trascrizione' },
-  { id: 'rilevamento', etichetta: 'Rilevamento call' },
-  { id: 'scorciatoie', etichetta: 'Scorciatoie' },
-  { id: 'aspetto', etichetta: 'Aspetto' },
-  { id: 'analisi', etichetta: 'Analisi' },
-  { id: 'clienti', etichetta: 'Clienti' },
-  { id: 'database', etichetta: 'Database remoto' },
-  { id: 'dati', etichetta: 'Dati e privacy' },
-  { id: 'export', etichetta: 'Export' },
+/** Le undici sezioni. L'etichetta è una chiave, non un testo: l'id resta
+ *  quello che il codice confronta, e la traduzione avviene dove si mostra. */
+const NAV: { id: Sezione; chiave: Chiave }[] = [
+  { id: 'motore', chiave: 'sez.motore' },
+  { id: 'modelli', chiave: 'sez.modelli' },
+  { id: 'trascrizione', chiave: 'sez.trascrizione' },
+  { id: 'rilevamento', chiave: 'sez.rilevamento' },
+  { id: 'scorciatoie', chiave: 'sez.scorciatoie' },
+  { id: 'aspetto', chiave: 'sez.aspetto' },
+  { id: 'analisi', chiave: 'sez.analisi' },
+  { id: 'clienti', chiave: 'sez.clienti' },
+  { id: 'database', chiave: 'sez.database' },
+  { id: 'dati', chiave: 'sez.dati' },
+  { id: 'export', chiave: 'sez.export' },
 ]
 
 function Topbar() {
+  const t = useT()
   return (
     <header className="topbar">
-      <span className="brand">Impostazioni</span>
+      <span className="brand">{t('imp.titolo')}</span>
       <div className="topbar__spacer" />
       <div className="wincontrols">
         <button onClick={() => window.scriba.finestra.riduci()}>—</button>
@@ -69,6 +74,7 @@ function Topbar() {
 }
 
 export function Impostazioni() {
+  const t = useT()
   const [sezione, setSezione] = useState<Sezione>('motore')
   const [impostazioni, setImpostazioni] = useState<ImpostazioniT | null>(null)
   const [providers, setProviders] = useState<Provider[]>([])
@@ -145,7 +151,7 @@ export function Impostazioni() {
     setErrore(null)
     const r = await window.scriba.post('/settings', patch)
     if (!r.ok) {
-      setErrore(`Impostazione non salvata (${r.status}).`)
+      setErrore(t('imp2.non_salvata', { n: r.status }))
       return false
     }
     const fresca = await window.scriba.get<ImpostazioniT>('/settings')
@@ -175,7 +181,7 @@ export function Impostazioni() {
     setErrore(null)
     const r = await window.scriba.post('/settings', { llm: { provider: p.id, api_key: chiave } })
     if (!r.ok) {
-      setErrore(`Chiave non salvata (${r.status}).`)
+      setErrore(t('imp2.chiave', { n: r.status }))
       return false
     }
     const [pr, fresca] = await Promise.all([
@@ -199,7 +205,7 @@ export function Impostazioni() {
   const eliminaAudio = useCallback(async (): Promise<boolean> => {
     const r = await window.scriba.post('/dati/elimina-audio')
     if (!r.ok) {
-      setErrore(`Audio non eliminato (${r.status}).`)
+      setErrore(t('imp2.audio', { n: r.status }))
       return false
     }
     const dt = await window.scriba.get<VoceDati[]>('/dati')
@@ -210,7 +216,7 @@ export function Impostazioni() {
   const eliminaCall = useCallback(async (id: number): Promise<boolean> => {
     const r = await window.scriba.post(`/sessions/${id}/elimina`)
     if (!r.ok) {
-      setErrore(`Call non eliminata (${r.status}).`)
+      setErrore(t('imp2.call', { n: r.status }))
       return false
     }
     const dt = await window.scriba.get<VoceDati[]>('/dati')
@@ -237,7 +243,7 @@ export function Impostazioni() {
         <div className="win__body">
           <div className="settings__main">
             <div className="settings__body">
-              <p>Caricamento delle impostazioni…</p>
+              <p>{t('imp.carico')}</p>
             </div>
           </div>
         </div>
@@ -253,7 +259,7 @@ export function Impostazioni() {
           <span>{errore}</span>
           <div className="notice__spacer" />
           <button className="btn btn--sm" onClick={() => setErrore(null)}>
-            Chiudi
+            {t('imp.chiudi')}
           </button>
         </div>
       )}
@@ -265,7 +271,7 @@ export function Impostazioni() {
               className={`navitem ${sezione === n.id ? 'is-on' : ''}`}
               onClick={() => setSezione(n.id)}
             >
-              {n.etichetta}
+              {t(n.chiave)}
             </button>
           ))}
         </nav>

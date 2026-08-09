@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react'
 
+import { etichettaValore, useT } from '../lingua'
 import type { Dispositivo, Impostazioni } from '../tipi'
 import type { OpzioneSelect } from '../Select'
 import { Select } from '../Select'
@@ -29,11 +30,7 @@ const FILTRI_ECO = ['basso', 'medio', 'alto'] as const
  *  Le descrizioni dicono cosa si perde alzando, non solo cosa si guadagna:
  *  allargare la rete significa anche correggere nomi che erano già giusti, e
  *  quello — a differenza del nome sbagliato — rileggendo non si nota. */
-const LIVELLI_GLOSSARIO = [
-  { id: 'prudente', etichetta: 'Prudente', nota: 'Solo una lettera di scarto. Non sbaglia quasi mai, e non prende le storpiature grosse.' },
-  { id: 'medio', etichetta: 'Medio', nota: 'Prende anche i nomi mangiati all’inizio o alla fine («Tilde» per «Clotilde»).' },
-  { id: 'aggressivo', etichetta: 'Aggressivo', nota: 'Prende anche «Protile». Può correggere un nome simile in quello sbagliato.' },
-] as const
+const LIVELLI_GLOSSARIO = ['prudente', 'medio', 'aggressivo'] as const
 
 /**
  * L'elenco dei nomi, uno per riga.
@@ -75,31 +72,30 @@ export function SezioneTrascrizione({
   loopback: Dispositivo[]
   onCambia: (patch: Partial<Impostazioni>) => void
 }) {
+  const t = useT()
   const stt = impostazioni.stt
 
   return (
     <>
-      <div className="settings__head">Trascrizione</div>
+      <div className="settings__head">{t('tra2.titolo')}</div>
       <div className="settings__body">
         <div className="row">
           <div className="row__t">
-            <b>Lingua delle call</b>
+            <b>{t('tra2.lingua')}</b>
             {/* Diceva solo cosa succede alla trascrizione. Ma da questa scelta
                 dipende anche in che lingua vengono scritti riassunto, punti
                 salienti e task: chi la cambia deve saperlo prima, non
                 scoprirlo leggendo un riassunto nella lingua sbagliata. */}
             <span>
-              Vale per la trascrizione e per quello che ne viene ricavato: riassunto, punti
-              salienti e task escono in questa lingua. Le altre vengono riconosciute lo stesso,
-              ma con più errori sui nomi.
+              {t('tra2.lingua_nota')}
             </span>
           </div>
           <Select opzioni={LINGUE} selezionato={stt.lingua} onScegli={(lingua) => onCambia({ stt: { ...stt, lingua } })} />
         </div>
         <div className="row">
           <div className="row__t">
-            <b>Microfono</b>
-            <span>Registra la tua voce.</span>
+            <b>{t('tra2.microfono')}</b>
+            <span>{t('tra2.microfono_nota')}</span>
           </div>
           <Select
             opzioni={microfoni.map((d) => ({ id: d.id, etichetta: d.nome }))}
@@ -109,8 +105,8 @@ export function SezioneTrascrizione({
         </div>
         <div className="row">
           <div className="row__t">
-            <b>Audio del computer</b>
-            <span>Registra la voce degli altri. Senza questo si sente solo te.</span>
+            <b>{t('tra2.loopback')}</b>
+            <span>{t('tra2.loopback_nota')}</span>
           </div>
           <Select
             opzioni={loopback.map((d) => ({ id: d.id, etichetta: d.nome }))}
@@ -120,8 +116,8 @@ export function SezioneTrascrizione({
         </div>
         <div className="row">
           <div className="row__t">
-            <b>Filtro dell’eco</b>
-            <span>Riconosce quando il microfono riprende l’altoparlante. Se alzi troppo, le sovrapposizioni di voce si perdono.</span>
+            <b>{t('tra2.filtro')}</b>
+            <span>{t('tra2.filtro_nota')}</span>
           </div>
           <div className="picker">
             {FILTRI_ECO.map((v) => (
@@ -130,17 +126,17 @@ export function SezioneTrascrizione({
                 className={(stt.filtro_eco ?? 'medio') === v ? 'is-on' : ''}
                 onClick={() => onCambia({ stt: { ...stt, filtro_eco: v } })}
               >
-                {v[0].toUpperCase() + v.slice(1)}
+                {etichettaValore(t, 'filtro', v)}
               </button>
             ))}
           </div>
         </div>
 
-        <div className="settings__sub">Dopo la call</div>
+        <div className="settings__sub">{t('tra2.dopo')}</div>
 
         <div className="row">
           <div className="row__t">
-            <b>Rifai la trascrizione da sola</b>
+            <b>{t('tra2.rifai')}</b>
             <span>
               A registrazione finita ripassa ogni riga con un modello più preciso, a cui la lingua si
               può imporre davvero — è la correzione per le frasi che finiscono in un’altra lingua.
@@ -160,16 +156,13 @@ export function SezioneTrascrizione({
           </button>
         </div>
 
-        <div className="settings__sub">Nomi propri</div>
+        <div className="settings__sub">{t('tra2.nomi')}</div>
 
         <div className="row row--stack">
           <div className="row__t">
-            <b>Glossario</b>
+            <b>{t('tra2.glossario')}</b>
             <span>
-              I nomi che il modello non conosce li indovina da capo a ogni frase, e ogni volta in
-              modo diverso: nella stessa call «Clotilde» diventa Tilde, Cotilde e Protile. Scrivili
-              qui, uno per riga, e vengono rimessi a posto a frase finita. Il testo di partenza
-              resta salvato.
+              {t('tra2.glossario_nota')}
             </span>
           </div>
           <Elenco
@@ -180,8 +173,8 @@ export function SezioneTrascrizione({
 
         <div className="row">
           <div className="row__t">
-            <b>Anche i clienti</b>
-            <span>I nomi dell’anagrafica entrano nel glossario da soli, senza riscriverli qui.</span>
+            <b>{t('tra2.anche_clienti')}</b>
+            <span>{t('tra2.anche_clienti_nota')}</span>
           </div>
           <button
             className={`switch ${stt.glossario_clienti !== false ? 'is-on' : ''}`}
@@ -197,19 +190,19 @@ export function SezioneTrascrizione({
 
         <div className="row row--stack">
           <div className="row__t">
-            <b>Quanto insistere</b>
+            <b>{t('tra2.quanto')}</b>
             <span>
-              {LIVELLI_GLOSSARIO.find((l) => l.id === (stt.glossario_livello ?? 'prudente'))?.nota}
+              {etichettaValore(t, 'gloss_nota', stt.glossario_livello ?? 'prudente')}
             </span>
           </div>
           <div className="picker">
-            {LIVELLI_GLOSSARIO.map((l) => (
+            {LIVELLI_GLOSSARIO.map((id) => (
               <button
-                key={l.id}
-                className={(stt.glossario_livello ?? 'prudente') === l.id ? 'is-on' : ''}
-                onClick={() => onCambia({ stt: { ...stt, glossario_livello: l.id } })}
+                key={id}
+                className={(stt.glossario_livello ?? 'prudente') === id ? 'is-on' : ''}
+                onClick={() => onCambia({ stt: { ...stt, glossario_livello: id } })}
               >
-                {l.etichetta}
+                {etichettaValore(t, 'gloss', id)}
               </button>
             ))}
           </div>

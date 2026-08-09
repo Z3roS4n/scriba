@@ -21,13 +21,21 @@ import {
 } from 'react'
 
 import { tempo, type Scatto, type Segmento, type Sessione, type Voce } from './tipi'
+import { etichettaVoce, useT } from './lingua'
 
 export interface TrascrizioneHandle {
   /** Scorre alla riga del minuto indicato e la fa lampeggiare una volta. */
   vaiA: (t_ms: number) => void
 }
 
-const ETICHETTA: Record<Segmento['source'], string> = { mic: 'Io', loopback: 'Altri' }
+/** Le due tracce, per chiave: la traduzione la fa chi le mostra. Erano due
+ *  stringhe italiane in una costante di modulo — un posto in cui `useT` non
+ *  arriva, e quindi un pezzo di trascrizione che sarebbe rimasto in italiano
+ *  sotto un chrome inglese. */
+const ETICHETTA: Record<Segmento['source'], 'trascrizione.io' | 'trascrizione.altri'> = {
+  mic: 'trascrizione.io',
+  loopback: 'trascrizione.altri',
+}
 
 /**
  * Una riga di parlato. Memoizzata perche' durante una call arriva un evento al
@@ -35,6 +43,7 @@ const ETICHETTA: Record<Segmento['source'], string> = { mic: 'Io', loopback: 'Al
  * un'ora di call ricostruirebbe centinaia di righe a ogni parola nuova.
  */
 const Riga = memo(function Riga({ s, citata }: { s: Segmento; citata: boolean }) {
+  const t = useT()
   // Il microfono e' per definizione una persona sola: resta "Io" anche se la
   // diarizzazione (fatta a call finita, su un'altra traccia) gli assegnasse
   // per errore uno speaker.
@@ -46,8 +55,10 @@ const Riga = memo(function Riga({ s, citata }: { s: Segmento; citata: boolean })
   // nascosto proprio il lavoro appena fatto.
   const chi =
     s.source === 'mic'
-      ? ETICHETTA.mic
-      : s.speaker?.nome_reale || s.speaker?.label || ETICHETTA.loopback
+      ? t(ETICHETTA.mic)
+      : s.speaker?.nome_reale ||
+        (s.speaker ? etichettaVoce(t, s.speaker.numero ?? null, s.speaker.label) : null) ||
+        t(ETICHETTA.loopback)
   return (
     // data-t serve a ritrovare la riga quando si clicca un minuto altrove nella finestra.
     <div
@@ -62,7 +73,7 @@ const Riga = memo(function Riga({ s, citata }: { s: Segmento; citata: boolean })
       data-t={s.t_start_ms}
     >
       <button className="line__t num">{tempo(s.t_start_ms)}</button>
-      <span className="line__who">{s.eco ? ETICHETTA.loopback : chi}</span>
+      <span className="line__who">{s.eco ? t(ETICHETTA.loopback) : chi}</span>
       {/* Provvisorio: colore fioco, MAI corsivo (rallenta la lettura periferica). Alla
           chiusura della frase si toglie solo la classe, la riga non si smonta. */}
       <p className={`line__text ${s.is_final ? '' : 'is-provisional'}`}>
@@ -96,6 +107,7 @@ const RigaScatto = memo(function RigaScatto({
   s: Scatto
   onApri: (percorso: string) => void
 }) {
+  const t = useT()
   /** Il file poteva esserci quando la call è stata registrata e non esserci
    *  più adesso: spostato, cancellato, cartella su una chiavetta staccata. */
   const [rotta, setRotta] = useState(false)
@@ -121,14 +133,14 @@ const RigaScatto = memo(function RigaScatto({
             <img
               className="shot__img"
               src={urlFile(s.path)}
-              alt={`Schermata condivisa al minuto ${tempo(s.t_ms)}`}
+              alt={t('tra.scatto_alt', { t: tempo(s.t_ms) })}
               loading="lazy"
               onError={() => setRotta(true)}
             />
           )}
         </button>
         <span className="shot__cap">
-          {rotta ? 'Schermata condivisa · il file non è più al suo posto' : 'Schermata condivisa · clicca per aprirla'}
+          {rotta ? t('trascrizione.scatto_perso') : t('trascrizione.scatto')}
           {s.width && s.height && <span className="num">{s.width}×{s.height}</span>}
         </span>
       </div>
@@ -150,6 +162,7 @@ const RigaVoceDaNominare = memo(function RigaVoceDaNominare({
   voce: Voce
   onSalva: (speakerId: number, nome: string) => Promise<boolean>
 }) {
+  const t = useT()
   const [nome, setNome] = useState('')
   const [salvando, setSalvando] = useState(false)
 
@@ -164,9 +177,10 @@ const RigaVoceDaNominare = memo(function RigaVoceDaNominare({
     if (riuscito) setNome('')
   }, [nome, salvando, onSalva, voce.id])
 
+
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
-      <span className="chip chip--quiet">{voce.label}</span>
+      <span className="chip chip--quiet">{etichettaVoce(t, voce.numero ?? null, voce.label)}</span>
       {/* `--h-sm`, la stessa altezza del pulsante accanto. Aveva la classe
           intera (38px) più uno style inline con padding e corpo di un'altra
           misura, residuo del sistema vecchio: la classe vinceva sull'altezza e
@@ -175,7 +189,7 @@ const RigaVoceDaNominare = memo(function RigaVoceDaNominare({
       <input
         className="textfield textfield--sm"
         type="text"
-        placeholder="nome vero"
+        placeholder={t('tra.ph_nome_vero')}
         value={nome}
         disabled={salvando}
         onChange={(e) => setNome(e.target.value)}
@@ -231,6 +245,7 @@ export const Trascrizione = forwardRef<
     onVoceRinominata: (speakerId: number, nome: string) => void
   }
 >(function Trascrizione(props, ref) {
+  const t = useT()
   const {
     sessione,
     segmenti,
@@ -294,7 +309,7 @@ export const Trascrizione = forwardRef<
   // di chi non e' stato assegnato a nessun cluster: rinominarlo come se fosse
   // una persona sarebbe fuorviante) e non gia' battezzate.
   const vociDaNominare = useMemo(
-    () => voci.filter((v) => v.label.startsWith('Voce ') && !v.nome_reale),
+    () => voci.filter((v) => v.numero != null && !v.nome_reale),
     [voci],
   )
 
@@ -397,23 +412,22 @@ export const Trascrizione = forwardRef<
     return (
       <main className="transcript">
         <div className="transcript__head">
-          <span className="transcript__title">Nessuna call</span>
+          <span className="transcript__title">{t('tra.nessuna_call')}</span>
         </div>
         <div className="state">
           <div className="state__ph" />
           <div>
-            <p className="state__title">Non hai ancora registrato niente</p>
+            <p className="state__title">{t('tra.mai_registrato')}</p>
             <p className="state__body" style={{ marginTop: 'var(--sp-2)' }}>
-              Avvia la registrazione quando entri in una call. Sentirai il tuo microfono e l’audio del
-              computer, così la trascrizione contiene tutti.
+              {t('tra.mai_registrato_nota')}
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-4)' }}>
             <button className="btn btn--rec" onClick={onRegistra}>
-              Registra
+              {t('tra.registra')}
             </button>
             {scorciatoiaStriscia && (
-              <span className="state__hint">oppure {scorciatoiaStriscia} per la striscia</span>
+              <span className="state__hint">{t('tra3.oppure_striscia', { tasto: scorciatoiaStriscia })}</span>
             )}
           </div>
         </div>
@@ -434,11 +448,11 @@ export const Trascrizione = forwardRef<
         <div className="legend">
           <span>
             <i />
-            Io
+            {t('tra.io')}
           </span>
           <span>
             <i className="is-other" />
-            Altri
+            {t('tra.altri')}
           </span>
         </div>
       </div>
@@ -451,7 +465,7 @@ export const Trascrizione = forwardRef<
           className="transcript__head"
           style={{ borderTop: 'none', flexWrap: 'wrap', rowGap: 'var(--sp-2)', paddingTop: 0 }}
         >
-          <span className="label">DAI UN NOME ALLE VOCI</span>
+          <span className="label">{t('tra.nomina_voci')}</span>
           {vociDaNominare.map((v) => (
             <RigaVoceDaNominare key={v.id} voce={v} onSalva={rinominaVoce} />
           ))}
@@ -466,12 +480,12 @@ export const Trascrizione = forwardRef<
             ))}
           </div>
           <p style={{ fontSize: 'var(--fs-read)', color: 'var(--fg-body)' }}>
-            In ascolto. Nessuno ha ancora parlato.
+            {t('tra.in_ascolto')}
           </p>
         </div>
       ) : righe.length === 0 ? (
         <div className="state">
-          <p className="state__body">Nessuna trascrizione per questa call.</p>
+          <p className="state__body">{t('tra.nessuna_trascrizione')}</p>
         </div>
       ) : (
         <div className="transcript__body" ref={corpo} onScroll={onScroll} onClick={onClickMinuto}>
@@ -490,10 +504,10 @@ export const Trascrizione = forwardRef<
               >
                 <span className={`chev${mostraEco ? ' is-open' : ''}`} />
                 <span>
-                  <b className="num">{quantiEco === 1 ? '1 riga' : `${quantiEco} righe`}</b>{' '}
-                  {quantiEco === 1 ? 'ripresa' : 'riprese'} dall’altoparlante
+                  <b className="num">{t(quantiEco === 1 ? 'tra3.riga_1' : 'tra3.righe_n', { n: quantiEco })}</b>{' '}
+                  {t(quantiEco === 1 ? 'tra3.ripresa' : 'tra3.riprese')}
                 </span>
-                <span className="echo__hint">tenute fuori da riassunto, note ed export</span>
+                <span className="echo__hint">{t('tra.eco_nota')}</span>
               </button>
             </div>
           )}
@@ -519,8 +533,8 @@ export const Trascrizione = forwardRef<
                 quella frase non ha senso, quindi si tace il conteggio invece
                 di dire "0 righe nuove". */}
             {righeNuove === 0
-              ? 'Torna al presente'
-              : `Torna al presente · ${righeNuove === 1 ? '1 riga nuova' : `${righeNuove} righe nuove`}`}
+              ? t('tra3.torna')
+              : `${t('tra3.torna')} · ${t(righeNuove === 1 ? 'tra3.nuova_1' : 'tra3.nuove_n', { n: righeNuove })}`}
           </button>
         </div>
       )}

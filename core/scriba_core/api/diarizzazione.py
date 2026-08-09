@@ -27,6 +27,21 @@ class _RinominaVoce(BaseModel):
     nome_reale: str
 
 
+def numero_voce(label: str) -> int | None:
+    """Il numero dentro "Voce 3", o None se l'etichetta non ha quella forma.
+
+    Le due voci che il core crea insieme alla sessione — "io" e "altri" — non
+    ce l'hanno, e non è un caso da correggere: non sono voci trovate dalla
+    diarizzazione, sono le due tracce.
+    """
+    if not label.startswith("Voce "):
+        return None
+    try:
+        return int(label[5:])
+    except ValueError:
+        return None
+
+
 def crea_router(ctx: Contesto) -> APIRouter:
     router = APIRouter(tags=["diarizzazione"])
     # Un'unica istanza per processo, come `ModelsManager` in modelli.py: tiene
@@ -126,6 +141,15 @@ def crea_router(ctx: Contesto) -> APIRouter:
                 "id": r["id"],
                 "ruolo": r["ruolo"],
                 "label": r["label"],
+                # Il numero, separato dall'etichetta. `label` vale "Voce 3":
+                # una stringa che il core **genera e poi rilegge**
+                # (`SUBSTR(label, 6)`, dove 6 è la lunghezza di "Voce "),
+                # quindi è un identificatore travestito da etichetta.
+                # Mostrarla com'è porta l'italiano dentro un'interfaccia
+                # inglese; tradurla nel database romperebbe quella lettura.
+                # Il numero si dà a parte, e l'etichetta se la compone chi la
+                # mostra, nella lingua in cui sta guardando.
+                "numero": numero_voce(r["label"]),
                 "nome_reale": r["nome_reale"],
                 "confermato": bool(r["confermato"]),
             }

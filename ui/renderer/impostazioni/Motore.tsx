@@ -10,6 +10,7 @@
 import { useState } from 'react'
 
 import type { Provider } from '../tipi'
+import { useT } from '../lingua'
 
 /** A chi va la trascrizione, per completare la frase del rischio. Il core dice
  *  solo *se* esce (`esce_dal_computer`), non *a chi*: il nome del fornitore
@@ -29,6 +30,7 @@ export function SezioneMotore({
   onScegli: (p: Provider) => void
   onSalvaChiave: (p: Provider, chiave: string) => Promise<boolean>
 }) {
+  const t = useT()
   const [inserendo, setInserendo] = useState<string | null>(null)
   const [chiave, setChiave] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -46,9 +48,9 @@ export function SezioneMotore({
 
   return (
     <>
-      <div className="settings__head">Motore di analisi</div>
+      <div className="settings__head">{t('mot.titolo')}</div>
       <div className="settings__body">
-        <p>Chi legge la trascrizione e ne ricava riassunto, punti salienti e task. Se ne può usare uno solo alla volta.</p>
+        <p>{t('mot.titolo_nota')}</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
           {providers.map((p) => {
             // Non c'è un campo dedicato per "manca la chiave": si deduce dal
@@ -70,7 +72,7 @@ export function SezioneMotore({
                     <span className="engine__name">{p.etichetta}</span>
                     <span className="engine__desc">{p.descrizione}</span>
                     {p.minuti_per_ora != null && (
-                      <span className="engine__speed">circa {p.minuti_per_ora} min per un’ora di call</span>
+                      <span className="engine__speed">{t('mot2.velocita', { n: p.minuti_per_ora })}</span>
                     )}
                   </div>
                   <span className={`engine__state ${p.disponibile ? 'is-ok' : ''}`}>
@@ -82,15 +84,14 @@ export function SezioneMotore({
                           ? 'In avvio…'
                           : chiedeChiave
                             ? 'Chiave mancante'
-                            : 'Non disponibile'}
+                            : t('mot2.non_disponibile')}
                   </span>
                 </div>
 
                 {p.in_avvio && (
                   <div className="engine__need" onClick={(e) => e.stopPropagation()}>
                     <span>
-                      Il modello si sta caricando in memoria. Diventa selezionabile da solo appena risponde:
-                      non serve riaprire questa finestra.
+                      {t('mot.in_caricamento')}
                     </span>
                   </div>
                 )}
@@ -105,7 +106,7 @@ export function SezioneMotore({
                           type="password"
                           className="textfield textfield--sm"
                           style={{ width: 220 }}
-                          placeholder="Chiave API"
+                          placeholder={t('mot.ph_chiave')}
                           value={chiave}
                           autoFocus
                           onChange={(e) => setChiave(e.target.value)}
@@ -118,7 +119,7 @@ export function SezioneMotore({
                           }}
                         />
                         <button className="btn btn--sm btn--primary" disabled={salvando || !chiave.trim()} onClick={() => salva(p)}>
-                          Salva
+                          {t('mot.salva')}
                         </button>
                         <button
                           className="btn btn--sm"
@@ -127,12 +128,12 @@ export function SezioneMotore({
                             setChiave('')
                           }}
                         >
-                          Annulla
+                          {t('mot.annulla')}
                         </button>
                       </>
                     ) : (
                       <>
-                        Serve una chiave API
+                        {t('mot.serve_chiave')}
                         <button
                           className="btn btn--sm"
                           onClick={() => {
@@ -140,7 +141,7 @@ export function SezioneMotore({
                             setChiave('')
                           }}
                         >
-                          Inserisci la chiave
+                          {t('mot.inserisci')}
                         </button>
                       </>
                     )}
@@ -148,7 +149,7 @@ export function SezioneMotore({
                 )}
 
                 {p.esce_dal_computer && (
-                  <p className="engine__risk">La trascrizione viene inviata a {DESTINAZIONE[p.id] ?? p.etichetta}.</p>
+                  <p className="engine__risk">{t('mot2.inviata_a', { dove: DESTINAZIONE[p.id] ?? p.etichetta })}</p>
                 )}
               </div>
             )

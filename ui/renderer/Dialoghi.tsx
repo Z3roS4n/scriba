@@ -12,6 +12,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type * as React from 'react'
+import { useT } from './lingua'
 
 /**
  * Il consenso, unico modale dell'app: senza spunta il pulsante resta spento,
@@ -22,6 +23,7 @@ export function ModaleConsenso(props: {
   onAnnulla: () => void
   onConferma: (titolo: string, consenso: boolean) => void
 }): React.ReactElement {
+  const t = useT()
   const { titoloIniziale = '', onAnnulla, onConferma } = props
   const [titolo, setTitolo] = useState(titoloIniziale)
   const [consenso, setConsenso] = useState(false)
@@ -63,8 +65,8 @@ export function ModaleConsenso(props: {
     >
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
-          <h2>Registrare questa call</h2>
-          <p>Verranno registrati il tuo microfono e l'audio del computer.</p>
+          <h2>{t('dlg.consenso_titolo')}</h2>
+          <p>{t('dlg.consenso_cosa')}</p>
         </div>
 
         <div className="modal__field">
@@ -74,7 +76,7 @@ export function ModaleConsenso(props: {
               ref={campoTitolo}
               type="text"
               value={titolo}
-              placeholder="Revisione sprint 24"
+              placeholder={t('dlg.esempio_titolo')}
               onChange={(e) => setTitolo(e.target.value)}
               // .textfield disegna già bordo, sfondo e padding: senza azzerare
               // quelli nativi dell'input comparirebbe una seconda cornice
@@ -102,23 +104,22 @@ export function ModaleConsenso(props: {
             ✓
           </button>
           <div className="consent__text">
-            <b>Ho avvisato le persone in call che sto registrando.</b>
+            <b>{t('dlg.consenso_spunta')}</b>
             <span>
-              Registrare gli altri significa trattare i loro dati personali. Questa spunta viene annotata
-              nella sessione, ma non sostituisce l'averglielo detto.
+              {t('dlg.consenso_nota')}
             </span>
           </div>
         </div>
 
         <div className="modal__foot">
           <span className="modal__hint">
-            {consenso ? 'Invio per registrare' : 'Senza la conferma non si registra.'}
+            {consenso ? t('dlg2.invio_per_registrare') : t('dlg2.senza_conferma')}
           </span>
           <button type="button" className="btn" onClick={onAnnulla}>
-            Annulla
+            {t('dlg.annulla')}
           </button>
           <button type="button" className="btn btn--go" disabled={!consenso} onClick={() => onConferma(titolo, consenso)}>
-            Registra
+            {t('dlg.registra')}
           </button>
         </div>
       </div>
@@ -137,14 +138,15 @@ export function AvvisoCall(props: {
   onNo: () => void
   onChiudi: () => void
 }): React.ReactElement {
+  const t = useT()
   const { nome, onRegistra, onNo, onChiudi } = props
   return (
     <div className="toast">
       <div className="toast__top">
         <i className="toast__dot" />
         <div className="toast__text">
-          <b>Sembra che tu sia in una call su {nome}</b>
-          <span>Posso registrarla. Include l'audio degli altri partecipanti, non solo la tua voce.</span>
+          <b>{t('dlg2.sembra_call', { app: nome })}</b>
+          <span>{t('dlg.rilevata')}</span>
         </div>
         <button type="button" className="btn--link" onClick={onChiudi}>
           ✕
@@ -157,12 +159,12 @@ export function AvvisoCall(props: {
           style={{ padding: '7px 14px', fontSize: 'var(--fs-md)' }}
           onClick={onRegistra}
         >
-          Registra
+          {t('dlg.registra')}
         </button>
         <button type="button" className="btn" style={{ fontSize: 'var(--fs-md)' }} onClick={onNo}>
-          No grazie
+          {t('dlg.no_grazie')}
         </button>
-        <span className="toast__note">torna alla prossima call</span>
+        <span className="toast__note">{t('dlg.torna')}</span>
       </div>
     </div>
   )

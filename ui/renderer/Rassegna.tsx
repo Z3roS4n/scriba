@@ -10,8 +10,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RiquadroInline } from './Dialoghi'
+import { etichettaValore, useLocale, useT, type Chiave, type Traduci } from './lingua'
 import type { Analisi, CampoProva, Segmento, Sessione, Task } from './tipi'
 import { dataBreve, tempo } from './tipi'
+// gia importato
 
 /** I soli valori che lo schema accetta per la priorità
  *  (`CHECK (priorita IN (...))`, schema.sql). Si sceglie fra questi invece di
@@ -22,18 +24,23 @@ const PRIORITA = ['bassa', 'media', 'alta', 'critica'] as const
 const CHI: Record<Segmento['source'], string> = { mic: 'Io', loopback: 'Altri' }
 
 /** «14 ago 2026»: solo per la scadenza risolta, mai per i minuti della call. */
-function dataEstesa(iso: string): string {
+function dataEstesa(iso: string, locale: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }).replace('.', '')
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' }).replace('.', '')
 }
 
 /** Stessa logica del chip scadenza in Analisi.tsx: data risolta, detta a voce
  * ma non risolta, o assente. Duplicata invece che importata perché lì è
  * privata del modulo — vedi la nota nel rapporto finale. */
-function testoScadenza(t: Pick<Task, 'due_date' | 'due_raw'>): string | null {
-  if (t.due_date) return `${dataEstesa(t.due_date)}${t.due_raw ? ` · «${t.due_raw}»` : ''}`
-  if (t.due_raw) return `solo a voce: «${t.due_raw}»`
+function testoScadenza(
+  task: Pick<Task, 'due_date' | 'due_raw'>,
+  tr: Traduci,
+  locale: string,
+): string | null {
+  if (task.due_date)
+    return `${dataEstesa(task.due_date, locale)}${task.due_raw ? ` · «${task.due_raw}»` : ''}`
+  if (task.due_raw) return tr('pan.solo_a_voce', { q: task.due_raw })
   return null
 }
 
@@ -44,29 +51,36 @@ type ChiaveCampo = 'titolo' | 'assignee_text' | 'due_date' | 'priorita'
 /** I quattro campi mostrati, nell'ordine del handoff. La chiave della task e
  * quella della prova non coincidono per il responsabile: la task la chiama
  * `assignee_text`, la prova la sostiene come `assignee`. */
-const CAMPI: Array<{ chiave: ChiaveCampo; etichetta: string; prova: CampoProva }> = [
-  { chiave: 'titolo', etichetta: 'Titolo', prova: 'titolo' },
-  { chiave: 'assignee_text', etichetta: 'Responsabile', prova: 'assignee' },
-  { chiave: 'due_date', etichetta: 'Scadenza', prova: 'due_date' },
-  { chiave: 'priorita', etichetta: 'Priorità', prova: 'priorita' },
+const CAMPI: Array<{ chiave: ChiaveCampo; etichetta: Chiave; prova: CampoProva }> = [
+  { chiave: 'titolo', etichetta: 'ras.campo.titolo', prova: 'titolo' },
+  { chiave: 'assignee_text', etichetta: 'ras.campo.assignee', prova: 'assignee' },
+  { chiave: 'due_date', etichetta: 'ras.campo.scadenza', prova: 'due_date' },
+  { chiave: 'priorita', etichetta: 'ras.campo.priorita', prova: 'priorita' },
 ]
 
 /** Il testo mostrato quando non si sta modificando, e se è un vuoto detto
  * apertamente («nessun responsabile») invece che uno spazio bianco. */
-function valoreCampo(t: Task, chiave: ChiaveCampo): { testo: string; mancante: boolean } {
+function valoreCampo(
+  t: Task,
+  chiave: ChiaveCampo,
+  tr: Traduci,
+  locale: string,
+): { testo: string; mancante: boolean } {
   switch (chiave) {
     case 'titolo':
       return { testo: t.titolo, mancante: false }
     case 'assignee_text':
       return t.assignee_text
         ? { testo: t.assignee_text, mancante: false }
-        : { testo: 'nessun responsabile', mancante: true }
+        : { testo: tr('ras3.nessun_resp'), mancante: true }
     case 'due_date': {
-      const s = testoScadenza(t)
-      return s ? { testo: s, mancante: false } : { testo: 'nessuna scadenza', mancante: true }
+      const s = testoScadenza(t, tr, locale)
+      return s ? { testo: s, mancante: false } : { testo: tr('ras3.nessuna_scad'), mancante: true }
     }
     case 'priorita':
-      return t.priorita ? { testo: t.priorita, mancante: false } : { testo: 'nessuna priorità', mancante: true }
+      return t.priorita
+        ? { testo: etichettaValore(tr, 'priorita', t.priorita), mancante: false }
+        : { testo: tr('priorita.nessuna'), mancante: true }
   }
 }
 
@@ -108,8 +122,11 @@ export function Rassegna(props: {
   indiceIniziale: number
   onEsci: (indiceCorrente: number) => void
 }): React.ReactElement {
+  const t = useT()
   const { sessione, segmenti, indiceIniziale, onEsci } = props
 
+  const tr = useT()
+  const locale = useLocale()
   const [analisi, setAnalisi] = useState<Analisi | null>(null)
   const [indice, setIndice] = useState(indiceIniziale)
   const [editando, setEditando] = useState<ChiaveCampo | null>(null)
@@ -238,7 +255,7 @@ export function Rassegna(props: {
         const dettaglio =
           typeof (r.body as { detail?: unknown } | null)?.detail === 'string'
             ? (r.body as { detail: string }).detail
-            : `Il core ha risposto ${r.status}.`
+            : t('ras3.core_ha_risposto', { n: r.status })
         setErroreSalva(dettaglio)
         return
       }
@@ -310,20 +327,20 @@ export function Rassegna(props: {
     <div className="plane">
       <div className="plane__head">
         <span className="thread" />
-        <span className="plane__title">Rassegna</span>
+        <span className="plane__title">{tr('ras.titolo')}</span>
         <span className="plane__sub">
-          {nomeCall} · {dataBreve(sessione.started_at)}
+          {nomeCall} · {dataBreve(sessione.started_at, locale, tr('data.oggi'))}
         </span>
         <span className="plane__spacer" />
         <span className="rev__count num">
-          {tasks.length > 0 ? `${indiceSicuro + 1} di ${tasks.length}` : '—'}
-          {daConfermare > 0 && ` · ${daConfermare} da confermare`}
+          {tasks.length > 0 ? tr('ras.di', { i: indiceSicuro + 1, n: tasks.length }) : '—'}
+          {daConfermare > 0 && ` · ${tr('call.n_da_confermare', { n: daConfermare })}`}
         </span>
         {/* Si esce con Esc, e il tasto è scritto: una scorciatoia esiste solo
             se qualcuno sa che c'è. Il clic fa la stessa cosa. */}
         <button className="esc" onClick={esci}>
-          <span className="key">Esc</span>
-          torna alla lista
+          <span className="key">{t('ras2.esc')}</span>
+          {tr('ras.esci')}
         </button>
       </div>
 
@@ -336,8 +353,8 @@ export function Rassegna(props: {
       <div className="plane__body">
         <div className="rev__left">
           <div className="transcript__head">
-            <span className="label label--quiet">Trascrizione</span>
-            <span className="transcript__meta num">ferma sulle righe citate</span>
+            <span className="label label--quiet">{tr('ras.trascrizione')}</span>
+            <span className="transcript__meta num">{tr('ras.ferma')}</span>
           </div>
           {/* Cambiando task queste righe non si smontano: cambia solo
               `.is-cited` e la posizione. Rimontarle farebbe saltare la lista,
@@ -367,32 +384,32 @@ export function Rassegna(props: {
         <div className="rev__right">
           {!analisi ? (
             <div className="state">
-              <p className="state__title">Carico…</p>
-              <p className="state__body">Sto leggendo le task di questa call.</p>
+              <p className="state__title">{tr('ras.carico')}</p>
+              <p className="state__body">{tr('ras.carico_nota')}</p>
             </div>
           ) : !taskCorrente ? (
             <div className="state">
-              <p className="state__title">Nessuna task da rivedere</p>
-              <p className="state__body">Questa call non ha task in sospeso.</p>
+              <p className="state__title">{tr('ras.nessuna')}</p>
+              <p className="state__body">{tr('ras.nessuna_nota')}</p>
             </div>
           ) : (
             <>
               <div className="rev__body">
                 <span className="label label--quiet">
-                  Task {indiceSicuro + 1} di {tasks.length}
+                  {tr('ras.task_n_di', { i: indiceSicuro + 1, n: tasks.length })}
                 </span>
                 <h2 className="rev__title">{taskCorrente.titolo}</h2>
 
                 <div className="rev__fields">
                   {CAMPI.map(({ chiave, etichetta, prova }) => {
-                    const { testo, mancante } = valoreCampo(taskCorrente, chiave)
+                    const { testo, mancante } = valoreCampo(taskCorrente, chiave, tr, locale)
                     const prove = taskCorrente.evidence.filter((e) => e.supports === prova)
                     const inModifica = editando === chiave
 
                     return (
                       <div className="rf" key={chiave}>
                         <div className="rf__k">
-                          <span className="label label--quiet">{etichetta}</span>
+                          <span className="label label--quiet">{tr(etichetta)}</span>
                           {!inModifica && (
                             <button
                               className="btn btn--quiet btn--sm rf__edit"
@@ -402,7 +419,7 @@ export function Rassegna(props: {
                                 setEditando(chiave)
                               }}
                             >
-                              Modifica
+                              {tr('ras.modifica')}
                             </button>
                           )}
                         </div>
@@ -418,14 +435,14 @@ export function Rassegna(props: {
                                   className={`btn btn--sm${valoreGrezzo(taskCorrente, chiave) === pr ? ' is-on' : ''}`}
                                   onClick={() => salva(pr)}
                                 >
-                                  {pr}
+                                  {etichettaValore(tr, 'priorita', pr)}
                                 </button>
                               ))}
                               <button className="btn btn--sm" onClick={() => salva(null)}>
-                                nessuna
+                                {tr('priorita.nessuna')}
                               </button>
                               <button className="btn btn--quiet btn--sm" onClick={annullaModifica}>
-                                Annulla
+                                {tr('ras.annulla')}
                               </button>
                             </div>
                           ) : (
@@ -446,10 +463,10 @@ export function Rassegna(props: {
                                 }}
                               />
                               <button className="btn btn--primary btn--sm" onClick={() => salva()}>
-                                Salva
+                                {tr('ras.salva')}
                               </button>
                               <button className="btn btn--quiet btn--sm" onClick={annullaModifica}>
-                                Annulla
+                                {tr('ras.annulla')}
                               </button>
                             </div>
                           )
@@ -461,7 +478,7 @@ export function Rassegna(props: {
                             lontana: chi ha appena salvato sta guardando qui. */}
                         {inModifica && erroreSalva && (
                           <RiquadroInline
-                            testo={`Non sono riuscito a salvare: ${erroreSalva}`}
+                            testo={t('ras3.non_salvato', { d: erroreSalva })}
                             azioni={[{ etichetta: 'Riprova', onClick: () => salva() }]}
                           />
                         )}
@@ -473,7 +490,7 @@ export function Rassegna(props: {
                                 {tempo(pr.t_ms)}
                               </button>
                               <p className={`rf__q${pr.quote ? '' : ' is-empty'}`}>
-                                {pr.quote ?? 'Dedotta dal contesto, non da una frase precisa.'}
+                                {pr.quote ?? t('ras3.dedotta')}
                               </p>
                             </div>
                           ))
@@ -483,7 +500,7 @@ export function Rassegna(props: {
                           // «verificato» (regola 13).
                           <div className="rf__ev">
                             <span className="ev__t">—</span>
-                            <p className="rf__q is-empty">Dedotta. Nessuna frase della riunione la sostiene.</p>
+                            <p className="rf__q is-empty">{tr('ras.dedotta')}</p>
                           </div>
                         )}
                       </div>
@@ -496,10 +513,10 @@ export function Rassegna(props: {
                   ritmo, non una serie di decisioni isolate (regola 27). */}
               <div className="rev__foot">
                 <button className="btn btn--primary btn--lg" onClick={confermaEAvanza}>
-                  Conferma
+                  {tr('ras.conferma')}
                 </button>
                 <button className="btn btn--lg" onClick={scartaEAvanza}>
-                  Scarta
+                  {tr('ras.scarta')}
                 </button>
                 <div className="rev__keys">
                   <span className="key">C</span>conferma

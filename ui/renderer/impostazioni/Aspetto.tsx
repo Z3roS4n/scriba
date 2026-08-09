@@ -11,13 +11,11 @@
  */
 
 import type { Impostazioni } from '../tipi'
+import { etichettaValore, linguaValida, useT, type Lingua } from '../lingua'
 import { applica, temaValido, type Tema } from '../tema'
+// gia importato
 
-const TEMI: Array<{ id: Tema; etichetta: string }> = [
-  { id: 'scuro', etichetta: 'Scuro' },
-  { id: 'chiaro', etichetta: 'Chiaro' },
-  { id: 'sistema', etichetta: 'Come il sistema' },
-]
+const TEMI: Tema[] = ['scuro', 'chiaro', 'sistema']
 
 export function SezioneAspetto({
   impostazioni,
@@ -26,8 +24,25 @@ export function SezioneAspetto({
   impostazioni: Impostazioni
   onCambia: (patch: Partial<Impostazioni>) => void
 }) {
+  const t = useT()
   const i = impostazioni.interfaccia
   const tema = temaValido(i.tema)
+  const lingua = linguaValida(i.lingua)
+
+  /** Le tre scelte, tradotte: l'elenco delle lingue si legge nella lingua in
+   *  cui si sta guardando adesso, non in quella che nomina. */
+  const LINGUE: Array<{ id: Lingua; etichetta: string }> = [
+    { id: 'it', etichetta: t('lingua.it') },
+    { id: 'en', etichetta: t('lingua.en') },
+    { id: 'sistema', etichetta: t('lingua.sistema') },
+  ]
+
+  const scegliLingua = (nuova: Lingua) => {
+    // Stessa regola del tema: prima si vede, poi si salva. Il giro fino al
+    // core e ritorno non deve stare fra il clic e il testo che cambia.
+    window.scriba.annunciaLingua(nuova)
+    onCambia({ interfaccia: { ...i, lingua: nuova } })
+  }
 
   const scegli = (nuovo: Tema) => {
     // Prima si vede, poi si salva. Il salvataggio è un giro fino al core e
@@ -40,25 +55,37 @@ export function SezioneAspetto({
 
   return (
     <>
-      <div className="settings__head">Aspetto</div>
+      <div className="settings__head">{t('asp.titolo')}</div>
       <div className="settings__body">
         <div className="row">
           <div className="row__t">
-            <b>Tema</b>
+            <b>{t('lingua.etichetta')}</b>
+            <span>{t('lingua.nota')}</span>
+          </div>
+          <div className="picker">
+            {LINGUE.map((l) => (
+              <button
+                key={l.id}
+                className={lingua === l.id ? 'is-on' : ''}
+                onClick={() => scegliLingua(l.id)}
+              >
+                {l.etichetta}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="row">
+          <div className="row__t">
+            <b>{t('asp.tema')}</b>
             <span>
-              «Come il sistema» segue Windows, anche quando cambia da solo al tramonto. Vale
-              subito, senza riavviare. La striscia di trascrizione resta scura in ogni caso: sta
-              sopra la finestra della riunione, e lì il bianco abbaglia.
+              {t('asp.tema_nota')}
             </span>
           </div>
           <div className="picker">
-            {TEMI.map((t) => (
-              <button
-                key={t.id}
-                className={tema === t.id ? 'is-on' : ''}
-                onClick={() => scegli(t.id)}
-              >
-                {t.etichetta}
+            {TEMI.map((id) => (
+              <button key={id} className={tema === id ? 'is-on' : ''} onClick={() => scegli(id)}>
+                {etichettaValore(t, 'tema', id)}
               </button>
             ))}
           </div>

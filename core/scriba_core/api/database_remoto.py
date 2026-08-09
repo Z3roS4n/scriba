@@ -14,6 +14,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from . import Contesto
+from ..i18n import LinguaUI
 from ..export import sql
 from ..export.sql import modello
 from ..export.sql.postgres import ErroreSql
@@ -67,9 +68,9 @@ def crea_router(ctx: Contesto) -> APIRouter:
         return await _in_thread(sql.stato, ctx.store)
 
     @router.get("/database-remoto/modello")
-    async def modello_dati() -> list[dict[str, Any]]:
+    async def modello_dati(lingua: LinguaUI) -> list[dict[str, Any]]:
         """Cosa Scriba sa mandare. Non tocca la rete."""
-        return modello.descrivi()
+        return modello.descrivi(lingua)
 
     @router.post("/database-remoto/prova")
     async def prova(req: Connessione) -> dict[str, Any]:

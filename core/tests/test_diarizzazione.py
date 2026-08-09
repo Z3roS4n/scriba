@@ -344,3 +344,34 @@ def _client(store: Store, tmp_path: Path) -> TestClient:
     app = FastAPI()
     app.include_router(crea_router(ctx))
     return TestClient(app)
+
+
+class TestNumeroVoce:
+    """`label` è un identificatore travestito da etichetta.
+
+    Il core scrive «Voce 3» e poi lo rilegge con `SUBSTR(label, 6)`. Finché
+    l'interfaccia era solo italiana la stessa stringa faceva due mestieri;
+    con due lingue non può più, e il numero va dato a parte.
+    """
+
+    def test_estrae_il_numero(self) -> None:
+        from scriba_core.api.diarizzazione import numero_voce
+
+        assert numero_voce("Voce 2") == 2
+        assert numero_voce("Voce 37") == 37
+
+    def test_le_due_tracce_non_hanno_numero(self) -> None:
+        # «io» e «altri» non sono voci trovate dalla diarizzazione: sono le due
+        # tracce, esistono da prima, e non avere un numero è giusto.
+        from scriba_core.api.diarizzazione import numero_voce
+
+        assert numero_voce("io") is None
+        assert numero_voce("altri") is None
+
+    def test_un_nome_scelto_dall_utente_non_diventa_un_numero(self) -> None:
+        # Una voce rinominata tiene il suo `label`, e un nome che comincia per
+        # «Voce » senza numero non deve produrre un numero inventato.
+        from scriba_core.api.diarizzazione import numero_voce
+
+        assert numero_voce("Voce di Marco") is None
+        assert numero_voce("Marco") is None

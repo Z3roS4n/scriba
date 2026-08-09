@@ -52,6 +52,9 @@ export interface ScribaApi {
   temaIniziale: string
   /** Dice a tutte le finestre che il tema è cambiato: sono processi separati. */
   annunciaTema(tema: string): Promise<void>
+  /** La lingua salvata: `sistema` | `it` | `en`. */
+  linguaIniziale: string
+  annunciaLingua: (lingua: string) => Promise<void>
 
   /** Senza id cattura lo schermo principale, come fa la scorciatoia globale. */
   screenshot(idSchermo?: string): Promise<void>
