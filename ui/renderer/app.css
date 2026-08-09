@@ -887,3 +887,8 @@ a:hover { color:var(--red); border-bottom-color:var(--red); }
 .meter i:nth-child(3n) { animation-delay:.4s; }
 @keyframes meterIdle { 0%, 100% { opacity:.35 } 50% { opacity:1 } }
 
+
+/* La riga di controlli quando un campo della rassegna è in modifica: il
+   handoff disegna il campo a riposo, non mentre lo si cambia. */
+.rf__edit-row { display:flex; align-items:center; gap:var(--sp-2); flex-wrap:wrap; }
+.rf__edit-row .textfield { flex:1; min-width:180px; }
