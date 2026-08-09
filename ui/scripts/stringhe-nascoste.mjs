@@ -75,8 +75,12 @@ for (const percorso of file(RADICE)) {
   for (const m of testo.matchAll(/`((?:[^`\\]|\\.)*)`/g)) {
     for (const parte of m[1].split(/\$\{[^{}]*\}/)) if (prosa(parte)) pezzi.push([parte, m.index])
   }
+  // I nodi di testo li guarda anche l'altro metro, ma li scarta quando sono
+  // una parola sola tutta minuscola — «chi», «entro» — perché lì di solito
+  // c'è una classe. Sono etichette vere, e l'unico posto in cui si vedono è
+  // questo: l'altro metro segna zero, quindi ciò che si trova qui è per
+  // definizione ciò che gli è sfuggito.
   for (const m of testo.matchAll(/(?<![=\-!<>])>([^<>]{2,})</g)) {
-    if (!m[1].includes('{')) continue // già contato dall'altro metro
     for (const parte of m[1].split(/\{[^{}]*\}/)) if (prosa(parte)) pezzi.push([parte.trim(), m.index])
   }
 
@@ -87,9 +91,13 @@ for (const percorso of file(RADICE)) {
     if (/\b(className|class|id|key|href|src|type|role|name|method|charset)=\s*$/.test(prima)) continue
     if (/\b(t|tr|etichettaValore|etichettaVoce)\(\s*$/.test(prima)) continue
     if (/[.[]\s*$/.test(prima)) continue // accesso a una proprietà
-    if (/^[a-z][\w-]*$/.test(s)) continue // chiave, classe, stato
+    // Una parola sola tutta minuscola è quasi sempre uno stato o una classe —
+    // `proposed`, `confirmed`, `sum`. Quasi: `'confermata'` e `'scartata'`
+    // hanno la stessa forma e sono quello che l'utente legge sulla riga. Se è
+    // una parola-spia vince la spia.
+    if (/^[a-z][\w-]*$/.test(s) && !SPIA.test(s)) continue
     if (/^[/.]/.test(s)) continue // percorso o rotta
-    if (/^[\w.]+$/.test(s)) continue // chiave puntata: `call.in_analisi`
+    if (/^\w+(\.\w+)+$/.test(s)) continue // chiave puntata: `call.in_analisi`
     if (/^[-\w\s,.#%()/]+$/.test(s) && !SPIA.test(s)) continue // css, formati, inglese
     if (!SPIA.test(s) && !/[àèéìòù«»]/.test(s)) continue
     trovate.push(s)
