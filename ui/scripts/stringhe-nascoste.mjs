@@ -47,9 +47,14 @@ function senzaCommenti(t) {
     .replace(/(^|\s)\/\/[^\n]*/g, '$1 ')
 }
 
-/** Parole che in un'interfaccia inglese non compaiono mai. */
+/** Parole che in un'interfaccia inglese non compaiono mai.
+ *
+ * L'elenco è cresciuto leggendo: la prima versione trovava «non detto» e si
+ * lasciava dietro «Sto salvando…» e «campi su Notion», che stanno nello
+ * stesso file e nella stessa schermata. Ogni parola aggiunta viene da una
+ * stringa vera che era sfuggita, non da un dizionario. */
 const SPIA =
-  /\b(il|lo|la|le|gli|un|una|del|della|dei|delle|che|non|per|con|sul|sulla|nel|nella|questo|questa|quando|come|dove|più|già|sono|essere|fare|dice|detto|detta|salva|apri|chiudi|scegli|nessun|nessuna|ancora|adesso|solo|anche|senza|prova|prove|voce|voci|riga|righe|minuto|conferma|confermata|scartata|entro|chi)\b/i
+  /\b(il|lo|la|le|gli|un|una|del|della|dei|delle|che|non|per|con|su|sul|sulla|nel|nella|dal|dalla|al|alla|allo|agli|alle|tra|fra|questo|questa|quando|come|dove|più|già|sono|sta|sto|stanno|essere|fare|dice|detto|detta|salva|salvando|crea|creando|apri|chiudi|scegli|serve|servono|vale|torna|manda|mandare|resta|restano|esce|viene|vengono|nessun|nessuna|ogni|tutte|tutti|tutto|tutta|ancora|adesso|solo|anche|senza|oppure|invece|mentre|però|così|qui|niente|prova|prove|voce|voci|riga|righe|minuto|minuti|campo|campi|colonna|colonne|pagina|nome|nomi|elenco|conferma|confermata|scartata|entro|chi)\b/i
 
 const perFile = new Map()
 
@@ -80,8 +85,15 @@ for (const percorso of file(RADICE)) {
   // c'è una classe. Sono etichette vere, e l'unico posto in cui si vedono è
   // questo: l'altro metro segna zero, quindi ciò che si trova qui è per
   // definizione ciò che gli è sfuggito.
-  for (const m of testo.matchAll(/(?<![=\-!<>])>([^<>]{2,})</g)) {
-    for (const parte of m[1].split(/\{[^{}]*\}/)) if (prosa(parte)) pezzi.push([parte.trim(), m.index])
+  if (percorso.endsWith('.tsx')) {
+    // Solo nei .tsx: in un .ts ogni `>` è la chiusura di un generico, e
+    // `Promise<void>` seguito da un `<` più in là produce «chiudi(): Promise»
+    // come se fosse una frase. E un nodo di testo non contiene mai `(` o `:`.
+    for (const m of testo.matchAll(/(?<![=\-!<>])>([^<>]{2,})</g)) {
+      for (const parte of m[1].split(/\{[^{}]*\}/)) {
+        if (prosa(parte) && !/[():]/.test(parte)) pezzi.push([parte.trim(), m.index])
+      }
+    }
   }
 
   for (const [grezzo, dove] of pezzi) {
