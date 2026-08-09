@@ -18,7 +18,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { dataBreve, tempo, type Cliente, type Sessione, type StatoSessione } from './tipi'
+import { giornoBreve, tempo, type Cliente, type Sessione, type StatoSessione } from './tipi'
 
 /** Le voci del filtro stato. 'analyzing' non c'è: non è mai salvato nel
  *  database — vive solo nello stato del processo — quindi non si può filtrare. */
@@ -233,18 +233,51 @@ export function Archivio(props: {
 
   const filtrato = testoCercato.trim() !== '' || cliente !== '' || stato !== '' || giorni !== null
 
+  /** Il frammento con la parola trovata dentro un <mark>.
+   *
+   *  Il core marca con \u0002 e \u0003 invece che con dei tag, cosi' qui non
+   *  si rende HTML che arriva da fuori: si spezza la stringa e si compone. */
+  function conEvidenza(frammento: string): React.ReactNode[] {
+    return frammento.split('\u0002').flatMap((pezzo, i) => {
+      if (i === 0) return [pezzo]
+      const [dentro, ...fuori] = pezzo.split('\u0003')
+      return [<mark key={i}>{dentro}</mark>, fuori.join('\u0003')]
+    })
+  }
+
+  const oreTotali = call.reduce((n, c) => n + (c.durata_ms ?? 0), 0) / 3_600_000
+
   return (
-    <>
-      <div className="review__bar">
-        <span className="label">ARCHIVIO</span>
-        <input
-          className="arch__search"
-          type="search"
-          placeholder="Cerca nei titoli e in quello che è stato detto…"
-          value={testo}
-          onChange={(e) => setTesto(e.target.value)}
-        />
-        <select className="arch__filter" value={cliente} onChange={(e) => setCliente(e.target.value)}>
+    <div className="plane">
+      <div className="plane__head">
+        <span className="thread" />
+        <span className="plane__title">Archivio</span>
+        <span className="plane__sub num">
+          {call.length} {call.length === 1 ? 'call' : 'call'}
+          {oreTotali >= 0.1 && ` · ${oreTotali.toFixed(1).replace('.', ',')} ore registrate`}
+        </span>
+        <span className="plane__spacer" />
+        <button className="esc" onClick={onEsci}>
+          <span className="key">Esc</span>
+          torna alla call
+        </button>
+      </div>
+
+      <div className="arch__tools">
+        <div className="search">
+          <input
+            className="textfield"
+            type="search"
+            placeholder="Cerca nei titoli e in quello che è stato detto…"
+            value={testo}
+            onChange={(e) => setTesto(e.target.value)}
+          />
+        </div>
+        {/* Restano <select> nativi: il design li vieta (regola 21) e Select.tsx
+            esiste gia', ma sostituirli e' un lavoro suo — gli otto della
+            finestra insieme, non tre qui e cinque altrove. Intanto prendono la
+            veste di `.filter` invece di restare senza. */}
+        <select className="filter" value={cliente} onChange={(e) => setCliente(e.target.value)}>
           <option value="">Tutti i clienti</option>
           <option value={SENZA_CLIENTE}>Senza cliente</option>
           {clienti.map((c) => (
@@ -254,7 +287,7 @@ export function Archivio(props: {
           ))}
         </select>
         <select
-          className="arch__filter"
+          className="filter"
           value={stato}
           onChange={(e) => setStato(e.target.value as StatoSessione | '')}
         >
@@ -265,7 +298,7 @@ export function Archivio(props: {
           ))}
         </select>
         <select
-          className="arch__filter"
+          className="filter"
           value={giorni === null ? '' : String(giorni)}
           onChange={(e) => setGiorni(e.target.value === '' ? null : Number(e.target.value))}
         >
@@ -275,35 +308,30 @@ export function Archivio(props: {
             </option>
           ))}
         </select>
-        <button
-          className={`btn btn--sm ${raggruppa ? 'is-on' : ''}`}
-          onClick={() => setRaggruppa((v) => !v)}
-        >
-          Per cliente
+        <button className={`filter${raggruppa ? ' is-on' : ''}`} onClick={() => setRaggruppa((v) => !v)}>
+          <span className="sq" />
+          Raggruppa per cliente
         </button>
-        <div className="topbar__spacer" />
+        <span className="plane__spacer" />
         {/* L'archivio e' il posto in cui una selezione di call esiste gia': i
             filtri l'hanno appena fatta. Rifarla altrove sarebbe rifare i
             filtri. */}
         <button
-          className={`btn ${perIa ? 'is-on' : ''}`}
+          className={`btn btn--sm${perIa ? ' is-on' : ''}`}
           disabled={call.length === 0}
           onClick={() => setPerIa((v) => !v)}
         >
           Per l'IA
         </button>
-        <button className="btn" onClick={onEsci}>
-          Chiudi
-        </button>
       </div>
 
       {perIa && <PannelloIa call={call} />}
 
-      <div className="arch">
+      <div className="arch__body">
         {caricando && call.length === 0 ? (
-          <p className="arch__empty">Cerco…</p>
+          <p className="state__body">Cerco…</p>
         ) : call.length === 0 ? (
-          <p className="arch__empty">
+          <p className="state__body">
             {filtrato
               ? 'Nessuna call corrisponde a questi filtri.'
               : 'Nessuna call registrata: qui compariranno appena ne registri una.'}
@@ -312,51 +340,53 @@ export function Archivio(props: {
           gruppi.map((g) => (
             <section key={g.nome ?? '__nessuno__'}>
               {raggruppa && (
-                <h2 className="arch__group">
-                  {g.nome ?? 'Senza cliente'}
-                  <span className="count">
+                <div className="arch__group">
+                  <span className="label">{g.nome ?? 'Senza cliente'}</span>
+                  <span className="arch__n num">
                     {g.call.length} {g.call.length === 1 ? 'call' : 'call'}
+                    {testo.trim() !== '' &&
+                      ` · ${g.call.filter((c) => c.frammento).length} con «${testo.trim()}»`}
                   </span>
-                </h2>
+                </div>
               )}
               {g.call.map((c) => (
-                <div key={c.id} className="arch__row">
-                  <button className="arch__open" onClick={() => onApri(c.id)}>
-                    <span className="arch__title">{c.titolo || `Call #${c.id}`}</span>
-                    <span className="arch__meta">
-                      {dataBreve(c.started_at)}
-                      <span>·</span>
-                      {c.durata_ms != null ? tempo(c.durata_ms) : '—'}
-                      <span>·</span>
-                      {etichettaStato(c.stato)}
-                      {c.n_task > 0 && (
-                        <>
-                          <span>·</span>
-                          {c.n_task} {c.n_task === 1 ? 'task' : 'task'}
-                          {c.n_da_confermare > 0 && ` (${c.n_da_confermare} da confermare)`}
-                        </>
-                      )}
-                    </span>
+                <div className="arow" key={c.id}>
+                  <button className="arow__apri" onClick={() => onApri(c.id)}>
+                    <span className="arow__t">{c.titolo || `Call #${c.id}`}</span>
+                    {/* La frase trovata, non solo il titolo: e' la meta' del
+                        motivo per cui l'archivio esiste (regola 48). */}
+                    {c.frammento && <span className="arow__hit">{conEvidenza(c.frammento)}</span>}
                   </button>
+                  {/* Il cliente si assegna da qui, riga per riga: e' il posto in
+                      cui uno ha davanti le call non attribuite tutte insieme, e
+                      farlo call per call dalla scheda vuol dire non farlo mai
+                      (regola 49). */}
                   <select
-                    className="arch__cliente"
+                    className="arow__c"
                     value={c.client_id != null ? String(c.client_id) : ''}
                     onChange={(e) => assegna(c.id, e.target.value)}
                     title="Cliente di questa call"
                   >
-                    <option value="">— nessun cliente —</option>
+                    <option value="">Senza cliente</option>
                     {clienti.map((cl) => (
                       <option key={cl.id} value={String(cl.id)}>
                         {cl.nome}
                       </option>
                     ))}
                   </select>
+                  <span className="arow__m num">{giornoBreve(c.started_at)}</span>
+                  <span className="arow__m num">{c.durata_ms != null ? tempo(c.durata_ms) : '—'}</span>
+                  <span className="arow__s">
+                    {c.n_task > 0
+                      ? `${c.n_task} task${c.n_da_confermare > 0 ? ` · ${c.n_da_confermare} da confermare` : ''}`
+                      : etichettaStato(c.stato)}
+                  </span>
                 </div>
               ))}
             </section>
           ))
         )}
       </div>
-    </>
+    </div>
   )
 }

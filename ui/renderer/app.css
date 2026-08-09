@@ -892,3 +892,21 @@ a:hover { color:var(--red); border-bottom-color:var(--red); }
    handoff disegna il campo a riposo, non mentre lo si cambia. */
 .rf__edit-row { display:flex; align-items:center; gap:var(--sp-2); flex-wrap:wrap; }
 .rf__edit-row .textfield { flex:1; min-width:180px; }
+
+/* ---------- archivio: la parte cliccabile della riga — oltre il handoff ----
+   Nel handoff l'intera `.arow` è un <button>. Qui non può esserlo: la riga
+   contiene il selettore del cliente, e un controllo dentro un pulsante è un
+   controllo che non si riesce a usare — ogni clic aprirebbe anche la call.
+   Quindi la riga resta un contenitore e il pulsante è la sola prima colonna,
+   quella con titolo e frase trovata. */
+.arow__apri { min-width:0; text-align:left; display:block; }
+.arow__apri:hover .arow__t { text-decoration:underline; text-underline-offset:2px; }
+
+/* Il selettore del cliente in riga. È ancora un <select> nativo — il design
+   li vieta (regola 21) e vanno sostituiti tutti insieme, non tre qui e cinque
+   altrove — ma almeno non stona: niente cornice, il colore del testo intorno. */
+select.arow__c {
+  background:transparent; border:1px solid transparent; border-radius:var(--r-act);
+  font-family:inherit; padding:2px 4px; max-width:100%;
+}
+select.arow__c:hover { border-color:var(--line); }

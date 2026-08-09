@@ -619,12 +619,35 @@ class Store:
             dove.append(f"s.stato IN ({', '.join('?' * len(stati))})")
             valori.extend(stati)
 
+        # Il frammento di parlato in cui la parola compare, non solo il fatto
+        # che compaia: l'archivio serve a rispondere «cosa ci siamo detti», e
+        # un elenco di titoli non lo dice. Finora la FTS veniva usata solo per
+        # filtrare e la frase trovata restava dentro il database.
+        #
+        # I due marcatori sono caratteri di controllo, non `<b>`: qui non si
+        # produce HTML — lo comporrebbe una stringa che poi qualcuno dovrebbe
+        # fidarsi a rendere — e non si usano caratteri che possano trovarsi nel
+        # parlato. L'interfaccia li spezza e ci mette il suo <mark>.
+        frammento = "NULL"
+        if testo and testo.strip():
+            frammento = """(SELECT snippet(segments_fts, 0, char(2), char(3), '…', 12)
+                              FROM segments_fts f2
+                              JOIN transcript_segments ts2 ON ts2.id = f2.rowid
+                             WHERE ts2.session_id = s.id
+                               AND ts2.eco = 0
+                               AND segments_fts MATCH ?
+                             LIMIT 1)"""
+            # La MATCH del sotto-select vuole il suo valore, e va messo nella
+            # posizione in cui compare nella query: prima di tutti gli altri.
+            valori.insert(0, _frase_fts(testo))
+
         return list(
             self.conn.execute(
                 f"""
                 SELECT s.id, s.titolo, s.piattaforma, s.started_at, s.ended_at,
                        s.durata_ms, s.stato, s.lingua, s.client_id,
                        c.nome AS cliente,
+                       {frammento} AS frammento,
                        COUNT(CASE WHEN t.stato <> 'rejected' THEN 1 END) AS n_task,
                        COUNT(CASE WHEN t.stato <> 'rejected' AND t.needs_review = 1
                                   THEN 1 END) AS n_da_confermare

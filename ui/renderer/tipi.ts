@@ -38,6 +38,17 @@ export interface Sessione {
   client_id?: number | null
   /** Il nome del cliente, gia' risolto dal core: la UI non deve incrociarlo da se'. */
   cliente?: string | null
+  /**
+   * La frase in cui la ricerca dell'archivio ha trovato la parola, con la
+   * parola stessa fra \u0002 e \u0003.
+   *
+   * Sono caratteri di controllo e non tag: il core non produce HTML — sarebbe
+   * una stringa che poi qualcuno dovrebbe fidarsi a rendere — e non usa segni
+   * che possano trovarsi nel parlato. Null quando non si sta cercando niente:
+   * sfogliando l'archivio non c'e' una frase «trovata», e inventarne una
+   * vorrebbe dire mettere in evidenza una riga a caso.
+   */
+  frammento?: string | null
 }
 
 /** Un cliente, con quanto lavoro gli e' gia' attribuito. */
