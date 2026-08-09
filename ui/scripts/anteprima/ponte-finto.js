@@ -38,8 +38,8 @@
   // "Voce 3" compaiono nell'anteprima senza dover simulare l'intero lavoro.
   const SPEAKER = {
     io: { id: 100, label: 'io', nome_reale: null },
-    voce2: { id: 101, label: 'Voce 2', nome_reale: 'Marco' },
-    voce3: { id: 102, label: 'Voce 3', nome_reale: null },
+    voce2: { id: 101, label: 'Voce 2', numero: 2, nome_reale: 'Marco' },
+    voce3: { id: 102, label: 'Voce 3', numero: 3, nome_reale: null },
   }
   const speakerRighe = [
     SPEAKER.voce2, null, SPEAKER.voce2, null, SPEAKER.voce3, null,
@@ -61,8 +61,8 @@
   const voci24 = [
     { id: 1, ruolo: 'me', label: 'io', nome_reale: null, confermato: false },
     { id: 2, ruolo: 'them', label: 'altri', nome_reale: null, confermato: false },
-    { id: SPEAKER.voce2.id, ruolo: 'them', label: 'Voce 2', nome_reale: 'Marco', confermato: true },
-    { id: SPEAKER.voce3.id, ruolo: 'them', label: 'Voce 3', nome_reale: null, confermato: false },
+    { id: SPEAKER.voce2.id, ruolo: 'them', label: 'Voce 2', numero: 2, nome_reale: 'Marco', confermato: true },
+    { id: SPEAKER.voce3.id, ruolo: 'them', label: 'Voce 3', numero: 3, nome_reale: null, confermato: false },
   ]
   const vociVuote = [
     { id: 1, ruolo: 'me', label: 'io', nome_reale: null, confermato: false },

@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RiquadroInline } from './Dialoghi'
+import { etichettaValore, useT, type Traduci } from './lingua'
 import type { Analisi, CampoProva, Segmento, Sessione, Task } from './tipi'
 import { dataBreve, tempo } from './tipi'
 
@@ -53,7 +54,11 @@ const CAMPI: Array<{ chiave: ChiaveCampo; etichetta: string; prova: CampoProva }
 
 /** Il testo mostrato quando non si sta modificando, e se è un vuoto detto
  * apertamente («nessun responsabile») invece che uno spazio bianco. */
-function valoreCampo(t: Task, chiave: ChiaveCampo): { testo: string; mancante: boolean } {
+function valoreCampo(
+  t: Task,
+  chiave: ChiaveCampo,
+  tr: Traduci,
+): { testo: string; mancante: boolean } {
   switch (chiave) {
     case 'titolo':
       return { testo: t.titolo, mancante: false }
@@ -66,7 +71,9 @@ function valoreCampo(t: Task, chiave: ChiaveCampo): { testo: string; mancante: b
       return s ? { testo: s, mancante: false } : { testo: 'nessuna scadenza', mancante: true }
     }
     case 'priorita':
-      return t.priorita ? { testo: t.priorita, mancante: false } : { testo: 'nessuna priorità', mancante: true }
+      return t.priorita
+        ? { testo: etichettaValore(tr, 'priorita', t.priorita), mancante: false }
+        : { testo: tr('priorita.nessuna'), mancante: true }
   }
 }
 
@@ -110,6 +117,7 @@ export function Rassegna(props: {
 }): React.ReactElement {
   const { sessione, segmenti, indiceIniziale, onEsci } = props
 
+  const tr = useT()
   const [analisi, setAnalisi] = useState<Analisi | null>(null)
   const [indice, setIndice] = useState(indiceIniziale)
   const [editando, setEditando] = useState<ChiaveCampo | null>(null)
@@ -385,7 +393,7 @@ export function Rassegna(props: {
 
                 <div className="rev__fields">
                   {CAMPI.map(({ chiave, etichetta, prova }) => {
-                    const { testo, mancante } = valoreCampo(taskCorrente, chiave)
+                    const { testo, mancante } = valoreCampo(taskCorrente, chiave, tr)
                     const prove = taskCorrente.evidence.filter((e) => e.supports === prova)
                     const inModifica = editando === chiave
 
@@ -418,7 +426,7 @@ export function Rassegna(props: {
                                   className={`btn btn--sm${valoreGrezzo(taskCorrente, chiave) === pr ? ' is-on' : ''}`}
                                   onClick={() => salva(pr)}
                                 >
-                                  {pr}
+                                  {etichettaValore(tr, 'priorita', pr)}
                                 </button>
                               ))}
                               <button className="btn btn--sm" onClick={() => salva(null)}>

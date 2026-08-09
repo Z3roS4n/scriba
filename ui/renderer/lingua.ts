@@ -105,6 +105,25 @@ const it = {
   'lingua.it': 'Italiano',
   'lingua.en': 'Inglese',
   'lingua.sistema': 'Come il sistema',
+
+  // --- etichette di VALORI SALVATI -------------------------------------
+  // Si traducono dove si mostrano, mai dove si confrontano: nel database e
+  // nelle richieste restano `basso`, `alta`, `Voce 3`. Una tabella qui, e non
+  // una maiuscola messa al valore, è tutta la differenza fra tradurre la vista
+  // e rompere il confronto.
+  'filtro.basso': 'Basso',
+  'filtro.medio': 'Medio',
+  'filtro.alto': 'Alto',
+
+  'priorita.bassa': 'bassa',
+  'priorita.media': 'media',
+  'priorita.alta': 'alta',
+  'priorita.critica': 'critica',
+  'priorita.nessuna': 'nessuna priorità',
+
+  'voce.n': 'Voce {n}',
+  'voce.io': 'io',
+  'voce.altri': 'altri',
 } as const
 
 export type Chiave = keyof typeof it
@@ -173,6 +192,20 @@ const en: Record<Chiave, string> = {
   'lingua.it': 'Italian',
   'lingua.en': 'English',
   'lingua.sistema': 'Same as the system',
+
+  'filtro.basso': 'Low',
+  'filtro.medio': 'Medium',
+  'filtro.alto': 'High',
+
+  'priorita.bassa': 'low',
+  'priorita.media': 'medium',
+  'priorita.alta': 'high',
+  'priorita.critica': 'critical',
+  'priorita.nessuna': 'no priority',
+
+  'voce.n': 'Voice {n}',
+  'voce.io': 'me',
+  'voce.altri': 'others',
 }
 
 const CATALOGHI = { it, en } as const
@@ -225,4 +258,33 @@ export function useLingua(): { lingua: Lingua; risolta: 'it' | 'en' } {
   }, [risolta])
 
   return { lingua, risolta }
+}
+
+// --------------------------------------------------- etichette di un valore
+
+/**
+ * L'etichetta di un valore salvato, presa da una tabella e non ricavata dal
+ * valore stesso.
+ *
+ * Il filtro dell'eco mostrava `v[0].toUpperCase() + v.slice(1)`: funziona
+ * finché l'interfaccia è italiana e il valore è italiano, cioè finché le due
+ * cose sono la stessa. Tradotta, quella riga avrebbe scritto «Basso» sotto un
+ * chrome inglese — oppure, provando a tradurre il valore, avrebbe mandato al
+ * core una parola che il core non conosce.
+ *
+ * `sconosciuto` non è un caso teorico: la priorità la propone un modello, e al
+ * primo «urgente» al posto di «alta» qui non c'è una chiave. Si mostra quello
+ * che è arrivato, invece di lasciare un buco.
+ */
+export function etichettaValore(t: Traduci, prefisso: string, valore: string): string {
+  const chiave = `${prefisso}.${valore}` as Chiave
+  return chiave in it ? t(chiave) : valore
+}
+
+/** «Voce 3» / «Voice 3» composto dal numero, non dalla stringa salvata.
+ *  Il core genera `Voce N` e lo rilegge con `SUBSTR(label, 6)`: quella
+ *  stringa è un identificatore travestito da etichetta, e non va tradotta —
+ *  va sostituita al momento di mostrarla. */
+export function etichettaVoce(t: Traduci, numero: number | null, label: string): string {
+  return numero == null ? label : t('voce.n', { n: numero })
 }

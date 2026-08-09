@@ -190,7 +190,7 @@ export interface Segmento {
    * ed è l'unica cosa che non può sbagliare. Questo campo la raffina, non la
    * sostituisce.
    */
-  speaker?: { id: number; label: string; nome_reale: string | null } | null
+  speaker?: { id: number; label: string; numero?: number | null; nome_reale: string | null } | null
   /**
    * Il microfono ha ripreso l'altoparlante: queste parole ci sono già sulla
    * traccia degli altri, dette da chi le ha dette.
@@ -222,7 +222,12 @@ export interface Scatto {
 export interface Voce {
   id: number
   ruolo: 'me' | 'them'
+  /** Come sta scritta nel database: «Voce 3», «io», «altri». **Non si mostra**
+   *  — è un identificatore che il core genera e rilegge. Per mostrarla si usa
+   *  `numero` con `etichettaVoce`. */
   label: string
+  /** Il numero della voce, quando ne ha uno. null per «io» e «altri». */
+  numero?: number | null
   nome_reale: string | null
   confermato: boolean
 }

@@ -31,6 +31,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, WebSocket
 from pydantic import BaseModel
 
 from .api import traduci_stato_sessione as _traduci_stato_sessione
+from .api.diarizzazione import numero_voce
 from .db import manutenzione
 from .db.store import Store
 from .recorder import Recorder
@@ -1190,6 +1191,11 @@ def create_app(
                     {
                         "id": s.speaker_id,
                         "label": s.speaker_label,
+                        # Come in /voci: il numero separato dall'etichetta, che
+                        # e' una stringa che il core genera e rilegge. Chi la
+                        # mostra se la compone nella lingua in cui sta
+                        # guardando, invece di stampare l'italiano salvato.
+                        "numero": numero_voce(s.speaker_label),
                         "nome_reale": s.speaker_nome_reale,
                     }
                     if diarizzata and s.speaker_id is not None

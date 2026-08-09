@@ -21,13 +21,21 @@ import {
 } from 'react'
 
 import { tempo, type Scatto, type Segmento, type Sessione, type Voce } from './tipi'
+import { etichettaVoce, useT } from './lingua'
 
 export interface TrascrizioneHandle {
   /** Scorre alla riga del minuto indicato e la fa lampeggiare una volta. */
   vaiA: (t_ms: number) => void
 }
 
-const ETICHETTA: Record<Segmento['source'], string> = { mic: 'Io', loopback: 'Altri' }
+/** Le due tracce, per chiave: la traduzione la fa chi le mostra. Erano due
+ *  stringhe italiane in una costante di modulo — un posto in cui `useT` non
+ *  arriva, e quindi un pezzo di trascrizione che sarebbe rimasto in italiano
+ *  sotto un chrome inglese. */
+const ETICHETTA: Record<Segmento['source'], 'trascrizione.io' | 'trascrizione.altri'> = {
+  mic: 'trascrizione.io',
+  loopback: 'trascrizione.altri',
+}
 
 /**
  * Una riga di parlato. Memoizzata perche' durante una call arriva un evento al
@@ -44,10 +52,13 @@ const Riga = memo(function Riga({ s, citata }: { s: Segmento; citata: boolean })
   // questa funzione — quante persone diverse stanno parlando. Aspettare che
   // l'utente le battezzi tutte prima di mostrarle vorrebbe dire tenere
   // nascosto proprio il lavoro appena fatto.
+  const t = useT()
   const chi =
     s.source === 'mic'
-      ? ETICHETTA.mic
-      : s.speaker?.nome_reale || s.speaker?.label || ETICHETTA.loopback
+      ? t(ETICHETTA.mic)
+      : s.speaker?.nome_reale ||
+        (s.speaker ? etichettaVoce(t, s.speaker.numero ?? null, s.speaker.label) : null) ||
+        t(ETICHETTA.loopback)
   return (
     // data-t serve a ritrovare la riga quando si clicca un minuto altrove nella finestra.
     <div
@@ -62,7 +73,7 @@ const Riga = memo(function Riga({ s, citata }: { s: Segmento; citata: boolean })
       data-t={s.t_start_ms}
     >
       <button className="line__t num">{tempo(s.t_start_ms)}</button>
-      <span className="line__who">{s.eco ? ETICHETTA.loopback : chi}</span>
+      <span className="line__who">{s.eco ? t(ETICHETTA.loopback) : chi}</span>
       {/* Provvisorio: colore fioco, MAI corsivo (rallenta la lettura periferica). Alla
           chiusura della frase si toglie solo la classe, la riga non si smonta. */}
       <p className={`line__text ${s.is_final ? '' : 'is-provisional'}`}>
@@ -164,9 +175,11 @@ const RigaVoceDaNominare = memo(function RigaVoceDaNominare({
     if (riuscito) setNome('')
   }, [nome, salvando, onSalva, voce.id])
 
+  const t = useT()
+
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
-      <span className="chip chip--quiet">{voce.label}</span>
+      <span className="chip chip--quiet">{etichettaVoce(t, voce.numero ?? null, voce.label)}</span>
       {/* `--h-sm`, la stessa altezza del pulsante accanto. Aveva la classe
           intera (38px) più uno style inline con padding e corpo di un'altra
           misura, residuo del sistema vecchio: la classe vinceva sull'altezza e

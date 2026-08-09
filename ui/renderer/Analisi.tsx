@@ -10,6 +10,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Riquadro } from './Dialoghi'
+import { etichettaValore, useT } from './lingua'
 import { NotaDiLavoro } from './NotaDiLavoro'
 import { ControlloRifinitura, useRifinitura } from './Rifinitura'
 import type { Analisi, FaseAnalisi, Provider, Segmento, Sessione, StatoAnalisi, StatoTask, Task } from './tipi'
@@ -142,6 +143,7 @@ function SchedeTask({
   onProve: (task: Task) => void
   onRassegna: (indice: number) => void
 }) {
+  const tr = useT()
   const daConfermare = tasks.filter((t) => t.needs_review && t.stato === 'proposed').length
 
   return (
@@ -199,7 +201,11 @@ function SchedeTask({
                     'non detta'
                   )}
                 </span>
-                {t.priorita && <span className={CHIP_PRIORITA[t.priorita] ?? 'chip'}>{t.priorita}</span>}
+                {t.priorita && (
+                  <span className={CHIP_PRIORITA[t.priorita] ?? 'chip'}>
+                    {etichettaValore(tr, 'priorita', t.priorita)}
+                  </span>
+                )}
               </div>
               <div className="task__row">
                 <button

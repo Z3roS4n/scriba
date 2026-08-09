@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react'
 
+import { etichettaValore, useT } from '../lingua'
 import type { Dispositivo, Impostazioni } from '../tipi'
 import type { OpzioneSelect } from '../Select'
 import { Select } from '../Select'
@@ -75,6 +76,7 @@ export function SezioneTrascrizione({
   loopback: Dispositivo[]
   onCambia: (patch: Partial<Impostazioni>) => void
 }) {
+  const t = useT()
   const stt = impostazioni.stt
 
   return (
@@ -130,7 +132,7 @@ export function SezioneTrascrizione({
                 className={(stt.filtro_eco ?? 'medio') === v ? 'is-on' : ''}
                 onClick={() => onCambia({ stt: { ...stt, filtro_eco: v } })}
               >
-                {v[0].toUpperCase() + v.slice(1)}
+                {etichettaValore(t, 'filtro', v)}
               </button>
             ))}
           </div>
