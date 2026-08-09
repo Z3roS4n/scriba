@@ -910,3 +910,65 @@ select.arow__c {
   font-family:inherit; padding:2px 4px; max-width:100%;
 }
 select.arow__c:hover { border-color:var(--line); }
+
+/* ===========================================================================
+   IMPOSTAZIONI — parti che il handoff non disegna.
+
+   Delle undici sezioni ne disegna due, Motore e Modelli. Il resto si deriva:
+   stessi token, stessa grammatica, niente forme nuove.
+   ========================================================================= */
+
+/* Il testo di una riga. Il markup scrive <b> e <span> dentro `.row__t`, il
+   design li chiama `.row__k` e `.row__d`. Finché ogni sezione non è rifatta
+   una per una, valgono gli elementi: è un ponte dichiarato, non una svista —
+   sono le stesse regole, agganciate diversamente. */
+.row__t > b { font-size:var(--fs-ui); font-weight:var(--w-body); color:var(--fg); }
+.row__t > span { display:block; font-size:var(--fs-sm); color:var(--fg-2); line-height:var(--lh-body); margin-top:5px; }
+
+/* L'interruttore. Il sistema non ne ha uno, e nelle due sezioni disegnate non
+   compare mai — ma la risposta c'è già: nell'archivio un booleano è un
+   pulsante col quadrato che si riempie («Raggruppa per cliente»). Lo stato è
+   scritto accanto, perché un quadrato da solo si impara vedendone due vicini
+   e in una riga di impostazioni ce n'è uno alla volta. */
+.switch {
+  display:inline-flex; align-items:center; gap:var(--sp-2);
+  height:var(--h-md); padding:0 var(--sp-3); flex:none;
+  border:1px solid var(--line); border-radius:var(--r-act);
+  font-size:var(--fs-sm); color:var(--fg-3);
+  transition:border-color var(--t-state), color var(--t-state);
+}
+.switch:hover { border-color:var(--line-strong); color:var(--fg); }
+.switch .sq { background:transparent; box-shadow:inset 0 0 0 1px var(--fg-3); }
+.switch.is-on { border-color:var(--line-strong); color:var(--fg); font-weight:var(--w-bold); }
+.switch.is-on .sq { background:var(--fg); box-shadow:none; }
+
+
+.stepper { display:inline-flex; align-items:center; gap:var(--sp-2); font-variant-numeric:tabular-nums; }
+.stepper button { width:var(--h-sm); height:var(--h-sm); border:1px solid var(--line); border-radius:var(--r-act); color:var(--fg-2); }
+.stepper button:hover { border-color:var(--line-strong); color:var(--fg); }
+
+.alert--inline { border-color:var(--line); }
+.alert--inline p { margin-bottom:0; }
+
+/* Diagnostica del rilevamento: una riga per processo visto. Non è una tabella
+   — le colonne sarebbero cinque e quasi sempre vuote — è un blocco che si
+   legge dall'alto: chi è, che segnale dà, e perché è stato escluso. */
+.vis { display:flex; flex-direction:column; gap:var(--sp-3); }
+.vis__riga { padding:var(--sp-3) 0; border-bottom:1px solid var(--line-2); display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--sp-2) var(--sp-3); }
+.vis__nome { font-size:var(--fs-ui); color:var(--fg); }
+.vis__pid { font-size:var(--fs-xs); color:var(--fg-4); font-variant-numeric:tabular-nums; }
+.vis__esito, .vis__stato { font-size:var(--fs-xs); color:var(--fg-3); }
+.vis__segnale { flex-basis:100%; font-size:var(--fs-xs); color:var(--fg-3); font-variant-numeric:tabular-nums; }
+.vis__perche { flex-basis:100%; font-size:var(--fs-sm); color:var(--fg-2); line-height:var(--lh-body); }
+.vis__nota { font-size:var(--fs-sm); color:var(--fg-3); }
+
+/* Mappatura delle colonne remote, e il DDL mostrato prima di essere eseguito:
+   si guarda cosa si sta per far girare sul database di qualcun altro. */
+.cli__row { display:flex; align-items:baseline; gap:var(--sp-3); padding:var(--sp-2) 0; }
+.cli__nome { font-size:var(--fs-sm); color:var(--fg); flex:none; }
+.cli__meta { font-size:var(--fs-xs); color:var(--fg-3); }
+.ddl {
+  font-family:var(--font-code); font-size:var(--fs-xs); line-height:var(--lh-body);
+  color:var(--fg-body); background:var(--bg-quiet); border:1px solid var(--line);
+  padding:var(--sp-4); overflow-x:auto; white-space:pre; max-height:280px;
+}

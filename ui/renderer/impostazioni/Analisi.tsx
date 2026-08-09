@@ -56,9 +56,11 @@ export function SezioneAnalisi({
           </div>
           <button
             className={`switch ${impostazioni.note_incrementali ? 'is-on' : ''}`}
+            aria-pressed={impostazioni.note_incrementali}
             onClick={() => onCambia({ note_incrementali: !impostazioni.note_incrementali })}
           >
-            <i />
+            <span className="sq" />
+            {impostazioni.note_incrementali ? 'Attivo' : 'Spento'}
           </button>
         </div>
         {impostazioni.note_incrementali && (

@@ -150,11 +150,13 @@ export function SezioneTrascrizione({
           </div>
           <button
             className={`switch ${stt.rifinitura_automatica ? 'is-on' : ''}`}
+            aria-pressed={stt.rifinitura_automatica}
             onClick={() =>
               onCambia({ stt: { ...stt, rifinitura_automatica: !stt.rifinitura_automatica } })
             }
           >
-            <i />
+            <span className="sq" />
+            {stt.rifinitura_automatica ? 'Attivo' : 'Spento'}
           </button>
         </div>
 
@@ -183,11 +185,13 @@ export function SezioneTrascrizione({
           </div>
           <button
             className={`switch ${stt.glossario_clienti !== false ? 'is-on' : ''}`}
+            aria-pressed={stt.glossario_clienti !== false}
             onClick={() =>
               onCambia({ stt: { ...stt, glossario_clienti: stt.glossario_clienti === false } })
             }
           >
-            <i />
+            <span className="sq" />
+            {stt.glossario_clienti !== false ? 'Attivo' : 'Spento'}
           </button>
         </div>
 
