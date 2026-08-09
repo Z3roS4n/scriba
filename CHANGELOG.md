@@ -7,6 +7,28 @@ Each entry is split into three sections, and the highest one present decides
 the version bump: **Breaking changes** (major), **New features** (minor),
 **Fixes** (patch). A section with nothing in it is left out.
 
+## 1.1.0 — 10 August 2026
+
+### New features
+
+- **Scriba speaks English.** Settings → Appearance → Interface language:
+  Italian, English, or whatever the system is set to. It applies immediately,
+  without restarting, to the main window, the settings, the strip over the
+  call, the tray menu and the message you get if the core fails to start.
+  It does **not** touch the language of your calls — that stays under
+  Transcription, and an English interface over an Italian meeting is the
+  normal case, not a mistake.
+- Dates, times and sizes follow the interface language: «14 ago 2026» and
+  «6,4 GB» become "14 Aug 2026" and "6.4 GB".
+- The text the core writes comes back in the same language: the analysis
+  engines and their remedies, the phases of an analysis, the note under each
+  local model, the Notion field list, the remote database's data model, and
+  the error messages. The language travels in `Accept-Language`, added in one
+  place, so no route can forget it.
+- What Scriba compares stays untranslated. `local`, `confirmed`, `mic` and the
+  other identifiers are the same in both languages: they are labelled where
+  they are shown, never where they are checked.
+
 ## 1.0.0 — 9 August 2026
 
 ### Breaking changes
