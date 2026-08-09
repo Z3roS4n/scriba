@@ -856,3 +856,34 @@ a:hover { color:var(--red); border-bottom-color:var(--red); }
 
 .calls__vuoto { padding:0 var(--sp-4); font-size:var(--fs-sm); line-height:var(--lh-body); color:var(--fg-2); }
 .calls__vuoto-nota { color:var(--fg-3); margin-top:var(--sp-2); }
+
+/* ---------- stati vuoti della trascrizione — oltre il handoff --------------
+   «Non hai ancora registrato niente», «in ascolto, nessuno ha ancora
+   parlato», «nessuna trascrizione»: il handoff 1.0 non ridisegna queste
+   schermate (dichiara di coprire solo le parti che disegna), quindi anche
+   queste sono derivate, non copiate.
+
+   Il misuratore non è una decorazione: durante una registrazione silenziosa è
+   l'unica cosa che distingue «ti sto ascoltando» da «sono piantato», ed è la
+   domanda che uno si fa quando la trascrizione resta vuota. */
+.state {
+  flex:1; min-height:0; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:var(--sp-4); padding:var(--sp-10) var(--sp-8);
+  text-align:center;
+}
+.state__title { font-size:var(--fs-md); font-weight:var(--w-bold); color:var(--fg); }
+.state__body { font-size:var(--fs-ui); line-height:var(--lh-body); color:var(--fg-2); max-width:44ch; }
+.state__hint { font-size:var(--fs-sm); color:var(--fg-3); }
+.state__ph {
+  width:120px; height:1px; background:var(--line-strong);
+}
+
+.meter { display:flex; align-items:flex-end; gap:3px; height:16px; }
+.meter i {
+  display:block; width:3px; background:var(--fg-4);
+  animation:meterIdle 1.8s var(--ease) infinite;
+}
+.meter i:nth-child(2n) { animation-delay:.2s; }
+.meter i:nth-child(3n) { animation-delay:.4s; }
+@keyframes meterIdle { 0%, 100% { opacity:.35 } 50% { opacity:1 } }
+

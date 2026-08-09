@@ -51,19 +51,27 @@ const Riga = memo(function Riga({ s, citata }: { s: Segmento; citata: boolean })
   return (
     // data-t serve a ritrovare la riga quando si clicca un minuto altrove nella finestra.
     <div
-      className={`line ${s.source === 'mic' ? 'line--me' : 'line--other'} ${citata ? 'is-cited' : ''} ${s.eco ? 'line--eco' : ''}`}
+      className={`line ${
+        // Una riga di eco NON prende mai il trattamento di «Io», qualunque
+        // cosa dica la traccia (comportamento.md, 9). E' audio dell'altro
+        // rientrato dal microfono: `.line--me` le darebbe il filetto Ink e la
+        // fascia, cioe' i due segni con cui in questo design si riconosce «Io»
+        // *senza leggere l'etichetta*. A colpo d'occhio sarebbe mia.
+        s.eco ? 'line--echo' : s.source === 'mic' ? 'line--me' : 'line--other'
+      } ${citata ? 'is-cited' : ''}`}
       data-t={s.t_start_ms}
     >
-      <span className="line__t">{tempo(s.t_start_ms)}</span>
-      {/* Non "Io": e' proprio il punto. Queste parole le ha dette l'altro, e
-          la riga esiste solo per poterlo verificare. */}
-      <span className="line__who">{s.eco ? 'ripresa' : chi}</span>
+      <button className="line__t num">{tempo(s.t_start_ms)}</button>
+      <span className="line__who">{s.eco ? ETICHETTA.loopback : chi}</span>
       {/* Provvisorio: colore fioco, MAI corsivo (rallenta la lettura periferica). Alla
           chiusura della frase si toglie solo la classe, la riga non si smonta. */}
-      <span className={`line__text ${s.is_final ? '' : 'is-provisional'}`}>
+      <p className={`line__text ${s.is_final ? '' : 'is-provisional'}`}>
+        {/* In testa al testo, non nella colonna del parlante: quella traccia e'
+            larga 46px e il badge ne misura 71, quindi ci dipingerebbe sopra. */}
+        {s.eco && <span className="echo__tag">ripresa</span>}
         {s.testo}
         {!s.is_final && <i className="caret" />}
-      </span>
+      </p>
     </div>
   )
 })
@@ -376,25 +384,18 @@ export const Trascrizione = forwardRef<
   return (
     <main className="transcript">
       <div className="transcript__head">
-        <span className="transcript__title">{titolo}</span>
-        <span className="transcript__meta">{meta}</span>
-        <span className="legend">
-          <i className="me" />Io<i className="other" />Altri
-        </span>
-        {/* Compare solo quando c'e' qualcosa da mostrare: su una call senza
-            eco questo comando non ha niente da dire, e un interruttore che non
-            fa mai niente insegna a non guardarlo. */}
-        {quantiEco > 0 && (
-          <button
-            className="btn btn--eco"
-            onClick={() => setMostraEco((v) => !v)}
-            title="Righe in cui il microfono ha ripreso l'altoparlante. Sono escluse da riassunto, note ed export."
-          >
-            {mostraEco
-              ? 'Nascondi le ripetizioni'
-              : `${quantiEco === 1 ? '1 riga ripresa' : `${quantiEco} righe riprese`} dall’altoparlante`}
-          </button>
-        )}
+        <h1 className="transcript__title">{titolo}</h1>
+        <span className="transcript__meta num">{meta}</span>
+        <div className="legend">
+          <span>
+            <i />
+            Io
+          </span>
+          <span>
+            <i className="is-other" />
+            Altri
+          </span>
+        </div>
       </div>
 
       {/* Compare solo finche' resta almeno una voce senza nome: una volta
@@ -429,6 +430,28 @@ export const Trascrizione = forwardRef<
         </div>
       ) : (
         <div className="transcript__body" ref={corpo} onScroll={onScroll} onClick={onClickMinuto}>
+          {/* È una piega, non un pannello: una riga sola in cima al flusso
+              (comportamento.md, 8). Aperta, le righe compaiono al loro posto
+              cronologico dentro la trascrizione, non raccolte in fondo.
+              Compare solo quando c'è qualcosa da mostrare: su una call senza
+              eco un interruttore che non fa mai niente insegna a non
+              guardarlo. */}
+          {quantiEco > 0 && (
+            <div className="echo">
+              <button
+                className="echo__toggle"
+                aria-expanded={mostraEco}
+                onClick={() => setMostraEco((v) => !v)}
+              >
+                <span className={`chev${mostraEco ? ' is-open' : ''}`} />
+                <span>
+                  <b className="num">{quantiEco === 1 ? '1 riga' : `${quantiEco} righe`}</b>{' '}
+                  {quantiEco === 1 ? 'ripresa' : 'riprese'} dall’altoparlante
+                </span>
+                <span className="echo__hint">tenute fuori da riassunto, note ed export</span>
+              </button>
+            </div>
+          )}
           {righe.map((r) =>
             r.seg ? (
               <Riga key={r.chiave} s={r.seg} citata={citateSet.has(r.seg.t_start_ms)} />
