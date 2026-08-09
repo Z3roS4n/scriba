@@ -764,6 +764,64 @@ const it = {
     'Usa un altro motore…',
   'pan.esce_dal_computer':
     'La trascrizione di {min} minuti esce da questo computer e viene inviata a {dove}.',
+
+  // --- Notion, dentro le espressioni --------
+  'ntipo.title':
+    'titolo',
+  'ntipo.rich_text':
+    'testo',
+  'ntipo.number':
+    'numero',
+  'ntipo.date':
+    'data',
+  'ntipo.checkbox':
+    'spunta',
+  'ntipo.select':
+    'elenco',
+  'ntipo.multi_select':
+    'elenco multiplo',
+  'ntipo.status':
+    'stato',
+  'ntipo.url':
+    'link',
+  'ntn2.oppure':
+    ' o ',
+  'ntn2.no_risposta':
+    'Notion non ha risposto',
+  'ntn2.no_lettura':
+    'Il database non si è letto',
+  'ntn2.no_collegamento':
+    'Il collegamento non è riuscito',
+  'ntn2.no_creazione':
+    'Il database non si è creato',
+  'ntn2.no_scollegamento':
+    'Lo scollegamento non è riuscito',
+  'ntn2.collegato_a':
+    'Collegato al database «{db}». Le task confermate diventano righe lì, nelle colonne che hai scelto.',
+  'ntn2.non_collegato':
+    'Le task confermate diventano righe in un database di Notion, con il minuto della prova come citazione.',
+  'ntn2.sto_guardando':
+    'Sto guardando…',
+  'ntn2.continua':
+    'Continua',
+  'ntn2.sto_salvando':
+    'Sto salvando…',
+  'ntn2.salva':
+    'Salva',
+  'ntn2.sto_creando':
+    'Sto creando…',
+  'ntn2.crea_collega':
+    'Crea e collega',
+  'ntn2.non_mandare':
+    'Non mandare',
+  'ntn2.scegli_pagina':
+    'Scegli una pagina',
+  'ntn2.mappa_nota':
+    'Database «{db}». Un campo lasciato su «Non mandare» resta in Scriba e non arriva a Notion.',
+  'ntn2.serve_tipo':
+    'Serve una colonna di tipo',
+  'ntn2.campi_su_notion':
+    '{n} campi su Notion',
 } as const
 
 export type Chiave = keyof typeof it
@@ -1452,6 +1510,63 @@ const en: Record<Chiave, string> = {
     'Use a different engine…',
   'pan.esce_dal_computer':
     'The {min}-minute transcript leaves this computer and is sent to {dove}.',
+
+  'ntipo.title':
+    'title',
+  'ntipo.rich_text':
+    'text',
+  'ntipo.number':
+    'number',
+  'ntipo.date':
+    'date',
+  'ntipo.checkbox':
+    'checkbox',
+  'ntipo.select':
+    'select',
+  'ntipo.multi_select':
+    'multi-select',
+  'ntipo.status':
+    'status',
+  'ntipo.url':
+    'link',
+  'ntn2.oppure':
+    ' or ',
+  'ntn2.no_risposta':
+    'Notion did not answer',
+  'ntn2.no_lettura':
+    'The database could not be read',
+  'ntn2.no_collegamento':
+    'Connecting did not work',
+  'ntn2.no_creazione':
+    'The database could not be created',
+  'ntn2.no_scollegamento':
+    'Disconnecting did not work',
+  'ntn2.collegato_a':
+    'Connected to the “{db}” database. Confirmed tasks become rows there, in the columns you picked.',
+  'ntn2.non_collegato':
+    'Confirmed tasks become rows in a Notion database, with the minute of the evidence as the quote.',
+  'ntn2.sto_guardando':
+    'Looking…',
+  'ntn2.continua':
+    'Continue',
+  'ntn2.sto_salvando':
+    'Saving…',
+  'ntn2.salva':
+    'Save',
+  'ntn2.sto_creando':
+    'Creating…',
+  'ntn2.crea_collega':
+    'Create and connect',
+  'ntn2.non_mandare':
+    'Do not send',
+  'ntn2.scegli_pagina':
+    'Pick a page',
+  'ntn2.mappa_nota':
+    'Database “{db}”. A field left on “Do not send” stays in Scriba and never reaches Notion.',
+  'ntn2.serve_tipo':
+    'It needs a column of type',
+  'ntn2.campi_su_notion':
+    '{n} fields on Notion',
 }
 
 const CATALOGHI = { it, en } as const

@@ -26,26 +26,13 @@ import type {
 } from '../tipi'
 import { Modal } from './Modal'
 import { Select } from '../Select'
-import { useT } from '../lingua'
-// gia importato
-
-const ETICHETTE_TIPO: Record<string, string> = {
-  title: 'titolo',
-  rich_text: 'testo',
-  number: 'numero',
-  date: 'data',
-  checkbox: 'spunta',
-  select: 'elenco',
-  multi_select: 'elenco multiplo',
-  status: 'stato',
-  url: 'link',
-}
+import { etichettaValore, useT, type Traduci } from '../lingua'
 
 const NON_MANDARE = ''
 
 type Passo = 'chiusa' | 'token' | 'scelta' | 'mappa' | 'crea'
 
-const tipoLeggibile = (tipo: string) => ETICHETTE_TIPO[tipo] ?? tipo
+const tipoLeggibile = (t: Traduci, tipo: string) => etichettaValore(t, 'ntipo', tipo)
 
 function motivo(risposta: { status: number; body: unknown }, ripiego: string): string {
   const corpo = risposta.body as { detail?: string } | null
@@ -98,7 +85,7 @@ export function SezioneNotion() {
     })
     setLavorando(false)
     if (!r.ok) {
-      setErrore(motivo(r, 'Notion non ha risposto'))
+      setErrore(motivo(r, t('ntn2.no_risposta')))
       return
     }
     setDestinazioni(r.body)
@@ -114,7 +101,7 @@ export function SezioneNotion() {
     })
     setLavorando(false)
     if (!r.ok) {
-      setErrore(motivo(r, 'Il database non si è letto'))
+      setErrore(motivo(r, t('ntn2.no_lettura')))
       return
     }
     setSchema(r.body)
@@ -137,7 +124,7 @@ export function SezioneNotion() {
     })
     setLavorando(false)
     if (!r.ok) {
-      setErrore(motivo(r, 'Il collegamento non è riuscito'))
+      setErrore(motivo(r, t('ntn2.no_collegamento')))
       return
     }
     setStato(r.body)
@@ -156,7 +143,7 @@ export function SezioneNotion() {
     })
     setLavorando(false)
     if (!r.ok) {
-      setErrore(motivo(r, 'Il database non si è creato'))
+      setErrore(motivo(r, t('ntn2.no_creazione')))
       return
     }
     setStato(r.body)
@@ -168,12 +155,12 @@ export function SezioneNotion() {
     const r = await window.scriba.post<StatoNotion>('/export/notion/scollega')
     setLavorando(false)
     if (r.ok) setStato(r.body)
-    else setErrore(motivo(r, 'Lo scollegamento non è riuscito'))
+    else setErrore(motivo(r, t('ntn2.no_scollegamento')))
   }
 
   const descrizione = collegato
-    ? `Collegato al database «${stato?.database_titolo ?? stato?.database_id}». Le task confermate diventano righe lì, nelle colonne che hai scelto.`
-    : 'Le task confermate diventano righe in un database di Notion, con il minuto della prova come citazione.'
+    ? t('ntn2.collegato_a', { db: stato?.database_titolo ?? stato?.database_id ?? '' })
+    : t('ntn2.non_collegato')
 
   return (
     <>
@@ -257,7 +244,7 @@ export function SezioneNotion() {
               disabled={lavorando || !token.trim()}
               onClick={() => caricaDestinazioni(token.trim())}
             >
-              {lavorando ? 'Sto guardando…' : 'Continua'}
+              {lavorando ? t('ntn2.sto_guardando') : t('ntn2.continua')}
             </button>
           </div>
         </Modal>
@@ -321,7 +308,7 @@ export function SezioneNotion() {
           <div className="modal__head">
             <h2>{t('ntn.colonne')}</h2>
             <p>
-              Database «{schema.titolo}». Un campo lasciato su «Non mandare» resta in Scriba e non arriva a Notion.
+              {t('ntn2.mappa_nota', { db: schema.titolo })}
             </p>
           </div>
           <div
@@ -352,10 +339,10 @@ export function SezioneNotion() {
               )
               const compatibili = schema.proprieta.filter((p) => campo.tipi.includes(p.tipo))
               const opzioni = [
-                { id: NON_MANDARE, etichetta: 'Non mandare' },
+                { id: NON_MANDARE, etichetta: t('ntn2.non_mandare') },
                 ...compatibili
                   .filter((p) => !usate.has(p.nome))
-                  .map((p) => ({ id: p.nome, etichetta: `${p.nome} · ${tipoLeggibile(p.tipo)}` })),
+                  .map((p) => ({ id: p.nome, etichetta: `${p.nome} · ${tipoLeggibile(t, p.tipo)}` })),
               ]
               return (
                 <div
@@ -377,13 +364,13 @@ export function SezioneNotion() {
                         paddingTop: 3,
                       }}
                     >
-                      Serve una colonna di tipo {campo.tipi.map(tipoLeggibile).join(' o ')}
+                      {t('ntn2.serve_tipo')}{' '}{campo.tipi.map((x) => tipoLeggibile(t, x)).join(t('ntn2.oppure'))}
                     </span>
                   ) : (
                     <Select
                       opzioni={opzioni}
                       selezionato={mappa[campo.id] ?? NON_MANDARE}
-                      vuoto="Non mandare"
+                      vuoto={t('ntn2.non_mandare')}
                       onScegli={(nome) =>
                         setMappa((precedente) => {
                           const nuova = { ...precedente }
@@ -404,12 +391,12 @@ export function SezioneNotion() {
             </div>
           )}
           <div className="modal__foot">
-            <span className="modal__hint">{Object.keys(mappa).length} campi su Notion</span>
+            <span className="modal__hint">{t('ntn2.campi_su_notion', { n: Object.keys(mappa).length })}</span>
             <button className="btn" onClick={chiudi}>
               {t('ntn2.annulla')}
             </button>
             <button className="btn btn--primary" disabled={lavorando} onClick={salvaMappatura}>
-              {lavorando ? 'Sto salvando…' : 'Salva'}
+              {lavorando ? t('ntn2.sto_salvando') : t('ntn2.salva')}
             </button>
           </div>
         </Modal>
@@ -426,7 +413,7 @@ export function SezioneNotion() {
             <Select
               opzioni={destinazioni.pagine.map((p) => ({ id: p.id, etichetta: p.titolo }))}
               selezionato={pagina}
-              vuoto="Scegli una pagina"
+              vuoto={t('ntn2.scegli_pagina')}
               onScegli={setPagina}
             />
           </div>
@@ -472,7 +459,7 @@ export function SezioneNotion() {
                     </button>
                     <div className="row__t">
                       <b>
-                        {campo.nome_notion} · {tipoLeggibile(campo.tipi[0])}
+                        {campo.nome_notion} · {tipoLeggibile(t, campo.tipi[0])}
                       </b>
                       <span>{campo.aiuto}</span>
                     </div>
@@ -495,7 +482,7 @@ export function SezioneNotion() {
               disabled={lavorando || !pagina || !nomeNuovo.trim()}
               onClick={creaDatabase}
             >
-              {lavorando ? 'Sto creando…' : 'Crea e collega'}
+              {lavorando ? t('ntn2.sto_creando') : t('ntn2.crea_collega')}
             </button>
           </div>
         </Modal>
