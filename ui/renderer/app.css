@@ -833,3 +833,26 @@ a:hover { color:var(--red); border-bottom-color:var(--red); }
   text-transform:uppercase; color:var(--fg-3);
 }
 .hl__b { font-size:var(--fs-sm); line-height:var(--lh-body); color:var(--fg-body); text-wrap:pretty; margin-top:var(--sp-1); }
+
+/* ---------- elenco call: binario e stato vuoto — oltre il handoff ----------
+   Il binario stretto serve al pannello prove, che nel design 1.0 **non esiste
+   piu'**: le prove stanno in riga dentro la task (`.evidence`). Finche' quel
+   pannello c'e', il binario gli serve — e le regole stanno qui, dichiarate,
+   invece che dentro app.css come se fossero del design. Quando la terza
+   colonna sparira', spariranno anche queste.
+   `--w-calls-rail` e' un token del handoff che il suo app.css non usa: qui
+   trova il suo unico impiego. */
+.calls--rail {
+  width:var(--w-calls-rail); align-items:center; gap:var(--sp-2);
+  padding:var(--sp-3) 0;
+}
+.calls--rail .callmini {
+  width:26px; height:26px; display:flex; align-items:center; justify-content:center;
+  font-size:var(--fs-xs); color:var(--fg-3);
+  border:1px solid transparent; border-radius:var(--r-act);
+}
+.calls--rail .callmini:hover { border-color:var(--line); color:var(--fg); }
+.calls--rail .callmini.is-selected { background:var(--act); color:var(--act-fg); border-color:var(--act); }
+
+.calls__vuoto { padding:0 var(--sp-4); font-size:var(--fs-sm); line-height:var(--lh-body); color:var(--fg-2); }
+.calls__vuoto-nota { color:var(--fg-3); margin-top:var(--sp-2); }
