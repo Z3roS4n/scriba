@@ -705,7 +705,7 @@ export function PannelloAnalisi({
 
   if (!sessione) {
     return (
-      <section className="analysis">
+      <section className="side">
         <div className="pad">
           <span className="label">ANALISI</span>
           <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: 'var(--fg4)' }}>
@@ -718,7 +718,7 @@ export function PannelloAnalisi({
 
   if (compatto) {
     return (
-      <section className="analysis analysis--muted">
+      <section className="side side--rec">
         <div className="pad">
           {/* La nota di lavoro sta qui, prima di tutto. `compatto` vale quanto
               `registrando` (index.tsx), quindi durante una call si esce da
@@ -748,7 +748,7 @@ export function PannelloAnalisi({
 
   if (inCorsoEffettivo) {
     return (
-      <section className="analysis">
+      <section className="side">
         <div className="pad">
           <span className="label">ANALISI IN CORSO</span>
           <div className="progress">
@@ -782,7 +782,7 @@ export function PannelloAnalisi({
 
   if (errore) {
     return (
-      <section className="analysis">
+      <section className="side">
         <div className="pad">
           <span className="label" style={{ color: 'var(--red-dim)' }}>
             ANALISI NON RIUSCITA
@@ -812,7 +812,7 @@ export function PannelloAnalisi({
 
   if (!analisi) {
     return (
-      <section className="analysis">
+      <section className="side">
         <div className="pad">
           <span className="label">ANALISI</span>
           <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: 'var(--fg4)' }}>Carico l'analisi…</p>
@@ -840,7 +840,7 @@ export function PannelloAnalisi({
         : formattaDollari(providerAttivo.costo_ora_usd * ore)
 
     return (
-      <section className="analysis">
+      <section className="side">
         <div className="pad">
           {/* Prima dell'analisi, non dopo: durante la call e' l'unica cosa
               che ha qualcosa da dire, e a call appena finita e' quello che
@@ -905,7 +905,7 @@ export function PannelloAnalisi({
 
   const meta = analisi.meta
   return (
-    <section className="analysis">
+    <section className="side">
       <div className="analysis__head">
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}>
           <button className="btn" onClick={analizza} disabled={registrando}>

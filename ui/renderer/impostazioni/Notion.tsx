@@ -179,7 +179,7 @@ export function SezioneNotion() {
           <b>Manda le task a Notion</b>
           <span>{descrizione}</span>
           <span>I dati della call escono dal computer verso Notion.</span>
-          {errore && passo === 'chiusa' && <span style={{ color: 'var(--red-fg)' }}>{errore}</span>}
+          {errore && passo === 'chiusa' && <span style={{ color: 'var(--red)' }}>{errore}</span>}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', alignItems: 'flex-end' }}>
           {collegato ? (
@@ -242,7 +242,7 @@ export function SezioneNotion() {
             />
           </div>
           {errore && (
-            <div className="modal__field" style={{ paddingTop: 0, color: 'var(--red-fg)', fontSize: 'var(--fs-sm)' }}>
+            <div className="modal__field" style={{ paddingTop: 0, color: 'var(--red)', fontSize: 'var(--fs-sm)' }}>
               {errore}
             </div>
           )}
@@ -293,7 +293,7 @@ export function SezioneNotion() {
             )}
           </div>
           {errore && (
-            <div className="modal__field" style={{ paddingTop: 0, color: 'var(--red-fg)', fontSize: 'var(--fs-sm)' }}>
+            <div className="modal__field" style={{ paddingTop: 0, color: 'var(--red)', fontSize: 'var(--fs-sm)' }}>
               {errore}
             </div>
           )}
@@ -398,7 +398,7 @@ export function SezioneNotion() {
             })}
           </div>
           {errore && (
-            <div className="modal__field" style={{ paddingBottom: 0, color: 'var(--red-fg)', fontSize: 'var(--fs-sm)' }}>
+            <div className="modal__field" style={{ paddingBottom: 0, color: 'var(--red)', fontSize: 'var(--fs-sm)' }}>
               {errore}
             </div>
           )}
@@ -481,7 +481,7 @@ export function SezioneNotion() {
             </div>
           </div>
           {errore && (
-            <div className="modal__field" style={{ paddingTop: 0, color: 'var(--red-fg)', fontSize: 'var(--fs-sm)' }}>
+            <div className="modal__field" style={{ paddingTop: 0, color: 'var(--red)', fontSize: 'var(--fs-sm)' }}>
               {errore}
             </div>
           )}
