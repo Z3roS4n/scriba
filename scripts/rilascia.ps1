@@ -73,8 +73,44 @@ $pacchetto = Join-Path $radice 'ui\package.json'
 $versione = (Get-Content $pacchetto -Raw -Encoding UTF8 | ConvertFrom-Json).version
 $tag = "v$versione"
 
-if ((git -C $radice tag --list $tag)) {
-    throw "Il tag $tag esiste gia'. La versione va alzata nella PR del fix (scripts/versione.ps1)."
+# Il tag si decide **qui e una volta sola**, presto: chi ha sbagliato versione
+# lo scopre prima di aspettare changelog, controlli e installer.
+#
+# Prima c'erano due controlli sulla stessa domanda, questo e uno novanta righe
+# piu' sotto, e il primo non faceva passare il secondo: la ripresa aggiunta con
+# #68 non era raggiungibile, perche' nel caso che doveva risolvere il tag c'e'
+# sempre — la pubblicazione era caduta **dopo** averlo spinto (#76). Due
+# controlli che possono rispondere in modo diverso sono il difetto: se serve
+# cambiare questa regola, si cambia qui e basta.
+#
+# Tre esiti, tutti espliciti.
+#
+# L'esistenza si chiede a `tag --list`, che su un tag assente non stampa
+# niente, **non** a `rev-list ... 2>$null`: in PowerShell 5.1 la redirezione
+# dello stderr di un comando nativo avvolge ogni riga in un ErrorRecord, e con
+# $ErrorActionPreference = 'Stop' quello diventa un'eccezione terminante. Cioe'
+# nel caso normale — tag assente, la stragrande maggioranza dei rilasci — lo
+# script moriva sulla riga che serviva a scoprire che il tag non c'era.
+$suDiEsso = $null
+if (git -C $radice tag --list $tag) {
+    # Adesso rev-list non puo' fallire, e infatti non si reindirizza niente.
+    $suDiEsso = (git -C $radice rev-list -n 1 $tag).Trim()
+}
+$riusoIlTag = $false
+if ($suDiEsso) {
+    $qui = (git -C $radice rev-parse HEAD).Trim()
+    if ($suDiEsso.Trim() -ne $qui) {
+        # C'e', ma su un altro commit: pubblicare adesso spedirebbe codice
+        # diverso da quello che si ha davanti.
+        throw @"
+Il tag $tag esiste gia' e punta a $($suDiEsso.Substring(0,7)), non a $($qui.Substring(0,7)).
+Se la versione non e' stata alzata, alzala nella PR del fix (scripts/versione.ps1).
+Se invece il tag e' rimasto indietro: git tag -d $tag; git push origin :refs/tags/$tag
+"@
+    }
+    # C'e' ed e' questo commit: e' una pubblicazione da riprendere, non un
+    # errore. Il messaggio si stampa piu' sotto, quando si posa il tag.
+    $riusoIlTag = $true
 }
 
 # --------------------------------------------------------------- il changelog
@@ -120,7 +156,13 @@ if (-not $atteso) {
 # la chiamata a GitHub non e' arrivata — resta in giro un tag che non corrisponde
 # a niente. Contandolo, al secondo tentativo lo scatto risulterebbe 'nessuno' e
 # lo script si fermerebbe proprio quando gli si sta chiedendo di riprendere (#67).
-$precedente = (& gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>$null)
+#
+# Niente `2>$null` su gh, per lo stesso motivo di sopra: la redirezione
+# trasformerebbe il suo messaggio d'errore in un'eccezione terminante, e il
+# ripiego qui sotto — scritto apposta per quando gh non risponde — non
+# verrebbe mai eseguito. Se gh ha da lamentarsi lo stampa, e va bene che si
+# veda: dice perche' il controllo sta usando una base peggiore.
+$precedente = (& gh release list --limit 1 --json tagName --jq '.[0].tagName')
 if ($LASTEXITCODE -ne 0 -or -not $precedente) {
     # Senza rete o senza release precedenti si ripiega sui tag: meglio un
     # controllo su una base imperfetta che nessun controllo.
@@ -160,16 +202,10 @@ $(if ($SenzaInstaller) { "L'installer non è allegato: si costruisce dai sorgent
 $fileDescrizione = Join-Path ([System.IO.Path]::GetTempPath()) "scriba-release-$versione.md"
 [System.IO.File]::WriteAllText($fileDescrizione, $descrizione, (New-Object System.Text.UTF8Encoding($false)))
 
-# Il tag puo' gia' esserci da un tentativo caduto a meta': in quel caso non e'
-# un errore, e' lo stato che si sta riprendendo. Va pero' controllato che punti
-# a questo commit, perche' un tag rimasto su un commit vecchio pubblicherebbe
-# codice diverso da quello che si ha davanti.
-$suDiEsso = (git -C $radice rev-list -n 1 $tag 2>$null)
-if ($LASTEXITCODE -eq 0 -and $suDiEsso) {
-    $qui = (git -C $radice rev-parse HEAD).Trim()
-    if ($suDiEsso.Trim() -ne $qui) {
-        throw "Il tag $tag esiste gia' e punta a $($suDiEsso.Substring(0,7)), non a $($qui.Substring(0,7)). Cancellalo (git tag -d $tag; git push origin :refs/tags/$tag) o pubblica da li'."
-    }
+# Se ci fosse un secondo controllo sul tag qui, tornerebbe il difetto di #76:
+# due regole sulla stessa domanda, e quella a monte che decide da sola. La
+# risposta e' gia' stata data, in cima, e qui si usa e basta.
+if ($riusoIlTag) {
     Write-Host "  il tag $tag c'era gia' su questo commit: riprendo"
 } else {
     git -C $radice tag -a $tag -m "Scriba $versione"
