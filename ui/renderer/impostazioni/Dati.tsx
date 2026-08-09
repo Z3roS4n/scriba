@@ -42,7 +42,7 @@ function Versione() {
   const quando = v.costruito_il ? new Date(v.costruito_il) : null
   return (
     <div className="row">
-      <div className="row__text">
+      <div className="row__t">
         <b>Versione</b>
         <span>
           {quando && !Number.isNaN(quando.getTime())
@@ -121,7 +121,7 @@ export function SezioneDati({
         <div className="danger">
           <span className="label">CANCELLAZIONI · NON SI TORNA INDIETRO</span>
           <div className="row">
-            <div className="row__text">
+            <div className="row__t">
               <b>Elimina l’audio, tieni la trascrizione</b>
               <span>
                 Libera quasi tutto lo spazio. Le task e le loro prove restano, ma non si potrà più riascoltare la
@@ -144,7 +144,7 @@ export function SezioneDati({
             )}
           </div>
           <div className="row">
-            <div className="row__text">
+            <div className="row__t">
               <b>Elimina tutto di una call</b>
               <span>Audio, trascrizione, screenshot, task. Verrà chiesto quale call e poi una conferma scritta.</span>
             </div>
@@ -204,7 +204,7 @@ export function SezioneDati({
           </div>
           <div className="modal__field">
             <input
-              className="textfield"
+              className="textfield textfield--md"
               value={testoConferma}
               autoFocus
               placeholder={FRASE_CONFERMA}

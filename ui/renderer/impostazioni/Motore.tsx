@@ -103,7 +103,7 @@ export function SezioneMotore({
                       <>
                         <input
                           type="password"
-                          className="textfield"
+                          className="textfield textfield--sm"
                           style={{ width: 220 }}
                           placeholder="Chiave API"
                           value={chiave}

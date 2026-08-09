@@ -1017,3 +1017,64 @@ select.arow__c:hover { border-color:var(--line); }
 .ovbtn--stop { border-color:var(--ov-line); color:var(--ov-fg); }
 .ovbtn--stop:hover { background:var(--ov-red); border-color:var(--ov-red); color:var(--ov-fg); }
 .overlay__empty { padding:var(--sp-4); font-size:var(--fs-xs); color:var(--ov-fg-3); }
+
+/* Un campo di testo che sta su una riga con dei pulsanti prende la loro
+   altezza. `.textfield` da solo è `--h-xl`, la misura di un campo che occupa
+   la riga da solo — la ricerca dell'archivio, la chiave API. Accanto a un
+   `.btn--sm` diventava dodici pixel più alto del suo pulsante, e la riga si
+   leggeva storta prima ancora di capire perché.
+
+   La scala dei controlli è una sola: se due cose stanno affiancate, stanno
+   sullo stesso gradino. */
+.textfield--sm { height:var(--h-sm); font-size:var(--fs-sm); padding:0 var(--sp-2); }
+.textfield--md { height:var(--h-md); font-size:var(--fs-sm); }
+
+/* Il riempimento degli stati del pannello — «carico», «nessuna call», «non
+   riuscita». Il handoff disegna il pannello pieno, non i suoi stati vuoti:
+   questo è il loro margine, e basta. */
+.pad { padding:var(--sp-5) var(--sp-6) var(--sp-8); display:flex; flex-direction:column; gap:var(--sp-4); }
+
+/* Il grilletto di un menù aperto cambia il bordo, non il peso: il peso è già
+   il segno di «sta filtrando», e due stati diversi non possono accendersi
+   allo stesso modo. */
+.filter[aria-expanded='true'] { border-color:var(--line-strong); color:var(--fg); }
+
+/* Campo multiriga: stessa cornice degli altri, ma l'altezza la fanno le righe
+   — è un elenco che si scrive, non un valore. `--h-*` qui non si applica. */
+.textfield--area {
+  height:auto; padding:var(--sp-2) var(--sp-3); align-items:stretch;
+  font-family:inherit; font-size:var(--fs-sm); line-height:var(--lh-body);
+  resize:vertical; min-height:96px;
+}
+
+/* Un <input> non eredita il carattere dal genitore: senza questa riga ogni
+   campo esce nel font predefinito del browser, in mezzo a un'interfaccia in
+   Montserrat. È il tipo di differenza che si vede subito e non si sa spiegare.
+   Vale anche per il corpo, che gli input rimpiccioliscono di default. */
+input.textfield,
+textarea.textfield,
+select.arow__c,
+.textfield input {
+  font-family: inherit;
+}
+.textfield::placeholder,
+.textfield input::placeholder { color:var(--fg-4); }
+.textfield:disabled { color:var(--fg-4); background:var(--bg-quiet); }
+/* Il fuoco sul campo: il bordo si fa Ink, come su tutto il resto che si tocca.
+   L'anello rosso resta a `:focus-visible` per chi arriva da tastiera. */
+.textfield:focus { outline:none; border-color:var(--line-strong); }
+
+/* Sotto-intestazione dentro una sezione: «Dopo la call», «Nomi propri». Non è
+   un titolo di pannello — quello è `.settings__head` e ce n'è uno solo — è un
+   respiro che raggruppa righe affini. */
+.settings__sub {
+  font-size:var(--fs-label); font-weight:var(--w-label); letter-spacing:var(--ls-label);
+  text-transform:uppercase; color:var(--fg-3);
+  padding:var(--sp-8) 0 var(--sp-2);
+}
+
+/* Riga con il controllo SOTTO il testo, non accanto: serve a chi il controllo
+   è largo — un elenco da scrivere, una tabella. Accanto starebbe stretto, e
+   stretto un elenco non si legge. */
+.row--stack { flex-direction:column; align-items:stretch; gap:var(--sp-3); }
+.row--stack .row__t { flex:none; }

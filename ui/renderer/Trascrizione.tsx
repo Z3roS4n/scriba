@@ -127,8 +127,13 @@ const RigaVoceDaNominare = memo(function RigaVoceDaNominare({
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
       <span className="chip chip--quiet">{voce.label}</span>
+      {/* `--h-sm`, la stessa altezza del pulsante accanto. Aveva la classe
+          intera (38px) più uno style inline con padding e corpo di un'altra
+          misura, residuo del sistema vecchio: la classe vinceva sull'altezza e
+          lo style sul resto, quindi usciva un campo alto dodici pixel più del
+          suo pulsante e stretto dentro. */}
       <input
-        className="textfield"
+        className="textfield textfield--sm"
         type="text"
         placeholder="nome vero"
         value={nome}
@@ -140,7 +145,7 @@ const RigaVoceDaNominare = memo(function RigaVoceDaNominare({
             salva()
           }
         }}
-        style={{ width: 130, padding: '3px 7px', fontSize: 'var(--fs-sm)' }}
+        style={{ width: 130 }}
       />
       <button className="btn btn--primary btn--sm" onClick={salva} disabled={salvando || !nome.trim()}>
         {salvando ? '…' : 'Salva'}

@@ -66,9 +66,14 @@ export function Select({
 
   return (
     <div className="sel" ref={contenitore}>
+      {/* Niente `is-on` quando il menù è aperto: in questo sistema `is-on`
+          vuol dire «questo filtro sta filtrando», e usarlo per «il menù è
+          aperto» faceva ingrassare il testo a ogni clic — due stati diversi
+          che si accendevano nello stesso modo. Lo stato aperto lo dice
+          `aria-expanded`, che il CSS legge da sé. */}
       <button
         type="button"
-        className={`filter${aperto ? ' is-on' : ''}`}
+        className="filter"
         aria-haspopup="listbox"
         aria-expanded={aperto}
         onClick={() => setAperto((a) => !a)}

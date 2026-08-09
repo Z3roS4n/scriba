@@ -115,7 +115,7 @@ export function SezioneClienti({
       <div className="settings__head">Clienti</div>
       <div className="settings__body">
         <div className="row">
-          <div className="row__text">
+          <div className="row__t">
             <b>Aggiungi un cliente</b>
             <span>
               Serve a raggruppare le call nell'archivio. L'attribuzione si fa da lì, dove le call
@@ -123,7 +123,7 @@ export function SezioneClienti({
             </span>
           </div>
           <input
-            className="arch__search"
+            className="textfield textfield--md"
             style={{ maxWidth: 220 }}
             value={nuovo}
             placeholder="Nome"
@@ -138,7 +138,7 @@ export function SezioneClienti({
         </div>
 
         <div className="row">
-          <div className="row__text">
+          <div className="row__t">
             <b>Carica un elenco</b>
             <span>
               Un file CSV con una colonna dei nomi (e, se c'è, una delle note). Separatore virgola o
@@ -180,7 +180,7 @@ export function SezioneClienti({
                 {inModifica === c.id ? (
                   <>
                     <input
-                      className="arch__search"
+                      className="textfield textfield--md"
                       style={{ maxWidth: 260 }}
                       value={bozza}
                       autoFocus

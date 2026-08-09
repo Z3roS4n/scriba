@@ -9,6 +9,7 @@
  */
 
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { Riquadro } from './Dialoghi'
 import { NotaDiLavoro } from './NotaDiLavoro'
 import { ControlloRifinitura, useRifinitura } from './Rifinitura'
 import type { Analisi, FaseAnalisi, Provider, Segmento, Sessione, StatoAnalisi, StatoTask, Task } from './tipi'
@@ -801,28 +802,37 @@ export function PannelloAnalisi({
   if (errore) {
     return (
       <section className="side">
-        <div className="pad">
-          <span className="label" style={{ color: 'var(--red)' }}>
-            ANALISI NON RIUSCITA
-          </span>
-          <div className="errorbox">
-            <h3>Analisi non riuscita</h3>
-            <p>{errore.messaggio}</p>
+        <div className="side__head">
+          <div className="side__eyebrow">
+            <span className="thread" />
+            <span className="label">Analisi</span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
-            {/* Le prime due riportano alle impostazioni: cambiare motore non è
-                un gesto che questo pannello può fare da solo. */}
-            <button className="btn btn--primary btn--block" onClick={() => window.scriba.apriImpostazioni()}>
-              Avvia il modello locale
-            </button>
-            <button className="btn btn--block" onClick={() => window.scriba.apriImpostazioni()}>
-              Usa un altro motore
-            </button>
-            <button className="btn btn--block" onClick={analizza}>
-              Riprova
-            </button>
+        </div>
+        <div className="side__body">
+          <div className="pad">
+            {/* Un riquadro, non tre pulsanti a tutta larghezza sotto un titolo
+                ripetuto. Il nome del guasto stava scritto due volte —
+                nell'eyebrow e nel titolo del riquadro — e i comandi
+                galleggiavano fuori dal riquadro che li spiegava.
+
+                È il livello 2 del design: blocca una funzione, e i comandi che
+                lo risolvono stanno DENTRO (regole 44 e 45). `Riquadro` esiste
+                in Dialoghi.tsx da sempre e non lo montava nessuno.
+
+                «Riprova» è la primaria perché è l'unica che può riuscire da
+                qui. Le altre due aprono le Impostazioni, e lo dicono: cambiare
+                motore non è un gesto che questo pannello possa fare da solo, e
+                far finta di sì manderebbe a cercare il comando dove non c'è. */}
+            <Riquadro
+              titolo="Analisi non riuscita"
+              testo={`${errore.messaggio}${errore.ora ? ` · ultimo tentativo ${errore.ora}` : ''}`}
+              azioni={[
+                { etichetta: 'Riprova', primaria: true, onClick: analizza },
+                { etichetta: 'Avvia il modello locale…', onClick: () => window.scriba.apriImpostazioni() },
+                { etichetta: 'Usa un altro motore…', onClick: () => window.scriba.apriImpostazioni() },
+              ]}
+            />
           </div>
-          {errore.ora && <span className="mono-note">ultimo tentativo {errore.ora}</span>}
         </div>
       </section>
     )
@@ -924,43 +934,39 @@ export function PannelloAnalisi({
   const meta = analisi.meta
   return (
     <section className="side">
+      {/* La testata è quella disegnata: filo, nome del pannello, e a destra
+          l'unica azione che riguarda l'analisi intera. Sotto, su una riga
+          sua, chi l'ha prodotta e quanto è costata.
+
+          Diarizzazione e rifinitura NON stanno qui. Sono lavori che si fanno
+          sulla trascrizione dopo, non comandi del pannello, e messi in testa
+          rendevano l'apertura una pila di tre controlli scollegati prima di
+          arrivare al contenuto. Vanno in fondo, nel `.side__foot`, che è dove
+          il design li disegna. */}
       <div className="side__head">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}>
-          <button className="btn" onClick={analizza} disabled={registrando}>
-            Rianalizza
-          </button>
-          {meta && (
-            <span className="side__meta">
-              {[
-                meta.etichetta_provider,
-                meta.costo_usd != null ? formattaDollari(meta.costo_usd) : null,
-                meta.durata_ms != null ? formattaDurataMeta(meta.durata_ms) : null,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-            </span>
-          )}
+        <div className="side__eyebrow">
+          <span className="thread" />
+          <span className="label">Analisi</span>
+          <div className="side__actions">
+            <button className="btn btn--sm" onClick={analizza} disabled={registrando}>
+              Rianalizza
+            </button>
+          </div>
         </div>
-        {/* Riga propria, non incollata a quella di Rianalizza: a 392 px di
-            larghezza (comportamento.md, 8) il passo di conferma — stima più
-            due pulsanti — non ci starebbe nella stessa riga. */}
-        <ControlloDiarizzazione
-          sessione={sessione}
-          disponibile={diarizDisponibile}
-          giaDiarizzata={giaDiarizzata}
-          stato={diarizStato}
-          errore={diarizErrore}
-          conferma={diarizConferma}
-          onChiediConferma={() => setDiarizConferma(true)}
-          onAnnullaConferma={() => setDiarizConferma(false)}
-          onAvvia={avviaDiarizzazione}
-        />
-        <ControlloRifinitura
-          sessione={sessione}
-          stato={statoRifinitura}
-          onFinita={onRicaricaSegmenti}
-        />
-        <div className="tabs" role="tablist">
+        {meta && (
+          <div className="side__meta">
+            {[
+              meta.etichetta_provider,
+              meta.costo_usd != null ? formattaDollari(meta.costo_usd) : null,
+              meta.durata_ms != null ? formattaDurataMeta(meta.durata_ms) : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </div>
+        )}
+      </div>
+
+      <div className="tabs" role="tablist">
           <button className={`tab${scheda === 'sum' ? ' is-on' : ''}`} onClick={() => setScheda('sum')}>
             Riassunto
           </button>
@@ -970,7 +976,6 @@ export function PannelloAnalisi({
           <button className={`tab${scheda === 'task' ? ' is-on' : ''}`} onClick={() => setScheda('task')}>
             Task<span className="tab__n num">{tasks.length}</span>
           </button>
-        </div>
       </div>
 
       <div className="side__body" hidden={scheda !== 'sum'}>
@@ -1043,6 +1048,27 @@ export function PannelloAnalisi({
             onRassegna={onRassegna}
           />
         )}
+      </div>
+
+      {/* In fondo, e con un bordo sopra: sono cose che si fanno alla
+          trascrizione a call finita, non comandi dell'analisi. */}
+      <div className="side__foot">
+        <ControlloDiarizzazione
+          sessione={sessione}
+          disponibile={diarizDisponibile}
+          giaDiarizzata={giaDiarizzata}
+          stato={diarizStato}
+          errore={diarizErrore}
+          conferma={diarizConferma}
+          onChiediConferma={() => setDiarizConferma(true)}
+          onAnnullaConferma={() => setDiarizConferma(false)}
+          onAvvia={avviaDiarizzazione}
+        />
+        <ControlloRifinitura
+          sessione={sessione}
+          stato={statoRifinitura}
+          onFinita={onRicaricaSegmenti}
+        />
       </div>
     </section>
   )

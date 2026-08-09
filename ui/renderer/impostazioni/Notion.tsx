@@ -175,7 +175,7 @@ export function SezioneNotion() {
   return (
     <>
       <div className="row row--risk">
-        <div className="row__text">
+        <div className="row__t">
           <b>Manda le task a Notion</b>
           <span>{descrizione}</span>
           <span>I dati della call escono dal computer verso Notion.</span>
@@ -334,7 +334,7 @@ export function SezioneNotion() {
           >
             {campoTitolo && (
               <div className="row" style={{ paddingTop: 'var(--sp-5)', paddingBottom: 'var(--sp-5)' }}>
-                <div className="row__text">
+                <div className="row__t">
                   <b>{campoTitolo.etichetta}</b>
                   <span>{campoTitolo.aiuto}</span>
                 </div>
@@ -362,7 +362,7 @@ export function SezioneNotion() {
                   key={campo.id}
                   style={{ paddingTop: 'var(--sp-5)', paddingBottom: 'var(--sp-5)' }}
                 >
-                  <div className="row__text">
+                  <div className="row__t">
                     <b>{campo.etichetta}</b>
                     <span>{campo.aiuto}</span>
                   </div>
@@ -445,7 +445,7 @@ export function SezioneNotion() {
                   <button type="button" className="checkbox is-on" disabled aria-pressed>
                     ✓
                   </button>
-                  <div className="row__text">
+                  <div className="row__t">
                     <b>
                       {campoTitolo.nome_notion} · {campoTitolo.etichetta}
                     </b>
@@ -469,7 +469,7 @@ export function SezioneNotion() {
                     >
                       ✓
                     </button>
-                    <div className="row__text">
+                    <div className="row__t">
                       <b>
                         {campo.nome_notion} · {tipoLeggibile(campo.tipi[0])}
                       </b>

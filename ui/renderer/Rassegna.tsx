@@ -431,7 +431,7 @@ export function Rassegna(props: {
                           ) : (
                             <div className="rf__v rf__edit-row">
                               <input
-                                className="textfield"
+                                className="textfield textfield--sm"
                                 autoFocus
                                 value={bozza}
                                 onChange={(e) => setBozza(e.target.value)}

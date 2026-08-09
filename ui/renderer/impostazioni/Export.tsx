@@ -30,7 +30,7 @@ export function SezioneExport({
       <div className="settings__head">Export</div>
       <div className="settings__body">
         <div className="row">
-          <div className="row__text">
+          <div className="row__t">
             <b>Cartella predefinita</b>
             <span style={{ fontFamily: 'var(--font-code)' }}>{esp.cartella ?? 'Non ancora scelta'}</span>
           </div>
@@ -39,7 +39,7 @@ export function SezioneExport({
           </button>
         </div>
         <div className="row">
-          <div className="row__text">
+          <div className="row__t">
             <b>Formato</b>
             <span>
               Il markdown contiene anche i minuti delle prove. Il testo è la trascrizione pulita,
@@ -49,7 +49,7 @@ export function SezioneExport({
               incollato in un modello. Per esportarne più di una insieme c'è l'archivio.
             </span>
           </div>
-          <div className="segment">
+          <div className="picker">
             {FORMATI.map((f) => (
               <button
                 key={f.id}

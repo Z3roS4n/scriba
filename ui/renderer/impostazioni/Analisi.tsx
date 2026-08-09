@@ -26,11 +26,11 @@ export function SezioneAnalisi({
       <div className="settings__head">Analisi</div>
       <div className="settings__body">
         <div className="row">
-          <div className="row__text">
+          <div className="row__t">
             <b>Quando analizzare</b>
             <span>A fine call parte da sola e la trovi pronta. A richiesta decidi tu di volta in volta.</span>
           </div>
-          <div className="segment">
+          <div className="picker">
             <button
               className={impostazioni.analisi_automatica ? 'is-on' : ''}
               onClick={() => onCambia({ analisi_automatica: true })}
@@ -46,7 +46,7 @@ export function SezioneAnalisi({
           </div>
         </div>
         <div className="row row--risk">
-          <div className="row__text">
+          <div className="row__t">
             <b>Note incrementali durante la call</b>
             <span>Un riassunto parziale ogni dieci minuti, mentre si parla.</span>
             <span className="row__risk">
@@ -65,14 +65,14 @@ export function SezioneAnalisi({
         </div>
         {impostazioni.note_incrementali && (
           <div className="row">
-            <div className="row__text">
+            <div className="row__t">
               <b>Ogni quanto</b>
               <span>
                 Su una call più corta dell’intervallo non ne esce nessuna: è il motivo più
                 comune per cui sembra che non funzionino.
               </span>
             </div>
-            <div className="segment">
+            <div className="picker">
               {INTERVALLI.map((m) => (
                 <button
                   key={m}
