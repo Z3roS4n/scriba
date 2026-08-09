@@ -20,6 +20,14 @@
  * - resta fuori quello che non si legge: chiavi, classi, percorsi, id.
  *
  * Non è un cancello: non fallisce mai. È un metro.
+ *
+ * **Punto cieco, dichiarato.** Guarda il testo fra tag e quattro attributi,
+ * non le stringhe dentro le costanti: un `const CAMPI = [{ etichetta:
+ * 'Responsabile' }]` non lo vede, e quelle sono etichette che l'utente legge
+ * eccome. Il numero che stampa e' quindi una **sottostima**. Cercarle anche
+ * lì vorrebbe dire distinguere una costante di etichette da una di chiavi, e
+ * un metro che sbaglia in eccesso si smette di leggere prima di uno che
+ * sbaglia in difetto — ma saperlo cambia come si legge il numero.
  */
 
 import { readdirSync, readFileSync, statSync } from 'node:fs'

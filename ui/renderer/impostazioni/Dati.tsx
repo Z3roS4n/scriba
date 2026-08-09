@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react'
 import type { Sessione, VoceDati } from '../tipi'
 import { dimensione } from '../tipi'
 import { Modal } from './Modal'
+import { useT } from '../lingua'
 
 const FRASE_CONFERMA = 'ELIMINA'
 
@@ -27,6 +28,7 @@ type Passo = 'chiusa' | 'elenco' | 'conferma'
  * build con lo stesso numero, ed è l'unica cosa che le distingue.
  */
 function Versione() {
+  const t = useT()
   const [v, setV] = useState<{
     versione: string
     commit: string | null
@@ -43,7 +45,7 @@ function Versione() {
   return (
     <div className="row">
       <div className="row__t">
-        <b>Versione</b>
+        <b>{t('dat.versione')}</b>
         <span>
           {quando && !Number.isNaN(quando.getTime())
             ? `Compilata il ${quando.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}.`
@@ -72,6 +74,7 @@ export function SezioneDati({
   onEliminaCall: (id: number) => Promise<boolean>
   caricaSessioni: () => Promise<Sessione[]>
 }) {
+  const t = useT()
   const [confermaAudio, setConfermaAudio] = useState(false)
   const [passo, setPasso] = useState<Passo>('chiusa')
   const [sessioni, setSessioni] = useState<Sessione[]>([])
@@ -100,7 +103,7 @@ export function SezioneDati({
 
   return (
     <>
-      <div className="settings__head">Dati e privacy</div>
+      <div className="settings__head">{t('dat.titolo')}</div>
       <div className="settings__body">
         <Versione />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', margin: 'var(--sp-4) 0 18px' }}>
@@ -112,20 +115,19 @@ export function SezioneDati({
               </div>
               <span className="pathrow__size">{dimensione(v.bytes)}</span>
               <button className="btn btn--sm" onClick={() => onApri(v.path)}>
-                Apri
+                {t('dat.apri')}
               </button>
             </div>
           ))}
         </div>
 
         <div className="danger">
-          <span className="label">CANCELLAZIONI · NON SI TORNA INDIETRO</span>
+          <span className="label">{t('dat.cancellazioni')}</span>
           <div className="row">
             <div className="row__t">
-              <b>Elimina l’audio, tieni la trascrizione</b>
+              <b>{t('dat.elimina_audio')}</b>
               <span>
-                Libera quasi tutto lo spazio. Le task e le loro prove restano, ma non si potrà più riascoltare la
-                frase originale.
+                {t('dat.elimina_audio_nota')}
               </span>
             </div>
             {confermaAudio ? (
@@ -135,21 +137,21 @@ export function SezioneDati({
                   if (await onEliminaAudio()) setConfermaAudio(false)
                 }}
               >
-                Conferma: elimina
+                {t('dat.conferma_elimina')}
               </button>
             ) : (
               <button className="btn btn--danger" onClick={() => setConfermaAudio(true)}>
-                Elimina l’audio
+                {t('dat.elimina_audio_btn')}
               </button>
             )}
           </div>
           <div className="row">
             <div className="row__t">
-              <b>Elimina tutto di una call</b>
-              <span>Audio, trascrizione, screenshot, task. Verrà chiesto quale call e poi una conferma scritta.</span>
+              <b>{t('dat.elimina_tutto')}</b>
+              <span>{t('dat.elimina_tutto_nota')}</span>
             </div>
             <button className="btn btn--danger" onClick={apriScelta}>
-              Scegli una call
+              {t('dat.scegli_call')}
             </button>
           </div>
         </div>
@@ -158,8 +160,8 @@ export function SezioneDati({
       {passo === 'elenco' && (
         <Modal onChiudi={chiudi}>
           <div className="modal__head">
-            <h2>Quale call?</h2>
-            <p>Verrà cancellato tutto: audio, trascrizione, screenshot e task.</p>
+            <h2>{t('dat.quale_call')}</h2>
+            <p>{t('dat.verra_cancellato')}</p>
           </div>
           <div
             style={{
@@ -172,7 +174,7 @@ export function SezioneDati({
             }}
           >
             {sessioni.length === 0 ? (
-              <p style={{ color: 'var(--fg-3)', fontSize: 'var(--fs-sm)' }}>Nessuna call registrata.</p>
+              <p style={{ color: 'var(--fg-3)', fontSize: 'var(--fs-sm)' }}>{t('dat.nessuna_call')}</p>
             ) : (
               sessioni.map((s) => (
                 <button
@@ -190,7 +192,7 @@ export function SezioneDati({
           </div>
           <div className="modal__foot">
             <button className="btn" onClick={chiudi}>
-              Annulla
+              {t('dat.annulla')}
             </button>
           </div>
         </Modal>
@@ -213,14 +215,14 @@ export function SezioneDati({
           </div>
           <div className="modal__foot">
             <button className="btn" onClick={() => setPasso('elenco')}>
-              Indietro
+              {t('dat.indietro')}
             </button>
             <button
               className="btn btn--danger"
               disabled={testoConferma.trim() !== FRASE_CONFERMA || eliminando}
               onClick={confermaEliminazione}
             >
-              Elimina definitivamente
+              {t('dat.elimina_def')}
             </button>
           </div>
         </Modal>

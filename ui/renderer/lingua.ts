@@ -278,6 +278,77 @@ const it = {
     'COLONNE',
   'ntn.indietro':
     'Indietro',
+  // --- dati e privacy ----------------------------------------
+  'dat.versione':
+    'Versione',
+  'dat.titolo':
+    'Dati e privacy',
+  'dat.apri':
+    'Apri',
+  'dat.cancellazioni':
+    'CANCELLAZIONI · NON SI TORNA INDIETRO',
+  'dat.elimina_audio':
+    'Elimina l’audio, tieni la trascrizione',
+  'dat.elimina_audio_nota':
+    'Libera quasi tutto lo spazio. Le task e le loro prove restano, ma non si potrà più riascoltare la frase originale.',
+  'dat.conferma_elimina':
+    'Conferma: elimina',
+  'dat.elimina_audio_btn':
+    'Elimina l’audio',
+  'dat.elimina_tutto':
+    'Elimina tutto di una call',
+  'dat.elimina_tutto_nota':
+    'Audio, trascrizione, screenshot, task. Verrà chiesto quale call e poi una conferma scritta.',
+  'dat.scegli_call':
+    'Scegli una call',
+  'dat.quale_call':
+    'Quale call?',
+  'dat.verra_cancellato':
+    'Verrà cancellato tutto: audio, trascrizione, screenshot e task.',
+  'dat.nessuna_call':
+    'Nessuna call registrata.',
+  'dat.annulla':
+    'Annulla',
+  'dat.indietro':
+    'Indietro',
+  'dat.elimina_def':
+    'Elimina definitivamente',
+
+  // --- rassegna ----------------------------------------------
+  'ras.titolo':
+    'Rassegna',
+  'ras.esci':
+    'torna alla lista',
+  'ras.trascrizione':
+    'Trascrizione',
+  'ras.ferma':
+    'ferma sulle righe citate',
+  'ras.carico':
+    'Carico…',
+  'ras.carico_nota':
+    'Sto leggendo le task di questa call.',
+  'ras.nessuna':
+    'Nessuna task da rivedere',
+  'ras.nessuna_nota':
+    'Questa call non ha task in sospeso.',
+  'ras.modifica':
+    'Modifica',
+  'ras.annulla':
+    'Annulla',
+  'ras.salva':
+    'Salva',
+  'ras.dedotta':
+    'Dedotta. Nessuna frase della riunione la sostiene.',
+  'ras.conferma':
+    'Conferma',
+  'ras.scarta':
+    'Scarta',
+  'ras.campo.titolo': 'Titolo',
+  'ras.campo.assignee': 'Responsabile',
+  'ras.campo.scadenza': 'Scadenza',
+  'ras.campo.priorita': 'Priorità',
+  'ras.task_n_di': 'Task {i} di {n}',
+  'ras.di': '{i} di {n}',
 } as const
 
 export type Chiave = keyof typeof it
@@ -508,6 +579,75 @@ const en: Record<Chiave, string> = {
     'COLUMNS',
   'ntn.indietro':
     'Back',
+  'dat.versione':
+    'Version',
+  'dat.titolo':
+    'Data and privacy',
+  'dat.apri':
+    'Open',
+  'dat.cancellazioni':
+    'DELETIONS · THERE IS NO GOING BACK',
+  'dat.elimina_audio':
+    'Delete the audio, keep the transcript',
+  'dat.elimina_audio_nota':
+    'Frees almost all the space. Tasks and their evidence stay, but the original sentence can no longer be listened to.',
+  'dat.conferma_elimina':
+    'Confirm: delete',
+  'dat.elimina_audio_btn':
+    'Delete the audio',
+  'dat.elimina_tutto':
+    'Delete everything about a call',
+  'dat.elimina_tutto_nota':
+    'Audio, transcript, screenshots, tasks. It will ask which call and then for a written confirmation.',
+  'dat.scegli_call':
+    'Choose a call',
+  'dat.quale_call':
+    'Which call?',
+  'dat.verra_cancellato':
+    'Everything will be deleted: audio, transcript, screenshots and tasks.',
+  'dat.nessuna_call':
+    'No calls recorded.',
+  'dat.annulla':
+    'Cancel',
+  'dat.indietro':
+    'Back',
+  'dat.elimina_def':
+    'Delete permanently',
+
+  'ras.titolo':
+    'Review',
+  'ras.esci':
+    'back to the list',
+  'ras.trascrizione':
+    'Transcript',
+  'ras.ferma':
+    'held on the quoted lines',
+  'ras.carico':
+    'Loading…',
+  'ras.carico_nota':
+    'Reading this call’s tasks.',
+  'ras.nessuna':
+    'No task to review',
+  'ras.nessuna_nota':
+    'This call has no pending tasks.',
+  'ras.modifica':
+    'Edit',
+  'ras.annulla':
+    'Cancel',
+  'ras.salva':
+    'Save',
+  'ras.dedotta':
+    'Inferred. No sentence in the meeting supports it.',
+  'ras.conferma':
+    'Confirm',
+  'ras.scarta':
+    'Discard',
+  'ras.campo.titolo': 'Title',
+  'ras.campo.assignee': 'Assignee',
+  'ras.campo.scadenza': 'Due',
+  'ras.campo.priorita': 'Priority',
+  'ras.task_n_di': 'Task {i} of {n}',
+  'ras.di': '{i} of {n}',
 }
 
 const CATALOGHI = { it, en } as const

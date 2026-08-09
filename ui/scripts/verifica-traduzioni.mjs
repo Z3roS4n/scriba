@@ -34,6 +34,8 @@ const ORIGINI = {
   'ntn.': 'ui/renderer/impostazioni/Notion.tsx',
   'arch.': 'ui/renderer/Archivio.tsx',
   'sez.': 'ui/renderer/Impostazioni.tsx',
+  'dat.': 'ui/renderer/impostazioni/Dati.tsx',
+  'ras.': 'ui/renderer/Rassegna.tsx',
 }
 
 /** Il commit da cui parte il ramo: prima di qualunque traduzione. */
