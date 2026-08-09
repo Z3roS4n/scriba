@@ -349,6 +349,65 @@ const it = {
   'ras.campo.priorita': 'Priorità',
   'ras.task_n_di': 'Task {i} di {n}',
   'ras.di': '{i} di {n}',
+  // --- overlay ----------------------------------------
+  'ovl.salvato':
+    'Salvato nella trascrizione',
+  'ovl.scatta':
+    'Scatta',
+  'ovl.ferma':
+    'Ferma',
+  'ovl.registra':
+    'Registra',
+  'ovl.scatto_nota':
+    'Lo screenshot finisce nella trascrizione al minuto in cui è stato preso.',
+  'ovl.fermo':
+    'Non sto registrando.',
+
+  // --- Clienti ----------------------------------------
+  'cli.titolo':
+    'Clienti',
+  'cli.aggiungi':
+    'Aggiungi un cliente',
+  'cli.aggiungi_nota':
+    "Serve a raggruppare le call nell'archivio. L'attribuzione si fa da lì, dove le call si vedono tutte insieme.",
+  'cli.aggiungi_btn':
+    'Aggiungi',
+  'cli.carica':
+    'Carica un elenco',
+  'cli.scegli_file':
+    'Scegli un file',
+  'cli.vuoto':
+    "Nessun cliente. Finché non ce n'è, l'archivio funziona lo stesso: le call restano cercabili per testo e per data.",
+  'cli.salva':
+    'Salva',
+  'cli.annulla':
+    'Annulla',
+  'cli.archiviato':
+    '· archiviato',
+  'cli.rinomina':
+    'Rinomina',
+  'cli.elimina':
+    'Elimina',
+
+  // --- Dialoghi ----------------------------------------
+  'dlg.consenso_titolo':
+    'Registrare questa call',
+  'dlg.consenso_cosa':
+    "Verranno registrati il tuo microfono e l'audio del computer.",
+  'dlg.consenso_spunta':
+    'Ho avvisato le persone in call che sto registrando.',
+  'dlg.consenso_nota':
+    "Registrare gli altri significa trattare i loro dati personali. Questa spunta viene annotata nella sessione, ma non sostituisce l'averglielo detto.",
+  'dlg.annulla':
+    'Annulla',
+  'dlg.registra':
+    'Registra',
+  'dlg.rilevata':
+    "Posso registrarla. Include l'audio degli altri partecipanti, non solo la tua voce.",
+  'dlg.no_grazie':
+    'No grazie',
+  'dlg.torna':
+    'torna alla prossima call',
 } as const
 
 export type Chiave = keyof typeof it
@@ -648,6 +707,62 @@ const en: Record<Chiave, string> = {
   'ras.campo.priorita': 'Priority',
   'ras.task_n_di': 'Task {i} of {n}',
   'ras.di': '{i} of {n}',
+  'ovl.salvato':
+    'Saved in the transcript',
+  'ovl.scatta':
+    'Capture',
+  'ovl.ferma':
+    'Stop',
+  'ovl.registra':
+    'Record',
+  'ovl.scatto_nota':
+    'The screenshot goes into the transcript at the minute it was taken.',
+  'ovl.fermo':
+    'Not recording.',
+
+  'cli.titolo':
+    'Clients',
+  'cli.aggiungi':
+    'Add a client',
+  'cli.aggiungi_nota':
+    'It groups calls in the archive. You attribute them from there, where the calls are all in front of you.',
+  'cli.aggiungi_btn':
+    'Add',
+  'cli.carica':
+    'Load a list',
+  'cli.scegli_file':
+    'Choose a file',
+  'cli.vuoto':
+    'No clients. Until there is one the archive works just the same: calls stay searchable by text and by date.',
+  'cli.salva':
+    'Save',
+  'cli.annulla':
+    'Cancel',
+  'cli.archiviato':
+    '· archived',
+  'cli.rinomina':
+    'Rename',
+  'cli.elimina':
+    'Delete',
+
+  'dlg.consenso_titolo':
+    'Record this call',
+  'dlg.consenso_cosa':
+    'Your microphone and the computer audio will be recorded.',
+  'dlg.consenso_spunta':
+    'I have told the people on the call that I am recording.',
+  'dlg.consenso_nota':
+    'Recording other people means processing their personal data. This tick is recorded in the session, but it does not replace having told them.',
+  'dlg.annulla':
+    'Cancel',
+  'dlg.registra':
+    'Record',
+  'dlg.rilevata':
+    'I can record it. That includes the other participants’ audio, not only your voice.',
+  'dlg.no_grazie':
+    'No thanks',
+  'dlg.torna':
+    'it comes back on the next call',
 }
 
 const CATALOGHI = { it, en } as const

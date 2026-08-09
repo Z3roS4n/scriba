@@ -36,6 +36,9 @@ const ORIGINI = {
   'sez.': 'ui/renderer/Impostazioni.tsx',
   'dat.': 'ui/renderer/impostazioni/Dati.tsx',
   'ras.': 'ui/renderer/Rassegna.tsx',
+  'ovl.': 'ui/renderer/overlay.tsx',
+  'cli.': 'ui/renderer/impostazioni/Clienti.tsx',
+  'dlg.': 'ui/renderer/Dialoghi.tsx',
 }
 
 /** Il commit da cui parte il ramo: prima di qualunque traduzione. */

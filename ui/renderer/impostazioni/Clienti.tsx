@@ -14,6 +14,7 @@
 import { useCallback, useRef, useState } from 'react'
 
 import type { Cliente, EsitoImport } from '../tipi'
+import { useT } from '../lingua'
 
 /** «14 ago 2026». Le call qui si contano, non si aprono: basta il giorno. */
 function quando(ms: number | null): string {
@@ -38,6 +39,7 @@ export function SezioneClienti({
   clienti: Cliente[]
   onRicarica: () => void
 }) {
+  const t = useT()
   const [nuovo, setNuovo] = useState('')
   const [errore, setErrore] = useState<string | null>(null)
   const [esito, setEsito] = useState<string | null>(null)
@@ -112,14 +114,13 @@ export function SezioneClienti({
 
   return (
     <>
-      <div className="settings__head">Clienti</div>
+      <div className="settings__head">{t('cli.titolo')}</div>
       <div className="settings__body">
         <div className="row">
           <div className="row__t">
-            <b>Aggiungi un cliente</b>
+            <b>{t('cli.aggiungi')}</b>
             <span>
-              Serve a raggruppare le call nell'archivio. L'attribuzione si fa da lì, dove le call
-              si vedono tutte insieme.
+              {t('cli.aggiungi_nota')}
             </span>
           </div>
           <input
@@ -133,13 +134,13 @@ export function SezioneClienti({
             }}
           />
           <button className="btn" disabled={!nuovo.trim()} onClick={aggiungi}>
-            Aggiungi
+            {t('cli.aggiungi_btn')}
           </button>
         </div>
 
         <div className="row">
           <div className="row__t">
-            <b>Carica un elenco</b>
+            <b>{t('cli.carica')}</b>
             <span>
               Un file CSV con una colonna dei nomi (e, se c'è, una delle note). Separatore virgola o
               punto e virgola. I clienti già presenti non vengono duplicati né sovrascritti.
@@ -159,7 +160,7 @@ export function SezioneClienti({
             }}
           />
           <button className="btn" onClick={() => fileRef.current?.click()}>
-            Scegli un file
+            {t('cli.scegli_file')}
           </button>
         </div>
 
@@ -170,8 +171,7 @@ export function SezioneClienti({
 
         {clienti.length === 0 ? (
           <p style={{ fontSize: 'var(--fs-md)', color: 'var(--fg-3)', lineHeight: 1.6 }}>
-            Nessun cliente. Finché non ce n'è, l'archivio funziona lo stesso: le call restano
-            cercabili per testo e per data.
+            {t('cli.vuoto')}
           </p>
         ) : (
           <div className="cli">
@@ -191,10 +191,10 @@ export function SezioneClienti({
                       }}
                     />
                     <button className="btn btn--sm" onClick={() => rinomina(c.id)}>
-                      Salva
+                      {t('cli.salva')}
                     </button>
                     <button className="btn btn--sm" onClick={() => setInModifica(null)}>
-                      Annulla
+                      {t('cli.annulla')}
                     </button>
                   </>
                 ) : (
@@ -204,7 +204,7 @@ export function SezioneClienti({
                       {c.n_call} {c.n_call === 1 ? 'call' : 'call'}
                       <span>·</span>
                       ultima: {quando(c.ultima_call)}
-                      {c.archiviato ? <span> · archiviato</span> : null}
+                      {c.archiviato ? <span> {t('cli.archiviato')}</span> : null}
                     </span>
                     <button
                       className="btn btn--sm"
@@ -214,13 +214,13 @@ export function SezioneClienti({
                         setErrore(null)
                       }}
                     >
-                      Rinomina
+                      {t('cli.rinomina')}
                     </button>
                     <button className="btn btn--sm" onClick={() => archivia(c)}>
                       {c.archiviato ? 'Ripristina' : 'Archivia'}
                     </button>
                     <button className="btn btn--sm" onClick={() => elimina(c)}>
-                      Elimina
+                      {t('cli.elimina')}
                     </button>
                   </>
                 )}

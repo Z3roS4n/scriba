@@ -16,6 +16,7 @@ import { useTema } from './tema'
 import type { Impostazioni, Traccia } from './tipi'
 import { scorciatoiaLeggibile, tempo } from './tipi'
 import { ContestoLingua, useLingua } from './lingua'
+import { useT } from './lingua'
 
 interface Riga {
   chiave: string
@@ -50,6 +51,7 @@ function LineaOverlay({ riga, conMinuto }: { riga: Riga; conMinuto: boolean }) {
 }
 
 function App() {
+  const t = useT()
   const [righe, setRighe] = useState<Riga[]>([])
   const [registrando, setRegistrando] = useState(false)
   const [trascorsi, setTrascorsi] = useState(0)
@@ -182,7 +184,7 @@ function App() {
         ) : (
           <span style={{ fontSize: 'var(--fs-md)' }}>Scriba</span>
         )}
-        {scattoRecente && <span className="overlay__flash">Salvato nella trascrizione</span>}
+        {scattoRecente && <span className="overlay__flash">{t('ovl.salvato')}</span>}
         <div className="overlay__spacer" />
         {registrando ? (
           ridotto ? (
@@ -209,7 +211,7 @@ function App() {
                   senza uscire dalla call per cercare una finestra. */}
               {schermi.length <= 1 ? (
                 <button className="ovbtn" onClick={() => scatta()}>
-                  Scatta
+                  {t('ovl.scatta')}
                 </button>
               ) : (
                 schermi.map((s, i) => (
@@ -224,7 +226,7 @@ function App() {
                 ))
               )}
               <button className="ovbtn ovbtn--stop" onClick={ferma}>
-                Ferma
+                {t('ovl.ferma')}
               </button>
               <button className="ovbtn ovbtn--icon" aria-label="Riduci la striscia" onClick={alternaRidotto}>
                 ▢
@@ -237,7 +239,7 @@ function App() {
         ) : (
           <>
             <button className="ovbtn ovbtn--stop" onClick={apriPrincipale}>
-              Registra
+              {t('ovl.registra')}
             </button>
             <button className="ovbtn ovbtn--icon" aria-label="Chiudi" onClick={nascondi}>
               ✕
@@ -250,7 +252,7 @@ function App() {
         scattoRecente && !ridotto ? (
           <div className="overlay__shot">
             <i />
-            <span>Lo screenshot finisce nella trascrizione al minuto in cui è stato preso.</span>
+            <span>{t('ovl.scatto_nota')}</span>
           </div>
         ) : (
           <div className="overlay__lines">
@@ -261,7 +263,7 @@ function App() {
         )
       ) : (
         <div className="overlay__empty">
-          <span>Non sto registrando.</span>
+          <span>{t('ovl.fermo')}</span>
           <small>
             {scorciatoiaLeggibile(scorciatoie.overlay)} nasconde · {scorciatoiaLeggibile(scorciatoie.screenshot)}{' '}
             scatta
