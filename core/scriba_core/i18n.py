@@ -115,3 +115,30 @@ def motore(info: dict[str, Any], provider: str, lingua: str) -> dict[str, Any]:
 def fase(chiave: str, titolo_it: str, lingua: str) -> str:
     """Il titolo di una fase dell'analisi."""
     return titolo_it if lingua == "it" else _FASI_EN.get(chiave, titolo_it)
+
+#: La nota dei modelli locali: nel catalogo è la loro `descrizione`, ed è
+#: l'unico testo del pannello Modelli che nasce nel core.
+_MODELLI_EN: dict[str, str] = {
+    "gemma-4-12b": "The default. Official Google conversion, QAT quantisation.",
+    "qwen3.5-9b": "Faster and lighter. It follows instructions better, but the "
+    "architecture is recent: check that the build supports it.",
+    "gemma-4-26b-a4b": "Better quality, much slower. Only 3.8 billion parameters "
+    "active per token: it fits in 10 GB of VRAM with the experts kept in RAM.",
+    "parakeet-tdt-0.6b-v3": "The default local transcription, already in use by "
+    "the application. The download (~640 MB, several files) is handled by "
+    "onnx-asr: no byte-by-byte resuming and no pausing, but the library checks "
+    "its integrity itself at every load.",
+    "canary-1b-v2": "It is for the touch-up after the call, not for live "
+    "transcription: it is the only one of the two you can impose a language on, "
+    "and it is more accurate (WER 5.3% against 6.8% on Italian FLEURS, measured "
+    "on this machine). Too slow to keep up with speech — 2.5 times Parakeet.",
+    #: Non viene dal catalogo: la scrive `_descrivi_gestito` mentre il download
+    #: affidato a una libreria esterna è in corso.
+    "@in_corso": "downloading · it cannot be paused",
+}
+
+
+def nota_modello(model_id: str, nota_it: str, lingua: str) -> str:
+    """La nota di un modello locale nella lingua chiesta."""
+    return nota_it if lingua == "it" else _MODELLI_EN.get(model_id, nota_it)
+

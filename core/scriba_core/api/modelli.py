@@ -12,6 +12,7 @@ import asyncio
 from fastapi import APIRouter, HTTPException
 
 from . import Contesto
+from ..i18n import LinguaUI
 from ..models_manager import ModelsManager
 
 
@@ -29,8 +30,8 @@ def crea_router(ctx: Contesto) -> APIRouter:
     ctx.state["gestore_modelli"] = manager
 
     @router.get("/modelli")
-    async def elenco() -> list[dict]:
-        return manager.elenco_modelli()
+    async def elenco(lingua: LinguaUI) -> list[dict]:
+        return manager.elenco_modelli(lingua)
 
     @router.get("/disco")
     async def disco() -> dict:
