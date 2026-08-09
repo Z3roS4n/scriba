@@ -38,6 +38,17 @@ export interface Sessione {
   client_id?: number | null
   /** Il nome del cliente, gia' risolto dal core: la UI non deve incrociarlo da se'. */
   cliente?: string | null
+  /**
+   * La frase in cui la ricerca dell'archivio ha trovato la parola, con la
+   * parola stessa fra \u0002 e \u0003.
+   *
+   * Sono caratteri di controllo e non tag: il core non produce HTML — sarebbe
+   * una stringa che poi qualcuno dovrebbe fidarsi a rendere — e non usa segni
+   * che possano trovarsi nel parlato. Null quando non si sta cercando niente:
+   * sfogliando l'archivio non c'e' una frase «trovata», e inventarne una
+   * vorrebbe dire mettere in evidenza una riga a caso.
+   */
+  frammento?: string | null
 }
 
 /** Un cliente, con quanto lavoro gli e' gia' attribuito. */
@@ -560,18 +571,27 @@ export function tempo(ms: number): string {
 }
 
 /** «12 ago · 14:05». Oggi diventa «oggi», che è come lo si direbbe a voce. */
-export function dataBreve(epochMs: number): string {
+export function giornoBreve(epochMs: number): string {
   const d = new Date(epochMs)
   const oggi = new Date()
   const stessoGiorno =
     d.getFullYear() === oggi.getFullYear() &&
     d.getMonth() === oggi.getMonth() &&
     d.getDate() === oggi.getDate()
-  const giorno = stessoGiorno
+  return stessoGiorno
     ? 'oggi'
     : d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).replace('.', '')
+}
+
+/** «12 ago · 14:05». Dove serve anche l'ora del giorno.
+ *
+ *  Non nell'elenco call: li' la riga porta giorno e **durata**, e infilarci in
+ *  mezzo anche l'ora faceva tre voci separate da due puntini dove il design ne
+ *  ha due (comportamento.md, 0-bis: meno elementi, non solo piu' spazio). */
+export function dataBreve(epochMs: number): string {
+  const d = new Date(epochMs)
   const ora = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-  return `${giorno} · ${ora}`
+  return `${giornoBreve(epochMs)} · ${ora}`
 }
 
 /** «6,4 GB», «312 MB». Virgola decimale: l'interfaccia è in italiano. */

@@ -24,6 +24,7 @@ import type {
   StatoDatabaseRemoto,
   TabellaModello,
 } from '../tipi'
+import { Select } from '../Select'
 
 const MODALITA: Array<{ id: string; etichetta: string; nota: string }> = [
   { id: 'diretta', etichetta: 'Diretta', nota: 'Porta 5432 sul server vero. Su Supabase spesso risponde solo in IPv6.' },
@@ -259,9 +260,9 @@ export function SezioneDatabaseRemoto() {
         {passo === 'collegato' && stato?.collegato && (
           <>
             <div className="row">
-              <div className="row__text">
+              <div className="row__t">
                 <b>Collegato</b>
-                <span style={{ fontFamily: 'var(--mono)' }}>
+                <span style={{ fontFamily: 'var(--font-code)' }}>
                   {stato.server?.utente}@{stato.server?.host}:{stato.server?.porta}/
                   {stato.server?.database} · schema {stato.schema} ·{' '}
                   {MODALITA.find((m) => m.id === stato.modalita)?.etichetta ?? stato.modalita}
@@ -273,7 +274,7 @@ export function SezioneDatabaseRemoto() {
             </div>
 
             <div className="row">
-              <div className="row__text">
+              <div className="row__t">
                 <b>Cosa viene mandato</b>
                 <span>
                   {Object.entries(stato.tabelle)
@@ -287,23 +288,25 @@ export function SezioneDatabaseRemoto() {
             </div>
 
             <div className="row">
-              <div className="row__text">
+              <div className="row__t">
                 <b>Sincronizza da sola a fine analisi</b>
                 <span>Una registrazione in corso non aspetta mai il database: se la rete manca, si riprova dopo.</span>
               </div>
               <button
                 className={`switch ${stato.automatico ? 'is-on' : ''}`}
+                aria-pressed={stato.automatico}
                 onClick={async () => {
                   await window.scriba.post('/database-remoto/collega', { automatico: !stato.automatico })
                   ricarica()
                 }}
               >
-                <i />
+                <span className="sq" />
+                {stato.automatico ? 'Attivo' : 'Spento'}
               </button>
             </div>
 
             <div className="row">
-              <div className="row__text">
+              <div className="row__t">
                 <b>Il pregresso</b>
                 <span>Manda tutte le call non ancora sincronizzate. Si può rifare quante volte si vuole.</span>
               </div>
@@ -320,7 +323,7 @@ export function SezioneDatabaseRemoto() {
         {passo === 'connessione' && (
           <>
             <div className="row">
-              <div className="row__text">
+              <div className="row__t">
                 <b>Indirizzo</b>
                 <span>
                   <code>postgresql://utente:password@host:5432/database</code>
@@ -329,7 +332,7 @@ export function SezioneDatabaseRemoto() {
               </div>
             </div>
             <input
-              className="arch__search"
+              className="textfield"
               style={{ maxWidth: '100%' }}
               type="password"
               value={url}
@@ -350,21 +353,19 @@ export function SezioneDatabaseRemoto() {
             />
 
             <div className="row">
-              <div className="row__text">
+              <div className="row__t">
                 <b>Come ci si collega</b>
                 <span>{MODALITA.find((m) => m.id === modalita)?.nota}</span>
               </div>
-              <select className="arch__filter" value={modalita} onChange={(e) => setModalita(e.target.value)}>
-                {MODALITA.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.etichetta}
-                  </option>
-                ))}
-              </select>
+              <Select
+                opzioni={MODALITA.map((m) => ({ id: m.id, etichetta: m.etichetta }))}
+                selezionato={modalita}
+                onScegli={setModalita}
+              />
             </div>
 
             <div className="row">
-              <div className="row__text">
+              <div className="row__t">
                 <b>Prova il collegamento</b>
                 <span>Non salva niente: si collega, chiede la versione e gli schemi, e riferisce.</span>
               </div>
@@ -380,24 +381,22 @@ export function SezioneDatabaseRemoto() {
           <>
             <p className="vis__nota">Collegato a {versione.split(',')[0]}.</p>
             <div className="row">
-              <div className="row__text">
+              <div className="row__t">
                 <b>In quale schema scrivere</b>
                 <span>Gli schemi di sistema non sono in elenco: non sarebbero una scelta sensata.</span>
               </div>
-              <select className="arch__filter" value={schema} onChange={(e) => setSchema(e.target.value)}>
-                {schemi.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+              <Select
+                opzioni={schemi.map((s) => ({ id: s, etichetta: s }))}
+                selezionato={schema}
+                onScegli={setSchema}
+              />
             </div>
             <div className="row">
-              <div className="row__text">
+              <div className="row__t">
                 <b>Le tabelle</b>
                 <span>Le crea Scriba, oppure gliele indichi tu se ce le hai già.</span>
               </div>
-              <div className="segment">
+              <div className="picker">
                 <button className={strada === 'crea' ? 'is-on' : ''} onClick={() => setStrada('crea')}>
                   Creale tu
                 </button>
@@ -407,7 +406,7 @@ export function SezioneDatabaseRemoto() {
               </div>
             </div>
             <div className="row">
-              <div className="row__text" />
+              <div className="row__t" />
               <button className="btn" disabled={occupato || !schema} onClick={vaiAlleTabelle}>
                 Avanti
               </button>
@@ -419,13 +418,13 @@ export function SezioneDatabaseRemoto() {
         {passo === 'tabelle' && (
           <>
             <div className="row">
-              <div className="row__text">
+              <div className="row__t">
                 <b>Quali dati mandare</b>
                 <span>Quello che non spunti non esce da questo computer.</span>
               </div>
               {strada === 'crea' && (
                 <input
-                  className="arch__search"
+                  className="textfield"
                   style={{ maxWidth: 140 }}
                   value={prefisso}
                   onChange={(e) => setPrefisso(e.target.value)}
@@ -443,7 +442,7 @@ export function SezioneDatabaseRemoto() {
                 >
                   {scelte.includes(t.chiave) ? '✓' : ''}
                 </button>
-                <div className="row__text" style={{ flex: 1 }}>
+                <div className="row__t" style={{ flex: 1 }}>
                   <b>
                     {t.etichetta}
                     {t.voluminosa && ' — può essere grande'}
@@ -451,18 +450,15 @@ export function SezioneDatabaseRemoto() {
                   <span>{t.descrizione}</span>
                 </div>
                 {strada === 'mappa' && scelte.includes(t.chiave) && (
-                  <select
-                    className="arch__filter"
-                    value={mappa[t.chiave]?.nome ?? ''}
-                    onChange={(e) => caricaColonne(t.chiave, e.target.value)}
-                  >
-                    <option value="">— quale tabella? —</option>
-                    {tabelleRemote.map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
-                    ))}
-                  </select>
+                  <Select
+                    opzioni={[
+                      { id: '', etichetta: '— quale tabella? —' },
+                      ...tabelleRemote.map((n) => ({ id: n, etichetta: n })),
+                    ]}
+                    selezionato={mappa[t.chiave]?.nome ?? ''}
+                    onScegli={(v) => caricaColonne(t.chiave, v)}
+                    larghezza={240}
+                  />
                 )}
               </div>
             ))}
@@ -470,14 +466,14 @@ export function SezioneDatabaseRemoto() {
             {strada === 'crea' ? (
               <>
                 <div className="row">
-                  <div className="row__text">
+                  <div className="row__t">
                     <b>Cosa verrà eseguito</b>
                     <span>Nessun DROP, nessun ALTER: su un database che è tuo si aggiunge, non si sistema d'ufficio.</span>
                   </div>
                 </div>
                 <pre className="ddl">{ddl.map((p) => p.sql).join(';\n\n')}</pre>
                 <div className="row">
-                  <div className="row__text" />
+                  <div className="row__t" />
                   <button className="btn" onClick={() => setPasso('schema')}>
                     Indietro
                   </button>
@@ -506,25 +502,22 @@ export function SezioneDatabaseRemoto() {
                             {c.chiave_naturale && ' *'}
                           </span>
                           <span className="cli__meta">{c.descrizione}</span>
-                          <select
-                            className="arch__filter"
-                            value={mappa[k]?.colonne[c.chiave] ?? ''}
-                            onChange={(e) =>
+                          <Select
+                            opzioni={[
+                              { id: '', etichetta: '— non mandare —' },
+                              ...c.ammesse.map((n) => ({ id: n, etichetta: n })),
+                            ]}
+                            selezionato={mappa[k]?.colonne[c.chiave] ?? ''}
+                            onScegli={(v) =>
                               setMappa((prec) => {
                                 const colonneOra = { ...(prec[k]?.colonne ?? {}) }
-                                if (e.target.value) colonneOra[c.chiave] = e.target.value
+                                if (v) colonneOra[c.chiave] = v
                                 else delete colonneOra[c.chiave]
                                 return { ...prec, [k]: { ...prec[k], colonne: colonneOra } }
                               })
                             }
-                          >
-                            <option value="">— non mandare —</option>
-                            {c.ammesse.map((n) => (
-                              <option key={n} value={n}>
-                                {n}
-                              </option>
-                            ))}
-                          </select>
+                            larghezza={240}
+                          />
                         </div>
                       ))}
                     </div>
@@ -534,7 +527,7 @@ export function SezioneDatabaseRemoto() {
                   sincronizzazione ne aggiungerebbe di nuove.
                 </p>
                 <div className="row">
-                  <div className="row__text" />
+                  <div className="row__t" />
                   <button className="btn" onClick={() => setPasso('schema')}>
                     Indietro
                   </button>

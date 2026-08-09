@@ -43,7 +43,7 @@ export function SezioneAspetto({
       <div className="settings__head">Aspetto</div>
       <div className="settings__body">
         <div className="row">
-          <div className="row__text">
+          <div className="row__t">
             <b>Tema</b>
             <span>
               «Come il sistema» segue Windows, anche quando cambia da solo al tramonto. Vale
@@ -51,7 +51,7 @@ export function SezioneAspetto({
               sopra la finestra della riunione, e lì il bianco abbaglia.
             </span>
           </div>
-          <div className="segment">
+          <div className="picker">
             {TEMI.map((t) => (
               <button
                 key={t.id}

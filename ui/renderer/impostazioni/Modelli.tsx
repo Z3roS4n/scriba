@@ -69,8 +69,8 @@ export function SezioneModelli({
           <div className="disk">
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-md)' }}>
-                <span style={{ color: 'var(--fg3)' }}>Spazio su disco</span>
-                <span style={{ color: 'var(--fg2)' }}>
+                <span style={{ color: 'var(--fg-2)' }}>Spazio su disco</span>
+                <span style={{ color: 'var(--fg-body)' }}>
                   {dimensione(disco.libero_bytes)} liberi di {dimensione(disco.totale_bytes)}
                 </span>
               </div>

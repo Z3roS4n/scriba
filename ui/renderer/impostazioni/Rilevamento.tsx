@@ -68,7 +68,7 @@ function Diagnostica() {
   if (!aperto) {
     return (
       <div className="row">
-        <div className="row__text">
+        <div className="row__t">
           <b>Cosa sta vedendo adesso</b>
           <span>
             Se una riunione non viene riconosciuta, qui si legge quale delle condizioni non è
@@ -85,7 +85,7 @@ function Diagnostica() {
   return (
     <>
       <div className="row">
-        <div className="row__text">
+        <div className="row__t">
           <b>Cosa sta vedendo adesso</b>
           <span>Si aggiorna da solo ogni due secondi, finché resta aperto.</span>
         </div>
@@ -185,16 +185,21 @@ export function SezioneRilevamento({
       <div className="settings__head">Rilevamento automatico delle call</div>
       <div className="settings__body">
         <div className="row">
-          <div className="row__text">
+          <div className="row__t">
             <b>Accorgiti da solo quando entro in call</b>
             <span>Guarda quali applicazioni stanno usando il microfono. Non legge il contenuto della riunione.</span>
           </div>
-          <button className={`switch ${r.attivo ? 'is-on' : ''}`} onClick={() => cambia({ attivo: !r.attivo })}>
-            <i />
+          <button
+            className={`switch ${r.attivo ? 'is-on' : ''}`}
+            aria-pressed={r.attivo}
+            onClick={() => cambia({ attivo: !r.attivo })}
+          >
+            <span className="sq" />
+            {r.attivo ? 'Attivo' : 'Spento'}
           </button>
         </div>
         <div className="row">
-          <div className="row__text">
+          <div className="row__t">
             <b>Aspetta prima di propormelo</b>
             <span>Evita la proposta per le chiamate di dieci secondi.</span>
           </div>
@@ -205,11 +210,11 @@ export function SezioneRilevamento({
           </div>
         </div>
         <div className="row">
-          <div className="row__text">
+          <div className="row__t">
             <b>Cosa fare quando la rileva</b>
             <span>Anche avviando da sola, il consenso resta obbligatorio: la registrazione parte solo dopo la spunta.</span>
           </div>
-          <div className="segment">
+          <div className="picker">
             <button className={!r.avvio_automatico ? 'is-on' : ''} onClick={() => cambia({ avvio_automatico: false })}>
               Proponi
             </button>

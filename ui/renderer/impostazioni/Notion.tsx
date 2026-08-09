@@ -25,7 +25,7 @@ import type {
   StatoNotion,
 } from '../tipi'
 import { Modal } from './Modal'
-import { Select } from './Select'
+import { Select } from '../Select'
 
 const ETICHETTE_TIPO: Record<string, string> = {
   title: 'titolo',
@@ -175,11 +175,11 @@ export function SezioneNotion() {
   return (
     <>
       <div className="row row--risk">
-        <div className="row__text">
+        <div className="row__t">
           <b>Manda le task a Notion</b>
           <span>{descrizione}</span>
           <span>I dati della call escono dal computer verso Notion.</span>
-          {errore && passo === 'chiusa' && <span style={{ color: 'var(--red-fg)' }}>{errore}</span>}
+          {errore && passo === 'chiusa' && <span style={{ color: 'var(--red)' }}>{errore}</span>}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', alignItems: 'flex-end' }}>
           {collegato ? (
@@ -242,7 +242,7 @@ export function SezioneNotion() {
             />
           </div>
           {errore && (
-            <div className="modal__field" style={{ paddingTop: 0, color: 'var(--red-fg)', fontSize: 'var(--fs-sm)' }}>
+            <div className="modal__field" style={{ paddingTop: 0, color: 'var(--red)', fontSize: 'var(--fs-sm)' }}>
               {errore}
             </div>
           )}
@@ -281,7 +281,7 @@ export function SezioneNotion() {
             }}
           >
             {destinazioni.database.length === 0 ? (
-              <p style={{ color: 'var(--fg5)', fontSize: 'var(--fs-sm)' }}>
+              <p style={{ color: 'var(--fg-3)', fontSize: 'var(--fs-sm)' }}>
                 Nessun database condiviso con l’integrazione.
               </p>
             ) : (
@@ -293,7 +293,7 @@ export function SezioneNotion() {
             )}
           </div>
           {errore && (
-            <div className="modal__field" style={{ paddingTop: 0, color: 'var(--red-fg)', fontSize: 'var(--fs-sm)' }}>
+            <div className="modal__field" style={{ paddingTop: 0, color: 'var(--red)', fontSize: 'var(--fs-sm)' }}>
               {errore}
             </div>
           )}
@@ -334,11 +334,11 @@ export function SezioneNotion() {
           >
             {campoTitolo && (
               <div className="row" style={{ paddingTop: 'var(--sp-5)', paddingBottom: 'var(--sp-5)' }}>
-                <div className="row__text">
+                <div className="row__t">
                   <b>{campoTitolo.etichetta}</b>
                   <span>{campoTitolo.aiuto}</span>
                 </div>
-                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--fg5)', paddingTop: 3 }}>
+                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--fg-3)', paddingTop: 3 }}>
                   {schema.titolo_proprieta} · titolo
                 </span>
               </div>
@@ -362,7 +362,7 @@ export function SezioneNotion() {
                   key={campo.id}
                   style={{ paddingTop: 'var(--sp-5)', paddingBottom: 'var(--sp-5)' }}
                 >
-                  <div className="row__text">
+                  <div className="row__t">
                     <b>{campo.etichetta}</b>
                     <span>{campo.aiuto}</span>
                   </div>
@@ -370,7 +370,7 @@ export function SezioneNotion() {
                     <span
                       style={{
                         fontSize: 'var(--fs-sm)',
-                        color: 'var(--fg5)',
+                        color: 'var(--fg-3)',
                         maxWidth: 190,
                         textAlign: 'right',
                         paddingTop: 3,
@@ -398,7 +398,7 @@ export function SezioneNotion() {
             })}
           </div>
           {errore && (
-            <div className="modal__field" style={{ paddingBottom: 0, color: 'var(--red-fg)', fontSize: 'var(--fs-sm)' }}>
+            <div className="modal__field" style={{ paddingBottom: 0, color: 'var(--red)', fontSize: 'var(--fs-sm)' }}>
               {errore}
             </div>
           )}
@@ -442,10 +442,10 @@ export function SezioneNotion() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', maxHeight: 240, overflowY: 'auto' }}>
               {campoTitolo && (
                 <div style={{ display: 'flex', gap: 11, alignItems: 'flex-start' }}>
-                  <button type="button" className="checkbox is-on is-disabled" disabled aria-pressed>
+                  <button type="button" className="checkbox is-on" disabled aria-pressed>
                     ✓
                   </button>
-                  <div className="row__text">
+                  <div className="row__t">
                     <b>
                       {campoTitolo.nome_notion} · {campoTitolo.etichetta}
                     </b>
@@ -469,7 +469,7 @@ export function SezioneNotion() {
                     >
                       ✓
                     </button>
-                    <div className="row__text">
+                    <div className="row__t">
                       <b>
                         {campo.nome_notion} · {tipoLeggibile(campo.tipi[0])}
                       </b>
@@ -481,7 +481,7 @@ export function SezioneNotion() {
             </div>
           </div>
           {errore && (
-            <div className="modal__field" style={{ paddingTop: 0, color: 'var(--red-fg)', fontSize: 'var(--fs-sm)' }}>
+            <div className="modal__field" style={{ paddingTop: 0, color: 'var(--red)', fontSize: 'var(--fs-sm)' }}>
               {errore}
             </div>
           )}

@@ -1,6 +1,13 @@
-/* Scriba — token di design
-   Palette M's Works. Tema chiaro (default) e tema scuro.
-   Applicare data-theme="dark" su <html> per il tema scuro. */
+/* ============================================================================
+   Scriba — token di design · 1.0
+   Sistema msworks applicato. Tema chiaro sul :root, tema scuro come
+   sovrascritture su [data-theme="dark"].
+
+   Tre livelli:
+     1. palette msworks, valori esatti, mai arrotondati
+     2. aggiunte di Scriba, dichiarate una per una col motivo
+     3. alias di ruolo — è QUESTO il livello che i componenti usano
+   ========================================================================== */
 
 /* Montserrat viaggia dentro il pacchetto, non arriva dalla rete: Scriba deve
    funzionare offline, e un font scaricato sarebbe una schermata che cambia
@@ -30,97 +37,191 @@
     U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
     U+2212, U+2215, U+FEFF, U+FFFD;
 }
-
 :root {
-  /* superfici */
-  --page:#E9E9EC; --win:#FFFFFF; --chrome:#F7F7F8; --panel:#FBFBFC; --subhead:#F3F3F5;
-  --card:#F7F7F8; --card2:#FFFFFF; --btn:#FFFFFF; --sel:#EEEEF1; --card-settled:#F4F4F6;
+  /* ---- 1 · palette msworks, esatta ------------------------------------- */
+  --ms-ink:#111111;
+  --ms-red:#C60001;
+  --ms-red-dark:#9E0001;
+  --ms-slate:#54575A;
+  --ms-surface:#F5F5F3;
+  --ms-line:#E3E3E1;
+  --ms-grid:#E9E9E6;
+  --ms-grid-soft:#F0F0EE;
+  --ms-paper:#FFFFFF;
+  --ms-on-dark-text:#B9B9B6;
+  --ms-on-dark-label:#9A9A98;
+  --ms-on-dark-line:#3A3A38;
 
-  /* linee */
-  --line-soft:#EDEDF0; --line:#E3E3E7; --line2:#D6D6DB; --line3:#C2C2C8; --line4:#AEAEB5; --divider:#E8E8EB;
+  /* ---- 2 · aggiunte di Scriba ------------------------------------------
+     msworks ha un solo grigio di testo (Slate, 7:1) e lo dichiara col suo
+     contrasto: è quella dichiarazione a rendere visibile qualunque deriva.
+     Una finestra ne chiede uno in più, non tre. Qui ce ne sono due, e sono
+     due categorie diverse, non due sfumature:
 
-  /* testo */
-  --fg:#111111; --fg-body:#1C1C20; --fg2:#35353B; --fg3:#55555C;
-  --fg4:#63636A; --fg5:#737379; --fg6:#85858C; --fg7:#96969D;
+       --slate-soft  #6E7174  4,9:1 su bianco — PORTA INFORMAZIONE.
+                     Metadati, minuti, etichette di campo, note, righe di eco,
+                     testo provvisorio, «non detto», «Senza cliente». Tutto ciò
+                     che va letto, anche se va letto dopo.
+       --slate-faint #96999B  2,9:1 — NON PORTA INFORMAZIONE.
+                     Solo comandi disabilitati, separatori e segnaposto «—».
+                     Se una stringa scritta qui dice qualcosa, è nel token
+                     sbagliato.
 
-  /* primario = inchiostro del brand */
-  --pri:#111111; --pri-fg:#FFFFFF; --pri-soft-bg:#111111; --pri-bd:#111111;
-  --pri-chip-bg:#111111; --pri-chip-bd:#111111;
+     `#8A8D90` resta fuori palette e non compare.                           */
+  --ink-soft:#2E3033;     /* 12,6:1 — corpo della trascrizione: meno duro del
+                             titolo, su trenta righe è la differenza fra
+                             leggere e sostenere lo sguardo */
+  --slate-soft:#6E7174;   /* 4,9:1 — terziario che si legge */
+  --slate-faint:#96999B;  /* 2,9:1 — spento, e quindi muto */
 
-  /* parlanti: nessun secondo colore, solo peso */
-  --me-band:#F1F1F4; --me-fg:#111111; --me-bd:#D6D6DB;
-  --other-band:#FAF6F1; --other-fg:#6E6E76; --other-rule:#A9A9B0;
+  /* Un secondo fondo e una seconda linea: in un'app i pannelli sono
+     adiacenti, e una sola linea non basta a distinguere «bordo di pannello»
+     da «divisorio di riga». */
+  --surface-2:#EFEFED;    /* fondo pagina, fuori dalla finestra */
+  --line-soft:#EDEDEB;    /* divisorio interno: separa righe, non pannelli */
+  --band-me:#FAFAF9;      /* fascia delle righe «Io» — 50% di --ms-surface */
 
-  /* rosso M's Works: registrazione e conseguenze, nient'altro */
-  --red:#E2231A; --red-fg:#A51A13; --red-text:#7E1710; --red-dim:#A51A13; --red-bar:#E2231A;
-  --red-soft:#FDECEA; --red-soft2:#FCE3E1; --red-soft3:#FEF2F1; --red-bd:#F4C7C3; --red-bd2:#E28A83;
+  /* Rosso del tema scuro: #C60001 su #111111 fa 3,4:1, sotto soglia.
+     Stessa tinta (2°), schiarita fino a 4,87:1. Unica aggiunta alla palette. */
+  --red-lift:#F73A33;
 
-  /* stati delle task */
-  --warn:#B37409; --warn-fg:#7C4F05; --warn-dim:#8B6A2B;
-  --warn-soft:#FDF5E5; --warn-soft2:#F9EBCF; --warn-bd:#EFDCAF; --warn-bd2:#DDBE77;
-  --ok:#1E7A4C; --ok-fg:#15613B; --ok-dim:#2A7350; --ok-soft:#EDF7F1; --ok-bd:#BFE0CE;
+  /* Scrim: le superfici che galleggiano non hanno ombra — il contenuto
+     sotto si scurisce del 12% e la superficie resta bordata e piatta. */
+  --scrim:rgb(17 17 17 / .12);
 
-  /* pannello prove */
-  --ev-bg:#F2FAF5; --ev-line:#CBE6D8; --ev-card:#FFFFFF; --ev-card-bd:#D6E9DE;
-  --ev-chip-bg:#E7F5ED; --ev-chip-bd:#BFE0CE; --ev-label:#2F7350; --ev-text:#22302A; --ev-row:#EBF7F0;
+  /* ---- 3 · ruoli ------------------------------------------------------- */
+  --fg:var(--ms-ink);
+  --fg-body:var(--ink-soft);
+  --fg-2:var(--ms-slate);
+  --fg-3:var(--slate-soft);
+  --fg-4:var(--slate-faint);
 
-  --link:#A51A13; --link-hover:#E2231A;
+  --bg-page:var(--surface-2);
+  --bg-win:var(--ms-paper);
+  --bg-panel:var(--ms-surface);
+  --bg-quiet:var(--ms-grid-soft);
+  --bg-grid:var(--ms-grid);
+  --bg-read:var(--ms-paper);
 
-  --stripe:repeating-linear-gradient(115deg,#F2F2F4 0 9px,#E9E9EC 9px 18px);
-  --scrim:rgba(17,17,17,.35);
-  --shadow-win:0 14px 40px -14px rgba(17,17,17,.28);
-  --shadow-pill:0 4px 14px -4px rgba(17,17,17,.25);
-  --shadow-pop:0 18px 44px -12px rgba(17,17,17,.30);
+  --line:var(--ms-line);
+  --line-2:var(--line-soft);
+  --line-strong:var(--ms-ink);
 
-  /* tipografia — nessun font di rete: l'app è offline */
-  --font:"Segoe UI", system-ui, sans-serif;
-  --mono:Consolas, "Cascadia Mono", ui-monospace, monospace;
-  --fs-label:10.5px; --fs-mono:11px; --fs-xs:11.5px; --fs-sm:12px; --fs-md:12.5px;
-  --fs-base:13px; --fs-line:13.5px; --fs-lg:14px; --fs-xl:19px;
-  --lh-tight:1.4; --lh-body:1.55; --lh-loose:1.62;
-  --ls-label:.11em;
+  /* Azione primaria = Ink pieno, NON rosso.
+     msworks usa il rosso per la CTA; in Scriba il rosso è riservato allo
+     stato «si sta registrando» e alle conseguenze. Se «Analizza la call»
+     fosse rossa, il pallino della registrazione smetterebbe di significare
+     qualcosa. L'hover di msworks (Ink → rosso) diventa Ink → #2E3033. */
+  --act:var(--ms-ink);
+  --act-hover:var(--ink-soft);
+  --act-fg:var(--ms-paper);
 
-  /* spaziature */
-  --sp-1:4px; --sp-2:6px; --sp-3:8px; --sp-4:10px; --sp-5:12px; --sp-6:14px; --sp-7:16px; --sp-8:20px;
+  /* Rosso: registrazione · dati che escono · azione distruttiva ·
+     guasto che blocca · priorità critica. Cinque usi, nessun altro. */
+  --red:var(--ms-red);
+  --red-hover:var(--ms-red-dark);
+  --red-fg:var(--ms-paper);
 
-  /* raggi */
-  --r-1:3px; --r-2:4px; --r-3:5px; --r-4:6px; --r-pill:16px;
+  --focus:var(--ms-red);
+  --focus-offset:2px;
 
-  /* misure fisse della finestra */
-  --w-calls:212px; --w-calls-rail:46px; --w-analysis:392px;
-  --w-analysis-rec:250px; --w-evidence:288px;
+  /* ---- tipografia ------------------------------------------------------
+     Montserrat, quattro pesi, dentro il pacchetto come .woff2 latin.
+     Due scale: lettura (il testo corrente) e interfaccia (tutto il resto).
+     La regola msworks dei 17px vale dove il suo motivo esiste — testo
+     letto di seguito — e cede dove non esiste: celle, controlli, metadati. */
+  --font:"Montserrat", system-ui, "Segoe UI", sans-serif;
+  --font-code:Consolas, "Cascadia Mono", ui-monospace, monospace;
+
+  --fs-label:10.5px;   /* eyebrow msworks: 900, +.16em, maiuscolo */
+  --fs-xs:11.5px;      /* metadati, minuti, conteggi */
+  --fs-sm:12.5px;      /* controlli, chip, note */
+  --fs-ui:13.5px;      /* testo d'interfaccia corrente */
+  --fs-md:14px;        /* titoli di pannello, titolo task */
+  --fs-read:15px;      /* trascrizione a riposo */
+  --fs-read-rec:16px;  /* trascrizione in registrazione: sale, non scende */
+  --fs-h:17px;         /* titolo della call */
+
+  --w-body:400; --w-bold:700; --w-h:800; --w-label:900;
+  --ls-label:.16em; --ls-h:-.02em;
+  --lh-tight:1.34; --lh-ui:1.5; --lh-body:1.62; --lh-read:1.72;
+  --measure:68ch;
+
+  /* ---- spazio (msworks, base 4) ---------------------------------------- */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px;
+  --sp-6:24px; --sp-8:32px; --sp-10:40px;
+
+  /* ---- forma ----------------------------------------------------------- */
+  --r:0;               /* default assoluto */
+  --r-act:2px;         /* solo ciò che si clicca */
+  --thread-w:28px; --thread-h:3px;
+  --grid-step:28px;
+
+  /* ---- controlli -------------------------------------------------------
+     44×44 è una misura touch. Scriba è mouse e tastiera su Windows: la
+     barra in alto è alta 44px in tutto. Scala propria, dichiarata. */
+  --h-sm:26px; --h-md:30px; --h-lg:34px; --h-xl:38px;
+  --h-topbar:52px;
+
+  /* ---- movimento (msworks: una curva, quattro durate) ------------------- */
+  --ease:cubic-bezier(.2,.7,.2,1);
+  --t-state:160ms var(--ease);
+  --t-appear:240ms var(--ease);
+
+  /* ---- misure della finestra ------------------------------------------- */
+  --w-calls:236px; --w-calls-rail:44px;
+  --w-side:404px; --w-side-rec:288px;
+  --w-transcript-min:480px;
 }
 
+/* ===========================================================================
+   Tema scuro — inversione sul livello dei RUOLI, mai sulla palette base.
+   msworks il tema scuro ce l'ha già e non lo sa: le sue sezioni su fondo nero
+   hanno testo #B9B9B6, label #9A9A98, bordi #3A3A38. Il tema scuro di Scriba
+   è quella terna promossa da trattamento di sezione a trattamento di pagina.
+   ========================================================================= */
 [data-theme="dark"] {
-  --page:#08090A; --win:#141416; --chrome:#0E0E10; --panel:#101012; --subhead:#17171A;
-  --card:#1A1A1D; --card2:#17171A; --btn:#1C1C20; --sel:#202024; --card-settled:#16161A;
+  --fg:#EDEDEA;              /* non bianco puro: abbaglia su near-black */
+  --fg-body:#D8D8D4;
+  --fg-2:var(--ms-on-dark-text);
+  --fg-3:var(--ms-on-dark-label);
+  --fg-4:#6E6E6B;
 
-  --line-soft:#1F1F23; --line:#26262B; --line2:#2F2F35; --line3:#3A3A41; --line4:#48484F; --divider:#2B2B31;
+  --bg-page:#0A0A09;
+  --bg-win:var(--ms-ink);
+  --bg-panel:#181817;
+  --bg-quiet:#1C1C1A;
+  --bg-grid:#232321;
+  --bg-read:var(--ms-ink);
 
-  --fg:#F1F1F3; --fg-body:#E4E4E8; --fg2:#C6C6CC; --fg3:#9E9EA6;
-  --fg4:#8E8E96; --fg5:#7A7A82; --fg6:#68686F; --fg7:#5C5C63;
+  --line:var(--ms-on-dark-line);
+  --line-2:#2A2A28;
+  --line-strong:#5E5E5B;
+  --band-me:#191918;
 
-  --pri:#F1F1F3; --pri-fg:#F1F1F3; --pri-soft-bg:#26262B; --pri-bd:#45454D;
-  --pri-chip-bg:#2A2A30; --pri-chip-bd:#4A4A52;
+  --act:#EDEDEA;
+  --act-hover:#FFFFFF;
+  --act-fg:var(--ms-ink);
 
-  --me-band:#1E1E22; --me-fg:#E4E4E8; --me-bd:#33333A;
-  --other-band:#1E1C19; --other-fg:#B3A897; --other-rule:#7A7264;
+  --red:var(--red-lift);
+  --red-hover:#FF6259;
+  --red-fg:var(--ms-ink);
 
-  --red:#FF4A3D; --red-fg:#FFA6A0; --red-text:#E39A96; --red-dim:#D08883; --red-bar:#FF4A3D;
-  --red-soft:#2A1513; --red-soft2:#331A17; --red-soft3:#241311; --red-bd:#4A211D; --red-bd2:#7E2A24;
+  --focus:var(--red-lift);
+  --scrim:rgb(0 0 0 / .28);
+}
 
-  --warn:#E0A64A; --warn-fg:#EBCC97; --warn-dim:#A28A5F;
-  --warn-soft:#241D10; --warn-soft2:#2E2415; --warn-bd:#40321A; --warn-bd2:#4E3D1F;
-  --ok:#4FB185; --ok-fg:#93CFAE; --ok-dim:#7FB79A; --ok-soft:#14231C; --ok-bd:#2A4A38;
-
-  --ev-bg:#101A15; --ev-line:#1F3428; --ev-card:#15201A; --ev-card-bd:#22362B;
-  --ev-chip-bg:#1A2A21; --ev-chip-bd:#2C4737; --ev-label:#74A18A; --ev-text:#CBD5CF; --ev-row:#17251E;
-
-  --link:#FF7A70; --link-hover:#FFA6A0;
-
-  --stripe:repeating-linear-gradient(115deg,#191919 0 9px,#1E1E21 9px 18px);
-  --scrim:rgba(6,6,7,.55);
-  --shadow-win:0 18px 50px -12px rgba(0,0,0,.7);
-  --shadow-pill:0 6px 18px -6px rgba(0,0,0,.8);
-  --shadow-pop:0 20px 48px -12px rgba(0,0,0,.85);
+/* ===========================================================================
+   Overlay — NON usa i token del tema. Sotto la striscia può esserci
+   qualunque cosa, quindi resta scura anche a tema chiaro. Sono i valori
+   «su fondo nero» di msworks, che è esattamente il trattamento per una
+   superficie sovrapposta a contenuto arbitrario.
+   ========================================================================= */
+:root {
+  --ov-bg:rgb(17 17 17 / .94);
+  --ov-fg:#EDEDEA;
+  --ov-fg-2:var(--ms-on-dark-text);
+  --ov-fg-3:var(--ms-on-dark-label);
+  --ov-line:var(--ms-on-dark-line);
+  --ov-red:var(--red-lift);
 }

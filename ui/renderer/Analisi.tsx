@@ -9,6 +9,7 @@
  */
 
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { Riquadro } from './Dialoghi'
 import { NotaDiLavoro } from './NotaDiLavoro'
 import { ControlloRifinitura, useRifinitura } from './Rifinitura'
 import type { Analisi, FaseAnalisi, Provider, Segmento, Sessione, StatoAnalisi, StatoTask, Task } from './tipi'
@@ -18,8 +19,8 @@ import { tempo } from './tipi'
  * Rende il Markdown prodotto dal modello, quando il core non manda ancora le
  * versioni già divise in pezzi.
  *
- * Esce con le stesse classi del riassunto vero (`.sum__group`, `.sum__h`,
- * `.sum__item`) invece che con un contenitore proprio: un contenitore proprio
+ * Esce con le stesse classi del riassunto vero (`.sum__g`, `.label`,
+ * `.sum__p`) invece che con un contenitore proprio: un contenitore proprio
  * vorrebbe dire CSS che il design non ha, quindi testo senza stile — e la
  * ricaduta si vede solo quando il modello ha scritto qualcosa di inatteso,
  * cioè proprio quando la schermata deve restare leggibile.
@@ -50,10 +51,10 @@ const Markdown = memo(function Markdown({ testo }: { testo: string }) {
   return (
     <>
       {gruppi.map((g, i) => (
-        <div className="sum__group" key={i}>
-          {g.titolo && <h3 className="sum__h">{g.titolo}</h3>}
+        <div className="sum__g" key={i}>
+          {g.titolo && <h3 className="label">{g.titolo}</h3>}
           {g.voci.map((v, j) => (
-            <p className="sum__item" key={j}>
+            <p className="sum__p" key={j}>
               <span>{grassetto(v)}</span>
             </p>
           ))}
@@ -77,10 +78,10 @@ function grassetto(testo: string): React.ReactNode {
  * priorità critica smette di sembrare critica senza che nessuno se ne accorga.
  */
 const CHIP_PRIORITA: Record<string, string> = {
-  bassa: 'chip chip--prio-bassa',
-  media: 'chip chip--prio-media',
-  alta: 'chip chip--prio-alta',
-  critica: 'chip chip--prio-critica',
+  bassa: 'chip chip--quiet',
+  media: 'chip',
+  alta: 'chip chip--fill',
+  critica: 'chip chip--critical',
 }
 
 /** «14 ago 2026». Solo per le task: la trascrizione usa tempo(), non date. */
@@ -145,18 +146,30 @@ function SchedeTask({
 
   return (
     <>
-      <div className="tasks__bar">
-        {daConfermare > 0 && <span className="tasks__todo">{daConfermare} da confermare</span>}
-        <span className="tasks__keys">C conferma · X scarta · J K scorri</span>
-      </div>
-      <div className="tasks__list">
+      {/* Si entra in rassegna dalla proposta, non da una singola task
+          (comportamento.md, 26). Fino a cinque si lavora in riga: nel pannello
+          da 404px quel ritmo non ci sta, e servirlo male è peggio che non
+          servirlo. Sotto quella soglia il conteggio resta, l'invito no. */}
+      {daConfermare > 0 && (
+        <div className="review">
+          <div>
+            <div className="review__n num">{daConfermare}</div>
+            <div className="review__t">task da confermare</div>
+          </div>
+          {daConfermare > 5 && (
+            <button className="btn btn--primary btn--sm" onClick={() => onRassegna(0)}>
+              Passa in rassegna
+            </button>
+          )}
+        </div>
+      )}
+      <div className="tasks">
         {tasks.map((t) => {
-          const flag = t.needs_review && t.stato === 'proposed'
+          const daFare = t.needs_review && t.stato === 'proposed'
           const classi = [
             'task',
-            flag ? 'is-flagged' : '',
-            t.stato === 'confirmed' ? 'is-confirmed' : '',
-            t.stato === 'rejected' ? 'is-discarded' : '',
+            daFare ? 'is-todo' : '',
+            t.stato !== 'proposed' ? 'is-done' : '',
             selezionataId === t.id ? 'is-selected' : '',
           ]
             .filter(Boolean)
@@ -165,33 +178,32 @@ function SchedeTask({
 
           return (
             <article key={t.id} className={classi} tabIndex={0} onClick={() => onSeleziona(t.id)}>
-              <div className="task__top">
-                <h3 className="task__title">{t.titolo}</h3>
-                {flag && <span className="task__flag">DA CONFERMARE</span>}
+              <div className="task__head">
+                <p className="task__title">{t.titolo}</p>
               </div>
-              <div className="chips">
-                {t.assignee_text ? (
-                  <span className="chip chip--plain">{t.assignee_text}</span>
-                ) : (
-                  <span className="chip chip--muted">nessun responsabile</span>
-                )}
-                {scadenza ? (
-                  <span className={`chip ${t.due_date ? 'chip--plain' : 'chip--said'}`}>{scadenza}</span>
-                ) : (
-                  <span className="chip chip--muted">nessuna scadenza</span>
-                )}
-                {t.priorita && CHIP_PRIORITA[t.priorita] && (
-                  <span className={CHIP_PRIORITA[t.priorita]}>{t.priorita}</span>
-                )}
-                {t.confidence != null && (
-                  <span className={`chip chip--conf${t.confidence < 0.7 ? ' is-low' : ''}`}>
-                    conf. {t.confidence.toFixed(2).replace('.', ',')}
-                  </span>
-                )}
+              {/* Un campo mancante lo dice invece di sparire: una task senza
+                  responsabile e una task il cui responsabile non è stato detto
+                  sono due cose diverse, e solo la seconda si va a chiedere. */}
+              <div className="task__fields">
+                <span className={`field${t.assignee_text ? '' : ' is-missing'}`}>
+                  <span className="field__k">chi</span>
+                  {t.assignee_text || 'non detto'}
+                </span>
+                <span className={`field${scadenza ? '' : ' is-missing'}`}>
+                  <span className="field__k">entro</span>
+                  {t.due_date ? (
+                    <span className="num">{dataEstesa(t.due_date)}</span>
+                  ) : t.due_raw ? (
+                    <span className="field__raw">{t.due_raw}</span>
+                  ) : (
+                    'non detta'
+                  )}
+                </span>
+                {t.priorita && <span className={CHIP_PRIORITA[t.priorita] ?? 'chip'}>{t.priorita}</span>}
               </div>
-              <div className="task__foot">
+              <div className="task__row">
                 <button
-                  className="task__ev"
+                  className="btn btn--sm"
                   onClick={(e) => {
                     e.stopPropagation()
                     onProve(t)
@@ -199,10 +211,10 @@ function SchedeTask({
                 >
                   {t.evidence.length === 1 ? '1 prova' : `${t.evidence.length} prove`}
                 </button>
-                {t.stato === 'proposed' ? (
-                  <div className="task__actions">
+                {t.stato === 'proposed' && (
+                  <>
                     <button
-                      className="btn btn--sm btn--confirm"
+                      className="btn btn--primary btn--sm"
                       onClick={(e) => {
                         e.stopPropagation()
                         onImposta(t, 'confirmed')
@@ -214,37 +226,44 @@ function SchedeTask({
                       className="btn btn--sm"
                       onClick={(e) => {
                         e.stopPropagation()
-                        onRassegna(tasks.findIndex((x) => x.id === t.id))
-                      }}
-                    >
-                      Modifica
-                    </button>
-                    <button
-                      className="btn btn--sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
                         onImposta(t, 'rejected')
                       }}
                     >
                       Scarta
                     </button>
-                  </div>
-                ) : (
-                  // Annullabile dalla riga stessa: nessuna conferma modale.
-                  <span className={`task__settled${t.stato === 'confirmed' ? ' is-ok' : ''}`}>
-                    {t.stato === 'confirmed' ? 'confermata' : 'scartata'}
                     <button
-                      className="btn--link"
+                      className="btn btn--quiet btn--sm"
                       onClick={(e) => {
                         e.stopPropagation()
-                        onImposta(t, 'proposed')
+                        onRassegna(tasks.findIndex((x) => x.id === t.id))
                       }}
                     >
-                      annulla
+                      Modifica
                     </button>
-                  </span>
+                  </>
+                )}
+                {/* Solo sotto 0,80, dove cambia una decisione. Stampata su
+                    quindici righe è una colonna di numeri che nessuno legge
+                    (comportamento.md, 0-bis). */}
+                {t.confidence != null && t.confidence < 0.8 && (
+                  <span className="task__conf num">conf. {t.confidence.toFixed(2).replace('.', ',')}</span>
                 )}
               </div>
+              {t.stato !== 'proposed' && (
+                // Annullabile dalla riga stessa: nessuna conferma modale.
+                <div className="task__settled">
+                  {t.stato === 'confirmed' ? 'confermata' : 'scartata'}
+                  <button
+                    className="btn--link"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onImposta(t, 'proposed')
+                    }}
+                  >
+                    Annulla
+                  </button>
+                </div>
+              )}
             </article>
           )
         })}
@@ -315,7 +334,7 @@ function ControlloDiarizzazione({
     // MB), e chi apre questa call deve saperlo invece di chiedersi perche'
     // "Voce 2" non diventa mai un nome.
     return (
-      <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg5)', margin: 0 }}>
+      <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg-3)', margin: 0 }}>
         Distinguere le voci dentro «altri» non è disponibile: manca pyannote.audio, non incluso nel
         pacchetto. Va installato a parte.
       </p>
@@ -325,7 +344,7 @@ function ControlloDiarizzazione({
   if (disponibile !== true) return null
 
   if (giaDiarizzata) {
-    return <span className="chip chip--muted">voci distinte</span>
+    return <span className="chip chip--quiet">voci distinte</span>
   }
 
   if (inCorsoQui) {
@@ -334,14 +353,14 @@ function ControlloDiarizzazione({
         <div className="progress" style={{ width: 90 }}>
           <i></i>
         </div>
-        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--fg5)' }}>{stato.nota || 'in corso'}</span>
+        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--fg-3)' }}>{stato.nota || 'in corso'}</span>
       </div>
     )
   }
 
   if (inCorsoAltrove) {
     return (
-      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--fg5)' }}>
+      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--fg-3)' }}>
         {stato.fase === 'in_corso_altrove'
           ? stato.messaggio
           : "C'è già una diarizzazione in corso, su un'altra call."}
@@ -361,12 +380,12 @@ function ControlloDiarizzazione({
             </b>
           </div>
         </div>
-        <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg5)', margin: 0 }}>
+        <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg-3)', margin: 0 }}>
           Misurati davvero su questa macchina. Gira in locale: nessun dato esce dal computer. Puoi
           chiudere la finestra, il lavoro continua e lo ritrovi finito.
         </p>
         <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
-          <button className="btn btn--sm btn--confirm" onClick={onAvvia}>
+          <button className="btn btn--primary btn--sm" onClick={onAvvia}>
             Avvia
           </button>
           <button className="btn btn--sm" onClick={onAnnullaConferma}>
@@ -380,7 +399,7 @@ function ControlloDiarizzazione({
   if (erroreQui) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}>
-        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--red-dim)' }}>{erroreQui.messaggio}</span>
+        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--red)' }}>{erroreQui.messaggio}</span>
         <button className="btn btn--sm" onClick={onChiediConferma}>
           Riprova
         </button>
@@ -705,10 +724,10 @@ export function PannelloAnalisi({
 
   if (!sessione) {
     return (
-      <section className="analysis">
+      <section className="side">
         <div className="pad">
           <span className="label">ANALISI</span>
-          <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: 'var(--fg4)' }}>
+          <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-2)' }}>
             Seleziona una call per vederne l'analisi.
           </p>
         </div>
@@ -718,7 +737,7 @@ export function PannelloAnalisi({
 
   if (compatto) {
     return (
-      <section className="analysis analysis--muted">
+      <section className="side side--rec">
         <div className="pad">
           {/* La nota di lavoro sta qui, prima di tutto. `compatto` vale quanto
               `registrando` (index.tsx), quindi durante una call si esce da
@@ -733,7 +752,7 @@ export function PannelloAnalisi({
               l'attenzione. Ma spenta non vuol dire vuota. */}
           <NotaDiLavoro sessionId={sessione.id} registrando={registrando} />
           <span className="label">ANALISI</span>
-          <p style={{ fontSize: 'var(--fs-md)', lineHeight: 1.6, color: 'var(--fg4)' }}>
+          <p style={{ fontSize: 'var(--fs-md)', lineHeight: 1.6, color: 'var(--fg-2)' }}>
             Si fa a call finita. Riassunto, punti salienti e task su tutta la registrazione, non a pezzi.
           </p>
           {providerAttivo?.esce_dal_computer && (
@@ -748,7 +767,7 @@ export function PannelloAnalisi({
 
   if (inCorsoEffettivo) {
     return (
-      <section className="analysis">
+      <section className="side">
         <div className="pad">
           <span className="label">ANALISI IN CORSO</span>
           <div className="progress">
@@ -767,8 +786,8 @@ export function PannelloAnalisi({
             ))}
           </div>
           <div className="kv">
-            <p style={{ fontSize: 'var(--fs-base)', color: 'var(--fg2)' }}>Puoi chiudere la finestra.</p>
-            <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg4)' }}>
+            <p style={{ fontSize: 'var(--fs-ui)', color: 'var(--fg-body)' }}>Puoi chiudere la finestra.</p>
+            <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg-2)' }}>
               Il lavoro continua e lo ritrovi finito. Ti avvisiamo quando è pronto.
             </p>
           </div>
@@ -782,29 +801,38 @@ export function PannelloAnalisi({
 
   if (errore) {
     return (
-      <section className="analysis">
-        <div className="pad">
-          <span className="label" style={{ color: 'var(--red-dim)' }}>
-            ANALISI NON RIUSCITA
-          </span>
-          <div className="errorbox">
-            <h3>Analisi non riuscita</h3>
-            <p>{errore.messaggio}</p>
+      <section className="side">
+        <div className="side__head">
+          <div className="side__eyebrow">
+            <span className="thread" />
+            <span className="label">Analisi</span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
-            {/* Le prime due riportano alle impostazioni: cambiare motore non è
-                un gesto che questo pannello può fare da solo. */}
-            <button className="btn btn--primary btn--block" onClick={() => window.scriba.apriImpostazioni()}>
-              Avvia il modello locale
-            </button>
-            <button className="btn btn--block" onClick={() => window.scriba.apriImpostazioni()}>
-              Usa un altro motore
-            </button>
-            <button className="btn btn--block" onClick={analizza}>
-              Riprova
-            </button>
+        </div>
+        <div className="side__body">
+          <div className="pad">
+            {/* Un riquadro, non tre pulsanti a tutta larghezza sotto un titolo
+                ripetuto. Il nome del guasto stava scritto due volte —
+                nell'eyebrow e nel titolo del riquadro — e i comandi
+                galleggiavano fuori dal riquadro che li spiegava.
+
+                È il livello 2 del design: blocca una funzione, e i comandi che
+                lo risolvono stanno DENTRO (regole 44 e 45). `Riquadro` esiste
+                in Dialoghi.tsx da sempre e non lo montava nessuno.
+
+                «Riprova» è la primaria perché è l'unica che può riuscire da
+                qui. Le altre due aprono le Impostazioni, e lo dicono: cambiare
+                motore non è un gesto che questo pannello possa fare da solo, e
+                far finta di sì manderebbe a cercare il comando dove non c'è. */}
+            <Riquadro
+              titolo="Analisi non riuscita"
+              testo={`${errore.messaggio}${errore.ora ? ` · ultimo tentativo ${errore.ora}` : ''}`}
+              azioni={[
+                { etichetta: 'Riprova', primaria: true, onClick: analizza },
+                { etichetta: 'Avvia il modello locale…', onClick: () => window.scriba.apriImpostazioni() },
+                { etichetta: 'Usa un altro motore…', onClick: () => window.scriba.apriImpostazioni() },
+              ]}
+            />
           </div>
-          {errore.ora && <span className="mono-note">ultimo tentativo {errore.ora}</span>}
         </div>
       </section>
     )
@@ -812,10 +840,10 @@ export function PannelloAnalisi({
 
   if (!analisi) {
     return (
-      <section className="analysis">
+      <section className="side">
         <div className="pad">
           <span className="label">ANALISI</span>
-          <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: 'var(--fg4)' }}>Carico l'analisi…</p>
+          <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-2)' }}>Carico l'analisi…</p>
         </div>
       </section>
     )
@@ -840,14 +868,14 @@ export function PannelloAnalisi({
         : formattaDollari(providerAttivo.costo_ora_usd * ore)
 
     return (
-      <section className="analysis">
+      <section className="side">
         <div className="pad">
           {/* Prima dell'analisi, non dopo: durante la call e' l'unica cosa
               che ha qualcosa da dire, e a call appena finita e' quello che
               c'e' finche' il riassunto non arriva. */}
           <NotaDiLavoro sessionId={sessione.id} registrando={registrando} />
           <span className="label">ANALISI</span>
-          <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: 'var(--fg2)' }}>
+          <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-body)' }}>
             Questa call non è ancora stata analizzata.
           </p>
           <button className="btn btn--primary btn--block" onClick={analizza} disabled={registrando}>
@@ -905,68 +933,63 @@ export function PannelloAnalisi({
 
   const meta = analisi.meta
   return (
-    <section className="analysis">
-      <div className="analysis__head">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}>
-          <button className="btn" onClick={analizza} disabled={registrando}>
-            Rianalizza
-          </button>
-          {meta && (
-            <span className="analysis__meta">
-              {[
-                meta.etichetta_provider,
-                meta.costo_usd != null ? formattaDollari(meta.costo_usd) : null,
-                meta.durata_ms != null ? formattaDurataMeta(meta.durata_ms) : null,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-            </span>
-          )}
+    <section className="side">
+      {/* La testata è quella disegnata: filo, nome del pannello, e a destra
+          l'unica azione che riguarda l'analisi intera. Sotto, su una riga
+          sua, chi l'ha prodotta e quanto è costata.
+
+          Diarizzazione e rifinitura NON stanno qui. Sono lavori che si fanno
+          sulla trascrizione dopo, non comandi del pannello, e messi in testa
+          rendevano l'apertura una pila di tre controlli scollegati prima di
+          arrivare al contenuto. Vanno in fondo, nel `.side__foot`, che è dove
+          il design li disegna. */}
+      <div className="side__head">
+        <div className="side__eyebrow">
+          <span className="thread" />
+          <span className="label">Analisi</span>
+          <div className="side__actions">
+            <button className="btn btn--sm" onClick={analizza} disabled={registrando}>
+              Rianalizza
+            </button>
+          </div>
         </div>
-        {/* Riga propria, non incollata a quella di Rianalizza: a 392 px di
-            larghezza (comportamento.md, 8) il passo di conferma — stima più
-            due pulsanti — non ci starebbe nella stessa riga. */}
-        <ControlloDiarizzazione
-          sessione={sessione}
-          disponibile={diarizDisponibile}
-          giaDiarizzata={giaDiarizzata}
-          stato={diarizStato}
-          errore={diarizErrore}
-          conferma={diarizConferma}
-          onChiediConferma={() => setDiarizConferma(true)}
-          onAnnullaConferma={() => setDiarizConferma(false)}
-          onAvvia={avviaDiarizzazione}
-        />
-        <ControlloRifinitura
-          sessione={sessione}
-          stato={statoRifinitura}
-          onFinita={onRicaricaSegmenti}
-        />
-        <div className="tabs" role="tablist">
-          <button className={`tab${scheda === 'sum' ? ' is-active' : ''}`} onClick={() => setScheda('sum')}>
-            Riassunto
-          </button>
-          <button className={`tab${scheda === 'high' ? ' is-active' : ''}`} onClick={() => setScheda('high')}>
-            Punti salienti<span className="tab__count">{salienti.length}</span>
-          </button>
-          <button className={`tab${scheda === 'task' ? ' is-active' : ''}`} onClick={() => setScheda('task')}>
-            Task<span className="tab__count">{tasks.length}</span>
-          </button>
-        </div>
+        {meta && (
+          <div className="side__meta">
+            {[
+              meta.etichetta_provider,
+              meta.costo_usd != null ? formattaDollari(meta.costo_usd) : null,
+              meta.durata_ms != null ? formattaDurataMeta(meta.durata_ms) : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </div>
+        )}
       </div>
 
-      <div className="tabpanel" data-panel="sum" hidden={scheda !== 'sum'}>
+      <div className="tabs" role="tablist">
+          <button className={`tab${scheda === 'sum' ? ' is-on' : ''}`} onClick={() => setScheda('sum')}>
+            Riassunto
+          </button>
+          <button className={`tab${scheda === 'high' ? ' is-on' : ''}`} onClick={() => setScheda('high')}>
+            Punti salienti<span className="tab__n num">{salienti.length}</span>
+          </button>
+          <button className={`tab${scheda === 'task' ? ' is-on' : ''}`} onClick={() => setScheda('task')}>
+            Task<span className="tab__n num">{tasks.length}</span>
+          </button>
+      </div>
+
+      <div className="side__body" hidden={scheda !== 'sum'}>
         <div className="sum">
           {gruppi.length > 0
             ? gruppi.map((g, i) => (
-                <div className="sum__group" key={i}>
-                  <h3 className="sum__h">{g.titolo}</h3>
+                <div className="sum__g" key={i}>
+                  <h3 className="label">{g.titolo}</h3>
                   {g.voci.map((v, j) => (
-                    <p className="sum__item" key={j}>
+                    <p className="sum__p" key={j}>
                       <span>
                         {v.testo}{' '}
                         {v.t_ms != null && (
-                          <button className="ref" onClick={() => onVaiA(v.t_ms as number)}>
+                          <button className="ev__t num" onClick={() => onVaiA(v.t_ms as number)}>
                             {tempo(v.t_ms)}
                           </button>
                         )}
@@ -984,15 +1007,15 @@ export function PannelloAnalisi({
         </div>
       </div>
 
-      <div className="tabpanel" data-panel="high" hidden={scheda !== 'high'}>
-        {/* Cambia anche il contenitore, non solo il contenuto: `.hls` è una
-            griglia minuto/testo, e senza i minuti non ha niente da allineare. */}
+      <div className="side__body" hidden={scheda !== 'high'}>
+        {/* Cambia anche il contenitore, non solo il contenuto: `.hls` è un
+            elenco minuto/testo, e senza i minuti non ha niente da elencare. */}
         <div className={salienti.length > 0 ? 'hls' : 'sum'}>
           {salienti.length > 0
             ? salienti.map((p, i) => (
                 <div className="hl" key={i} onClick={() => onVaiA(p.t_ms)}>
                   <button
-                    className="ref"
+                    className="ev__t num"
                     onClick={(e) => {
                       e.stopPropagation()
                       onVaiA(p.t_ms)
@@ -1001,8 +1024,8 @@ export function PannelloAnalisi({
                     {tempo(p.t_ms)}
                   </button>
                   <div>
-                    <span className="hl__label">{p.etichetta}</span>
-                    <span className="hl__body">{p.corpo}</span>
+                    <span className="hl__k">{p.etichetta}</span>
+                    <p className="hl__b">{p.corpo}</p>
                   </div>
                 </div>
               ))
@@ -1010,14 +1033,11 @@ export function PannelloAnalisi({
         </div>
       </div>
 
-      <div
-        className="tabpanel"
-        data-panel="task"
-        hidden={scheda !== 'task'}
-        style={scheda === 'task' ? { display: 'flex', flexDirection: 'column', overflow: 'hidden' } : undefined}
-      >
+      <div className="side__body" hidden={scheda !== 'task'}>
         {tasks.length === 0 ? (
-          <p style={{ padding: '13px 20px', color: 'var(--fg4)' }}>Nessun impegno individuato.</p>
+          <p className="sum__p" style={{ padding: 'var(--sp-5) var(--sp-6)' }}>
+            Nessun impegno individuato.
+          </p>
         ) : (
           <SchedeTask
             tasks={tasks}
@@ -1028,6 +1048,27 @@ export function PannelloAnalisi({
             onRassegna={onRassegna}
           />
         )}
+      </div>
+
+      {/* In fondo, e con un bordo sopra: sono cose che si fanno alla
+          trascrizione a call finita, non comandi dell'analisi. */}
+      <div className="side__foot">
+        <ControlloDiarizzazione
+          sessione={sessione}
+          disponibile={diarizDisponibile}
+          giaDiarizzata={giaDiarizzata}
+          stato={diarizStato}
+          errore={diarizErrore}
+          conferma={diarizConferma}
+          onChiediConferma={() => setDiarizConferma(true)}
+          onAnnullaConferma={() => setDiarizConferma(false)}
+          onAvvia={avviaDiarizzazione}
+        />
+        <ControlloRifinitura
+          sessione={sessione}
+          stato={statoRifinitura}
+          onFinita={onRicaricaSegmenti}
+        />
       </div>
     </section>
   )

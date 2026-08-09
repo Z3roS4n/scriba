@@ -1,31 +1,41 @@
 /**
  * Colonna a sinistra: l'elenco delle call.
  *
- * Ha due forme. Quella normale, con titolo/data/stato di ogni call. E quella a
- * binario stretto (`.calls--rail`, 46px) quando il pannello prove e' aperto: la
- * trascrizione non si restringe mai, perche' e' li' che si verifica la prova, e
- * a fare spazio e' l'elenco.
+ * Ha due forme. Quella normale, tre righe per call. E quella a binario stretto
+ * (`.calls--rail`) quando il pannello prove e' aperto: la trascrizione non si
+ * restringe mai, perche' e' li' che si verifica la prova, e a fare spazio e'
+ * l'elenco.
+ *
+ * **La terza riga non dice piu' lo stato.** «Analizzata» ripetuto in colonna
+ * sei volte non informa nessuno (comportamento.md, 0-bis): informa il numero
+ * di task, informa quante aspettano una conferma, e informa il guasto. Cosi'
+ * la riga porta il cliente a sinistra e il conteggio a destra, e la call resta
+ * di tre righe invece di quattro.
  */
 
-import { dataBreve, tempo, type Sessione, type StatoSessione } from './tipi'
+import { giornoBreve, tempo, type Sessione, type StatoSessione } from './tipi'
 
-/** Testo e modificatore di `.call__status` per ciascuno stato della sessione. */
-function statoCall(stato: StatoSessione): { testo: string; classe: string } {
-  switch (stato) {
-    case 'recording':
-      return { testo: 'in corso', classe: 'call__status--rec' }
-    case 'analyzed':
-      return { testo: 'analizzata', classe: 'call__status--ok' }
-    case 'failed':
-      return { testo: 'analisi non riuscita', classe: 'call__status--err' }
-    // 'analyzing' non e' fra i quattro testi del design: non essendo ne' un
-    // esito positivo ne' un errore non prende un colore, solo un testo proprio.
-    case 'analyzing':
-      return { testo: 'in analisi', classe: '' }
-    case 'recorded':
-    default:
-      return { testo: 'registrata', classe: '' }
+/**
+ * Cosa scrivere a destra sulla terza riga, e con che peso.
+ *
+ * L'ordine e' una scala di urgenza, non un elenco di casi: quello che blocca
+ * viene prima di quello che aspetta, che viene prima di quello che e' fatto.
+ * Il rosso resta ai suoi due usi legittimi qui — registrazione in corso e
+ * guasto — e non compare per nient'altro (regola 17).
+ */
+function codaCall(s: Sessione, stato: StatoSessione): { testo: string; classe: string } {
+  if (stato === 'recording') return { testo: 'in registrazione', classe: 'call__todo--err' }
+  if (stato === 'failed') return { testo: 'non riuscita', classe: 'call__todo--err' }
+  if (stato === 'analyzing') return { testo: 'in analisi', classe: '' }
+  if (s.n_da_confermare > 0) {
+    return { testo: `${s.n_da_confermare} da confermare`, classe: 'call__todo--now num' }
   }
+  if (s.n_task > 0) return { testo: `${s.n_task} task`, classe: 'num' }
+  // Registrata e non ancora analizzata: qui lo stato **e'** l'informazione,
+  // perche' nomina una cosa da fare. Diverso da «analizzata», che nomina una
+  // cosa gia' successa e che si legge gia' dal conteggio delle task.
+  if (stato === 'recorded') return { testo: 'da analizzare', classe: '' }
+  return { testo: 'nessun impegno', classe: '' }
 }
 
 export function ElencoCall(props: {
@@ -47,13 +57,13 @@ export function ElencoCall(props: {
           ›
         </button>
         {sessioni.map((s) => (
-          <div
+          <button
             key={s.id}
-            className={`callmini ${sessioneVista === s.id ? 'is-selected' : ''}`}
+            className={`callmini num ${sessioneVista === s.id ? 'is-selected' : ''}`}
             onClick={() => onApri(s.id)}
           >
             {s.id}
-          </div>
+          </button>
         ))}
       </aside>
     )
@@ -63,15 +73,12 @@ export function ElencoCall(props: {
     return (
       <aside className="calls">
         <div className="calls__head">
-          <span className="label">CALL</span>
+          <span className="thread" />
+          <span className="label">Call</span>
         </div>
-        <div className="pad" style={{ paddingTop: 0 }}>
-          <p style={{ fontSize: 'var(--fs-md)', color: 'var(--fg4)', lineHeight: 1.5 }}>
-            Nessuna call registrata.
-          </p>
-          <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--fg6)', lineHeight: 1.5 }}>
-            Le registrazioni restano su questo computer.
-          </p>
+        <div className="calls__vuoto">
+          <p>Nessuna call registrata.</p>
+          <p className="calls__vuoto-nota">Le registrazioni restano su questo computer.</p>
         </div>
       </aside>
     )
@@ -80,16 +87,15 @@ export function ElencoCall(props: {
   return (
     <aside className="calls">
       <div className="calls__head">
-        <span className="label">CALL</span>
-        <span className="count">
-          {sessioni.length} {sessioni.length === 1 ? 'salvata' : 'salvate'}
-        </span>
+        <span className="thread" />
+        <span className="label">Call</span>
+        <span className="calls__count num">{sessioni.length}</span>
       </div>
       <div className="calls__list">
         {sessioni.map((s) => {
-          const { testo, classe } = statoCall(s.stato)
+          const { testo, classe } = codaCall(s, s.stato)
           return (
-            <div
+            <button
               key={s.id}
               className={`call ${sessioneVista === s.id ? 'is-selected' : ''} ${
                 sessioneCorrente === s.id ? 'is-current' : ''
@@ -98,12 +104,17 @@ export function ElencoCall(props: {
             >
               <span className="call__title">{s.titolo || `Call #${s.id}`}</span>
               <span className="call__meta">
-                {dataBreve(s.started_at)}
-                <span>·</span>
-                {s.durata_ms != null ? tempo(s.durata_ms) : '—'}
+                <span className="num">{giornoBreve(s.started_at)}</span>
+                <span className="call__sep">·</span>
+                <span className="num">{s.durata_ms != null ? tempo(s.durata_ms) : '—'}</span>
               </span>
-              <span className={`call__status ${classe}`}>{testo}</span>
-            </div>
+              <span className="call__foot">
+                <span className={`call__client${s.cliente ? '' : ' is-none'}`}>
+                  {s.cliente || 'Senza cliente'}
+                </span>
+                <span className={`call__todo ${classe}`}>{testo}</span>
+              </span>
+            </button>
           )
         })}
       </div>

@@ -157,6 +157,54 @@ def test_ricerca_nel_parlato(tmp_path: Path) -> None:
     assert [r["titolo"] for r in trovate] == ["Lunedì"]
 
 
+def test_la_ricerca_riporta_la_frase_trovata(tmp_path: Path) -> None:
+    """Non basta sapere CHE una call ne parla: serve leggere dove.
+
+    L'archivio risponde a «cosa ci siamo detti con questo cliente», e un elenco
+    di titoli non lo dice. La frase c'era gia' nell'indice full-text e non la
+    chiedeva nessuno.
+    """
+    store = _store(tmp_path)
+    _call_con_testo(
+        store,
+        1_785_000_000_000,
+        "Lunedi",
+        "assicurati che sia scritto perche con il fornitore ce lo siamo detti a voce",
+    )
+
+    (riga,) = store.cerca_call(testo="fornitore")
+    frammento = riga["frammento"]
+    assert frammento, "nessun frammento: la ricerca dice solo che la parola c'e'"
+    # I marcatori sono caratteri di controllo, non tag: qui non si produce HTML.
+    assert "fornitore" in frammento
+    assert "ce lo siamo detti" in frammento
+
+
+def test_il_frammento_non_viene_da_una_riga_di_eco(tmp_path: Path) -> None:
+    """Citare un'eco vorrebbe dire restituire all'utente le sue stesse parole
+    rientrate dal microfono, spacciate per quello che ha detto l'altro."""
+    store = _store(tmp_path)
+    sid = store.create_session(1_785_000_000_000, titolo="Lunedi")
+    eco = store.add_segment(sid, "mic", 0, 1_000, "il fornitore lo chiamo io", is_final=True)
+    store.marca_eco(eco)
+    store.add_segment(
+        sid, "loopback", 2_000, 3_000, "senti, del fornitore parliamo domani", is_final=True
+    )
+
+    (riga,) = store.cerca_call(testo="fornitore")
+    assert "parliamo domani" in riga["frammento"]
+    assert "lo chiamo io" not in riga["frammento"]
+
+
+def test_senza_ricerca_non_c_e_nessun_frammento(tmp_path: Path) -> None:
+    # Sfogliando l'archivio senza cercare niente non c'e' una frase «trovata»:
+    # inventarne una vorrebbe dire mettere in evidenza una riga a caso.
+    store = _store(tmp_path)
+    _call_con_testo(store, 1_785_000_000_000, "Lunedi", "una frase qualunque")
+    (riga,) = store.cerca_call()
+    assert riga["frammento"] is None
+
+
 def test_ricerca_nel_titolo(tmp_path: Path) -> None:
     store = _store(tmp_path)
     _call_con_testo(store, 1_785_000_000_000, "Riunione budget", "buongiorno a tutti")

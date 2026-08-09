@@ -304,68 +304,67 @@ export function Rassegna(props: {
 
   const nomeCall = sessione.titolo || `Call #${sessione.id}`
   const percentuale = tasks.length > 0 ? ((indiceSicuro + 1) / tasks.length) * 100 : 0
+  const daConfermare = tasks.filter((t) => t.needs_review && t.stato === 'proposed').length
 
   return (
-    <>
-      <div className="review__bar">
-        <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>Rassegna task</span>
-        <span className="review__count">{tasks.length > 0 ? `${indiceSicuro + 1} di ${tasks.length}` : '—'}</span>
-        <div className="review__progress">
-          <i style={{ width: `${percentuale}%` }} />
-        </div>
-        <span
-          style={{ marginLeft: 'auto', fontFamily: 'var(--mono)', fontSize: 'var(--fs-mono)', color: 'var(--fg5)' }}
-        >
+    <div className="plane">
+      <div className="plane__head">
+        <span className="thread" />
+        <span className="plane__title">Rassegna</span>
+        <span className="plane__sub">
           {nomeCall} · {dataBreve(sessione.started_at)}
         </span>
-        <button className="btn" onClick={esci}>
-          Esci dalla rassegna
+        <span className="plane__spacer" />
+        <span className="rev__count num">
+          {tasks.length > 0 ? `${indiceSicuro + 1} di ${tasks.length}` : '—'}
+          {daConfermare > 0 && ` · ${daConfermare} da confermare`}
+        </span>
+        {/* Si esce con Esc, e il tasto è scritto: una scorciatoia esiste solo
+            se qualcuno sa che c'è. Il clic fa la stessa cosa. */}
+        <button className="esc" onClick={esci}>
+          <span className="key">Esc</span>
+          torna alla lista
         </button>
       </div>
 
-      <div className="review">
-        <main className="transcript">
+      {/* Traccia e riempimento, senza percentuale scritta: il numero esatto è
+          già in testata (comportamento.md, 29). */}
+      <div className="progress">
+        <i style={{ width: `${percentuale}%` }} />
+      </div>
+
+      <div className="plane__body">
+        <div className="rev__left">
           <div className="transcript__head">
-            <span className="transcript__meta">Trascrizione, ferma sulle righe citate</span>
-            <span className="legend">
-              <i className="me" />
-              Io
-              <i className="other" />
-              Altri
-            </span>
+            <span className="label label--quiet">Trascrizione</span>
+            <span className="transcript__meta num">ferma sulle righe citate</span>
           </div>
+          {/* Cambiando task queste righe non si smontano: cambia solo
+              `.is-cited` e la posizione. Rimontarle farebbe saltare la lista,
+              vanificando la prova sotto gli occhi (regola 28). */}
           <div className="transcript__body" ref={corpoRef}>
             {righeOrdinate.map((s) => (
               <div
                 key={s.id}
                 data-id={s.id}
-                className={`line ${s.source === 'mic' ? 'line--me' : 'line--other'}${citate.has(s.id) ? ' is-cited' : ''}`}
+                className={`line ${
+                  s.eco ? 'line--echo' : s.source === 'mic' ? 'line--me' : 'line--other'
+                }${citate.has(s.id) ? ' is-cited' : ''}`}
               >
-                {/* Uno span, non un pulsante: .line__t nel handoff non ha una
-                    veste da bottone (niente bordo/sfondo), solo testo mono
-                    cliccabile — un <button> qui mostrerebbe il cromo nativo. */}
-                <span
-                  className="line__t"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => andaA(s.t_start_ms, s.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      andaA(s.t_start_ms, s.id)
-                    }
-                  }}
-                >
+                <button className="line__t num" onClick={() => andaA(s.t_start_ms, s.id)}>
                   {tempo(s.t_start_ms)}
-                </span>
-                <span className="line__who">{CHI[s.source] ?? s.source}</span>
-                <span className={`line__text${s.is_final ? '' : ' is-provisional'}`}>{s.testo}</span>
+                </button>
+                <span className="line__who">{s.eco ? CHI.loopback : (CHI[s.source] ?? s.source)}</span>
+                <p className={`line__text${s.is_final ? '' : ' is-provisional'}`}>
+                  {s.eco && <span className="echo__tag">ripresa</span>}
+                  {s.testo}
+                </p>
               </div>
             ))}
           </div>
-        </main>
+        </div>
 
-        <aside className="review__side">
+        <div className="rev__right">
           {!analisi ? (
             <div className="state">
               <p className="state__title">Carico…</p>
@@ -378,64 +377,61 @@ export function Rassegna(props: {
             </div>
           ) : (
             <>
-              <div className="review__head">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                  {taskCorrente.needs_review && taskCorrente.stato === 'proposed' ? (
-                    <span className="task__flag">DA CONFERMARE</span>
-                  ) : null}
-                  {taskCorrente.confidence != null && (
-                    <span
-                      style={{
-                        marginLeft: 'auto',
-                        fontFamily: 'var(--mono)',
-                        fontSize: 'var(--fs-mono)',
-                        color: 'var(--fg5)',
-                      }}
-                    >
-                      conf. {taskCorrente.confidence.toFixed(2).replace('.', ',')}
-                    </span>
-                  )}
-                </div>
-                <h2 className="review__title">{taskCorrente.titolo}</h2>
-              </div>
+              <div className="rev__body">
+                <span className="label label--quiet">
+                  Task {indiceSicuro + 1} di {tasks.length}
+                </span>
+                <h2 className="rev__title">{taskCorrente.titolo}</h2>
 
-              <div className="review__fields">
-                {CAMPI.map(({ chiave, etichetta, prova }) => {
-                  const { testo, mancante } = valoreCampo(taskCorrente, chiave)
-                  const prove = taskCorrente.evidence.filter((e) => e.supports === prova)
-                  const inModifica = editando === chiave
+                <div className="rev__fields">
+                  {CAMPI.map(({ chiave, etichetta, prova }) => {
+                    const { testo, mancante } = valoreCampo(taskCorrente, chiave)
+                    const prove = taskCorrente.evidence.filter((e) => e.supports === prova)
+                    const inModifica = editando === chiave
 
-                  return (
-                    <div className="field" key={chiave}>
-                      <div className="field__top">
-                        <span className="field__label">{etichetta}</span>
+                    return (
+                      <div className="rf" key={chiave}>
+                        <div className="rf__k">
+                          <span className="label label--quiet">{etichetta}</span>
+                          {!inModifica && (
+                            <button
+                              className="btn btn--quiet btn--sm rf__edit"
+                              onClick={() => {
+                                setErroreSalva(null)
+                                setBozza(valoreGrezzo(taskCorrente, chiave))
+                                setEditando(chiave)
+                              }}
+                            >
+                              Modifica
+                            </button>
+                          )}
+                        </div>
+
                         {inModifica ? (
                           chiave === 'priorita' ? (
                             // Quattro valori chiusi, e sono gli unici che lo
-                            // schema accetta: si scelgono. Scriverli a mano
-                            // voleva dire poter scrivere «Alta» e vedersi
-                            // rifiutare la scrittura senza saperlo (#71).
-                            <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                              {PRIORITA.map((p) => (
+                            // schema accetta: si scelgono, non si scrivono (#71).
+                            <div className="rf__v rf__edit-row">
+                              {PRIORITA.map((pr) => (
                                 <button
-                                  key={p}
-                                  className={`btn btn--sm${valoreGrezzo(taskCorrente, chiave) === p ? ' is-on' : ''}`}
-                                  onClick={() => salva(p)}
+                                  key={pr}
+                                  className={`btn btn--sm${valoreGrezzo(taskCorrente, chiave) === pr ? ' is-on' : ''}`}
+                                  onClick={() => salva(pr)}
                                 >
-                                  {p}
+                                  {pr}
                                 </button>
                               ))}
                               <button className="btn btn--sm" onClick={() => salva(null)}>
                                 nessuna
                               </button>
-                              <button className="btn btn--sm" onClick={annullaModifica}>
+                              <button className="btn btn--quiet btn--sm" onClick={annullaModifica}>
                                 Annulla
                               </button>
                             </div>
                           ) : (
-                            <>
+                            <div className="rf__v rf__edit-row">
                               <input
-                                className="textfield"
+                                className="textfield textfield--sm"
                                 autoFocus
                                 value={bozza}
                                 onChange={(e) => setBozza(e.target.value)}
@@ -449,91 +445,73 @@ export function Rassegna(props: {
                                   }
                                 }}
                               />
-                              <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
-                                <button className="btn btn--sm btn--confirm" onClick={() => salva()}>
-                                  Salva
-                                </button>
-                                <button className="btn btn--sm" onClick={annullaModifica}>
-                                  Annulla
-                                </button>
-                              </div>
-                            </>
+                              <button className="btn btn--primary btn--sm" onClick={() => salva()}>
+                                Salva
+                              </button>
+                              <button className="btn btn--quiet btn--sm" onClick={annullaModifica}>
+                                Annulla
+                              </button>
+                            </div>
                           )
                         ) : (
-                          <>
-                            <span className={`field__value${mancante ? ' is-missing' : ''}`}>{testo}</span>
-                            <button
-                              className="btn btn--sm"
-                              onClick={() => {
-                                setErroreSalva(null)
-                                setBozza(valoreGrezzo(taskCorrente, chiave))
-                                setEditando(chiave)
-                              }}
-                            >
-                              Modifica
-                            </button>
-                          </>
+                          <div className={`rf__v${mancante ? ' is-missing' : ''}`}>{testo}</div>
                         )}
-                      </div>
-                      {/* Nel punto in cui si è premuto, non su una barra
-                          lontana: chi ha appena salvato sta guardando qui. */}
-                      {inModifica && erroreSalva && (
-                        <RiquadroInline
-                          testo={`Non sono riuscito a salvare: ${erroreSalva}`}
-                          azioni={[{ etichetta: 'Riprova', onClick: () => salva() }]}
-                        />
-                      )}
-                      <div className="field__proof">
+
+                        {/* Nel punto in cui si è premuto, non su una barra
+                            lontana: chi ha appena salvato sta guardando qui. */}
+                        {inModifica && erroreSalva && (
+                          <RiquadroInline
+                            testo={`Non sono riuscito a salvare: ${erroreSalva}`}
+                            azioni={[{ etichetta: 'Riprova', onClick: () => salva() }]}
+                          />
+                        )}
+
                         {prove.length > 0 ? (
-                          prove.map((p, i) => (
-                            <div className="field__quote" key={`${p.t_ms}-${i}`}>
-                              <button className="ev__t" onClick={() => andaA(p.t_ms, p.segment_id)}>
-                                {tempo(p.t_ms)}
+                          prove.map((pr, i) => (
+                            <div className="rf__ev" key={`${pr.t_ms}-${i}`}>
+                              <button className="ev__t num" onClick={() => andaA(pr.t_ms, pr.segment_id)}>
+                                {tempo(pr.t_ms)}
                               </button>
-                              <span>{p.quote ?? 'Dedotta dal contesto, non da una frase precisa.'}</span>
+                              <p className={`rf__q${pr.quote ? '' : ' is-empty'}`}>
+                                {pr.quote ?? 'Dedotta dal contesto, non da una frase precisa.'}
+                              </p>
                             </div>
                           ))
                         ) : (
-                          // Non si inventa una citazione plausibile: è l'unica
-                          // difesa contro un modello che sbaglia con sicurezza.
-                          <div className="field__quote is-empty">
-                            <span>Dedotta dal tono della discussione, non da una frase.</span>
+                          // Non si inventa una citazione plausibile, e non si
+                          // lascia il campo muto — che si legge come
+                          // «verificato» (regola 13).
+                          <div className="rf__ev">
+                            <span className="ev__t">—</span>
+                            <p className="rf__q is-empty">Dedotta. Nessuna frase della riunione la sostiene.</p>
                           </div>
                         )}
                       </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
 
-              <div className="review__actions">
-                <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
-                  <button className="btn btn--confirm" style={{ fontWeight: 600 }} onClick={confermaEAvanza}>
-                    Conferma
-                  </button>
-                  <button className="btn" onClick={scartaEAvanza}>
-                    Scarta
-                  </button>
-                  <button
-                    className="btn"
-                    style={{ marginLeft: 'auto' }}
-                    disabled={indiceSicuro === 0}
-                    onClick={() => naviga(-1)}
-                  >
-                    ‹
-                  </button>
-                  <button className="btn" disabled={indiceSicuro >= tasks.length - 1} onClick={() => naviga(1)}>
-                    Salta ›
-                  </button>
+              {/* Conferma e Scarta avanzano alla successiva: la passata è un
+                  ritmo, non una serie di decisioni isolate (regola 27). */}
+              <div className="rev__foot">
+                <button className="btn btn--primary btn--lg" onClick={confermaEAvanza}>
+                  Conferma
+                </button>
+                <button className="btn btn--lg" onClick={scartaEAvanza}>
+                  Scarta
+                </button>
+                <div className="rev__keys">
+                  <span className="key">C</span>conferma
+                  <span className="key">X</span>scarta
+                  <span className="key">←</span>
+                  <span className="key">→</span>scorri
                 </div>
-                <span className="review__keys">
-                  C conferma e avanza · X scarta e avanza · ← → naviga · Esc torna alla lista
-                </span>
               </div>
             </>
           )}
-        </aside>
+        </div>
       </div>
-    </>
+    </div>
   )
 }

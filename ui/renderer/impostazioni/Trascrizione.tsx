@@ -9,8 +9,8 @@
 import { useEffect, useState } from 'react'
 
 import type { Dispositivo, Impostazioni } from '../tipi'
-import type { OpzioneSelect } from './Select'
-import { Select } from './Select'
+import type { OpzioneSelect } from '../Select'
+import { Select } from '../Select'
 
 /** Non c'è una rotta che elenchi le lingue: è un insieme piccolo e fisso, a
  *  differenza dei dispositivi audio che dipendono dalla macchina. */
@@ -53,7 +53,7 @@ function Elenco({ termini, onSalva }: { termini: string[]; onSalva: (t: string[]
 
   return (
     <textarea
-      className="arch__search glossario__area"
+      className="textfield textfield--area"
       value={testo}
       rows={5}
       spellCheck={false}
@@ -82,7 +82,7 @@ export function SezioneTrascrizione({
       <div className="settings__head">Trascrizione</div>
       <div className="settings__body">
         <div className="row">
-          <div className="row__text">
+          <div className="row__t">
             <b>Lingua delle call</b>
             {/* Diceva solo cosa succede alla trascrizione. Ma da questa scelta
                 dipende anche in che lingua vengono scritti riassunto, punti
@@ -97,7 +97,7 @@ export function SezioneTrascrizione({
           <Select opzioni={LINGUE} selezionato={stt.lingua} onScegli={(lingua) => onCambia({ stt: { ...stt, lingua } })} />
         </div>
         <div className="row">
-          <div className="row__text">
+          <div className="row__t">
             <b>Microfono</b>
             <span>Registra la tua voce.</span>
           </div>
@@ -108,7 +108,7 @@ export function SezioneTrascrizione({
           />
         </div>
         <div className="row">
-          <div className="row__text">
+          <div className="row__t">
             <b>Audio del computer</b>
             <span>Registra la voce degli altri. Senza questo si sente solo te.</span>
           </div>
@@ -119,11 +119,11 @@ export function SezioneTrascrizione({
           />
         </div>
         <div className="row">
-          <div className="row__text">
+          <div className="row__t">
             <b>Filtro dell’eco</b>
             <span>Riconosce quando il microfono riprende l’altoparlante. Se alzi troppo, le sovrapposizioni di voce si perdono.</span>
           </div>
-          <div className="segment">
+          <div className="picker">
             {FILTRI_ECO.map((v) => (
               <button
                 key={v}
@@ -139,7 +139,7 @@ export function SezioneTrascrizione({
         <div className="settings__sub">Dopo la call</div>
 
         <div className="row">
-          <div className="row__text">
+          <div className="row__t">
             <b>Rifai la trascrizione da sola</b>
             <span>
               A registrazione finita ripassa ogni riga con un modello più preciso, a cui la lingua si
@@ -150,18 +150,20 @@ export function SezioneTrascrizione({
           </div>
           <button
             className={`switch ${stt.rifinitura_automatica ? 'is-on' : ''}`}
+            aria-pressed={stt.rifinitura_automatica}
             onClick={() =>
               onCambia({ stt: { ...stt, rifinitura_automatica: !stt.rifinitura_automatica } })
             }
           >
-            <i />
+            <span className="sq" />
+            {stt.rifinitura_automatica ? 'Attivo' : 'Spento'}
           </button>
         </div>
 
         <div className="settings__sub">Nomi propri</div>
 
         <div className="row row--stack">
-          <div className="row__text">
+          <div className="row__t">
             <b>Glossario</b>
             <span>
               I nomi che il modello non conosce li indovina da capo a ogni frase, e ogni volta in
@@ -177,28 +179,30 @@ export function SezioneTrascrizione({
         </div>
 
         <div className="row">
-          <div className="row__text">
+          <div className="row__t">
             <b>Anche i clienti</b>
             <span>I nomi dell’anagrafica entrano nel glossario da soli, senza riscriverli qui.</span>
           </div>
           <button
             className={`switch ${stt.glossario_clienti !== false ? 'is-on' : ''}`}
+            aria-pressed={stt.glossario_clienti !== false}
             onClick={() =>
               onCambia({ stt: { ...stt, glossario_clienti: stt.glossario_clienti === false } })
             }
           >
-            <i />
+            <span className="sq" />
+            {stt.glossario_clienti !== false ? 'Attivo' : 'Spento'}
           </button>
         </div>
 
         <div className="row row--stack">
-          <div className="row__text">
+          <div className="row__t">
             <b>Quanto insistere</b>
             <span>
               {LIVELLI_GLOSSARIO.find((l) => l.id === (stt.glossario_livello ?? 'prudente'))?.nota}
             </span>
           </div>
-          <div className="segment">
+          <div className="picker">
             {LIVELLI_GLOSSARIO.map((l) => (
               <button
                 key={l.id}

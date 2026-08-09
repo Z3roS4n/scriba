@@ -564,7 +564,7 @@ function App() {
         {dbDanneggiato && (
           // Prima dell'avviso normale: se ci sono tutti e due, questo è quello
           // che cambia cosa l'utente sta guardando.
-          <div className="notice notice--error">
+          <div className="notice notice--rosso">
             Il database non si leggeva e Scriba è ripartito
             {dbDanneggiato.ripristinato ? ' da un backup' : ' da vuoto'}: le call registrate dopo
             non compaiono più. I file originali non sono stati cancellati.
