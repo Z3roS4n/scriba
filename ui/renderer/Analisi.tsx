@@ -18,8 +18,8 @@ import { tempo } from './tipi'
  * Rende il Markdown prodotto dal modello, quando il core non manda ancora le
  * versioni già divise in pezzi.
  *
- * Esce con le stesse classi del riassunto vero (`.sum__group`, `.sum__h`,
- * `.sum__item`) invece che con un contenitore proprio: un contenitore proprio
+ * Esce con le stesse classi del riassunto vero (`.sum__g`, `.label`,
+ * `.sum__p`) invece che con un contenitore proprio: un contenitore proprio
  * vorrebbe dire CSS che il design non ha, quindi testo senza stile — e la
  * ricaduta si vede solo quando il modello ha scritto qualcosa di inatteso,
  * cioè proprio quando la schermata deve restare leggibile.
@@ -50,10 +50,10 @@ const Markdown = memo(function Markdown({ testo }: { testo: string }) {
   return (
     <>
       {gruppi.map((g, i) => (
-        <div className="sum__group" key={i}>
-          {g.titolo && <h3 className="sum__h">{g.titolo}</h3>}
+        <div className="sum__g" key={i}>
+          {g.titolo && <h3 className="label">{g.titolo}</h3>}
           {g.voci.map((v, j) => (
-            <p className="sum__item" key={j}>
+            <p className="sum__p" key={j}>
               <span>{grassetto(v)}</span>
             </p>
           ))}
@@ -77,10 +77,10 @@ function grassetto(testo: string): React.ReactNode {
  * priorità critica smette di sembrare critica senza che nessuno se ne accorga.
  */
 const CHIP_PRIORITA: Record<string, string> = {
-  bassa: 'chip chip--prio-bassa',
-  media: 'chip chip--prio-media',
-  alta: 'chip chip--prio-alta',
-  critica: 'chip chip--prio-critica',
+  bassa: 'chip chip--quiet',
+  media: 'chip',
+  alta: 'chip chip--fill',
+  critica: 'chip chip--critical',
 }
 
 /** «14 ago 2026». Solo per le task: la trascrizione usa tempo(), non date. */
@@ -145,18 +145,30 @@ function SchedeTask({
 
   return (
     <>
-      <div className="tasks__bar">
-        {daConfermare > 0 && <span className="tasks__todo">{daConfermare} da confermare</span>}
-        <span className="tasks__keys">C conferma · X scarta · J K scorri</span>
-      </div>
-      <div className="tasks__list">
+      {/* Si entra in rassegna dalla proposta, non da una singola task
+          (comportamento.md, 26). Fino a cinque si lavora in riga: nel pannello
+          da 404px quel ritmo non ci sta, e servirlo male è peggio che non
+          servirlo. Sotto quella soglia il conteggio resta, l'invito no. */}
+      {daConfermare > 0 && (
+        <div className="review">
+          <div>
+            <div className="review__n num">{daConfermare}</div>
+            <div className="review__t">task da confermare</div>
+          </div>
+          {daConfermare > 5 && (
+            <button className="btn btn--primary btn--sm" onClick={() => onRassegna(0)}>
+              Passa in rassegna
+            </button>
+          )}
+        </div>
+      )}
+      <div className="tasks">
         {tasks.map((t) => {
-          const flag = t.needs_review && t.stato === 'proposed'
+          const daFare = t.needs_review && t.stato === 'proposed'
           const classi = [
             'task',
-            flag ? 'is-flagged' : '',
-            t.stato === 'confirmed' ? 'is-confirmed' : '',
-            t.stato === 'rejected' ? 'is-discarded' : '',
+            daFare ? 'is-todo' : '',
+            t.stato !== 'proposed' ? 'is-done' : '',
             selezionataId === t.id ? 'is-selected' : '',
           ]
             .filter(Boolean)
@@ -165,33 +177,32 @@ function SchedeTask({
 
           return (
             <article key={t.id} className={classi} tabIndex={0} onClick={() => onSeleziona(t.id)}>
-              <div className="task__top">
-                <h3 className="task__title">{t.titolo}</h3>
-                {flag && <span className="task__flag">DA CONFERMARE</span>}
+              <div className="task__head">
+                <p className="task__title">{t.titolo}</p>
               </div>
-              <div className="chips">
-                {t.assignee_text ? (
-                  <span className="chip chip--plain">{t.assignee_text}</span>
-                ) : (
-                  <span className="chip chip--muted">nessun responsabile</span>
-                )}
-                {scadenza ? (
-                  <span className={`chip ${t.due_date ? 'chip--plain' : 'chip--said'}`}>{scadenza}</span>
-                ) : (
-                  <span className="chip chip--muted">nessuna scadenza</span>
-                )}
-                {t.priorita && CHIP_PRIORITA[t.priorita] && (
-                  <span className={CHIP_PRIORITA[t.priorita]}>{t.priorita}</span>
-                )}
-                {t.confidence != null && (
-                  <span className={`chip chip--conf${t.confidence < 0.7 ? ' is-low' : ''}`}>
-                    conf. {t.confidence.toFixed(2).replace('.', ',')}
-                  </span>
-                )}
+              {/* Un campo mancante lo dice invece di sparire: una task senza
+                  responsabile e una task il cui responsabile non è stato detto
+                  sono due cose diverse, e solo la seconda si va a chiedere. */}
+              <div className="task__fields">
+                <span className={`field${t.assignee_text ? '' : ' is-missing'}`}>
+                  <span className="field__k">chi</span>
+                  {t.assignee_text || 'non detto'}
+                </span>
+                <span className={`field${scadenza ? '' : ' is-missing'}`}>
+                  <span className="field__k">entro</span>
+                  {t.due_date ? (
+                    <span className="num">{dataEstesa(t.due_date)}</span>
+                  ) : t.due_raw ? (
+                    <span className="field__raw">{t.due_raw}</span>
+                  ) : (
+                    'non detta'
+                  )}
+                </span>
+                {t.priorita && <span className={CHIP_PRIORITA[t.priorita] ?? 'chip'}>{t.priorita}</span>}
               </div>
-              <div className="task__foot">
+              <div className="task__row">
                 <button
-                  className="task__ev"
+                  className="btn btn--sm"
                   onClick={(e) => {
                     e.stopPropagation()
                     onProve(t)
@@ -199,10 +210,10 @@ function SchedeTask({
                 >
                   {t.evidence.length === 1 ? '1 prova' : `${t.evidence.length} prove`}
                 </button>
-                {t.stato === 'proposed' ? (
-                  <div className="task__actions">
+                {t.stato === 'proposed' && (
+                  <>
                     <button
-                      className="btn btn--sm btn--confirm"
+                      className="btn btn--primary btn--sm"
                       onClick={(e) => {
                         e.stopPropagation()
                         onImposta(t, 'confirmed')
@@ -214,37 +225,44 @@ function SchedeTask({
                       className="btn btn--sm"
                       onClick={(e) => {
                         e.stopPropagation()
-                        onRassegna(tasks.findIndex((x) => x.id === t.id))
-                      }}
-                    >
-                      Modifica
-                    </button>
-                    <button
-                      className="btn btn--sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
                         onImposta(t, 'rejected')
                       }}
                     >
                       Scarta
                     </button>
-                  </div>
-                ) : (
-                  // Annullabile dalla riga stessa: nessuna conferma modale.
-                  <span className={`task__settled${t.stato === 'confirmed' ? ' is-ok' : ''}`}>
-                    {t.stato === 'confirmed' ? 'confermata' : 'scartata'}
                     <button
-                      className="btn--link"
+                      className="btn btn--quiet btn--sm"
                       onClick={(e) => {
                         e.stopPropagation()
-                        onImposta(t, 'proposed')
+                        onRassegna(tasks.findIndex((x) => x.id === t.id))
                       }}
                     >
-                      annulla
+                      Modifica
                     </button>
-                  </span>
+                  </>
+                )}
+                {/* Solo sotto 0,80, dove cambia una decisione. Stampata su
+                    quindici righe è una colonna di numeri che nessuno legge
+                    (comportamento.md, 0-bis). */}
+                {t.confidence != null && t.confidence < 0.8 && (
+                  <span className="task__conf num">conf. {t.confidence.toFixed(2).replace('.', ',')}</span>
                 )}
               </div>
+              {t.stato !== 'proposed' && (
+                // Annullabile dalla riga stessa: nessuna conferma modale.
+                <div className="task__settled">
+                  {t.stato === 'confirmed' ? 'confermata' : 'scartata'}
+                  <button
+                    className="btn--link"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onImposta(t, 'proposed')
+                    }}
+                  >
+                    Annulla
+                  </button>
+                </div>
+              )}
             </article>
           )
         })}
@@ -906,13 +924,13 @@ export function PannelloAnalisi({
   const meta = analisi.meta
   return (
     <section className="side">
-      <div className="analysis__head">
+      <div className="side__head">
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}>
           <button className="btn" onClick={analizza} disabled={registrando}>
             Rianalizza
           </button>
           {meta && (
-            <span className="analysis__meta">
+            <span className="side__meta">
               {[
                 meta.etichetta_provider,
                 meta.costo_usd != null ? formattaDollari(meta.costo_usd) : null,
@@ -955,14 +973,14 @@ export function PannelloAnalisi({
         </div>
       </div>
 
-      <div className="tabpanel" data-panel="sum" hidden={scheda !== 'sum'}>
+      <div className="side__body" hidden={scheda !== 'sum'}>
         <div className="sum">
           {gruppi.length > 0
             ? gruppi.map((g, i) => (
-                <div className="sum__group" key={i}>
-                  <h3 className="sum__h">{g.titolo}</h3>
+                <div className="sum__g" key={i}>
+                  <h3 className="label">{g.titolo}</h3>
                   {g.voci.map((v, j) => (
-                    <p className="sum__item" key={j}>
+                    <p className="sum__p" key={j}>
                       <span>
                         {v.testo}{' '}
                         {v.t_ms != null && (
@@ -984,9 +1002,9 @@ export function PannelloAnalisi({
         </div>
       </div>
 
-      <div className="tabpanel" data-panel="high" hidden={scheda !== 'high'}>
-        {/* Cambia anche il contenitore, non solo il contenuto: `.hls` è una
-            griglia minuto/testo, e senza i minuti non ha niente da allineare. */}
+      <div className="side__body" hidden={scheda !== 'high'}>
+        {/* Cambia anche il contenitore, non solo il contenuto: `.hls` è un
+            elenco minuto/testo, e senza i minuti non ha niente da elencare. */}
         <div className={salienti.length > 0 ? 'hls' : 'sum'}>
           {salienti.length > 0
             ? salienti.map((p, i) => (
@@ -1001,8 +1019,8 @@ export function PannelloAnalisi({
                     {tempo(p.t_ms)}
                   </button>
                   <div>
-                    <span className="hl__label">{p.etichetta}</span>
-                    <span className="hl__body">{p.corpo}</span>
+                    <span className="hl__k">{p.etichetta}</span>
+                    <p className="hl__b">{p.corpo}</p>
                   </div>
                 </div>
               ))
@@ -1010,14 +1028,11 @@ export function PannelloAnalisi({
         </div>
       </div>
 
-      <div
-        className="tabpanel"
-        data-panel="task"
-        hidden={scheda !== 'task'}
-        style={scheda === 'task' ? { display: 'flex', flexDirection: 'column', overflow: 'hidden' } : undefined}
-      >
+      <div className="side__body" hidden={scheda !== 'task'}>
         {tasks.length === 0 ? (
-          <p style={{ padding: '13px 20px', color: 'var(--fg4)' }}>Nessun impegno individuato.</p>
+          <p className="sum__p" style={{ padding: 'var(--sp-5) var(--sp-6)' }}>
+            Nessun impegno individuato.
+          </p>
         ) : (
           <SchedeTask
             tasks={tasks}

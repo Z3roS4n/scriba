@@ -801,3 +801,35 @@ a:hover { color:var(--red); border-bottom-color:var(--red); }
 .sheet__cap { display:flex; align-items:baseline; gap:var(--sp-3); }
 .sheet__cap .thread { width:20px; }
 .sheet__note { font-size:var(--fs-xs); color:var(--fg-3); max-width:68ch; line-height:var(--lh-body); }
+
+/* ===========================================================================
+   AGGIUNTE OLTRE IL HANDOFF — riassunto e punti salienti.
+
+   Il handoff disegna la scheda Task, non le altre due. Qui non si copia
+   niente: si deriva nella stessa grammatica, come il handoff stesso dichiara
+   di aver fatto per Dialog, Tabs e Progress, che msworks non ha perché un
+   sito non ne ha bisogno.
+
+   Il riassunto è prosa con dei titoli: i titoli sono `.label`, l'eyebrow del
+   sistema, perché nominano una sezione invece di aprire un capitolo.
+
+   I punti salienti sono un minuto più una frase — la stessa forma di `.ev`,
+   ma **senza i caporali**: `.ev__q` li aggiunge perché una prova è verbatim,
+   e un punto saliente invece è riscritto dal modello. Mettergli le virgolette
+   lo farebbe passare per parole dette in riunione, che è esattamente
+   l'inganno da cui le prove esistono per difendere.
+   ========================================================================= */
+.sum { padding:var(--sp-5) var(--sp-6) var(--sp-8); }
+.sum__g + .sum__g { margin-top:var(--sp-6); }
+.sum__g .label { display:block; margin-bottom:var(--sp-3); }
+.sum__p { font-size:var(--fs-ui); line-height:var(--lh-body); color:var(--fg-body); text-wrap:pretty; }
+.sum__p + .sum__p { margin-top:var(--sp-3); }
+
+.hls { padding:var(--sp-3) var(--sp-6) var(--sp-8); }
+.hl { display:flex; gap:var(--sp-4); padding:var(--sp-4) 0; border-bottom:1px solid var(--line-2); }
+.hl:last-child { border-bottom:0; }
+.hl__k {
+  font-size:var(--fs-label); font-weight:var(--w-label); letter-spacing:var(--ls-label);
+  text-transform:uppercase; color:var(--fg-3);
+}
+.hl__b { font-size:var(--fs-sm); line-height:var(--lh-body); color:var(--fg-body); text-wrap:pretty; margin-top:var(--sp-1); }
