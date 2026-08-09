@@ -444,6 +444,9 @@ export interface Impostazioni {
     overlay_ridotto?: boolean
     /** 'scuro' | 'chiaro' | 'sistema'. Vedi renderer/tema.ts. */
     tema?: string
+    /** Lingua del chrome: 'sistema' | 'it' | 'en'. Non è `stt.lingua`, che è
+     *  la lingua della call e decide riassunto e task. */
+    lingua?: string
   }
   rilevamento: {
     attivo: boolean

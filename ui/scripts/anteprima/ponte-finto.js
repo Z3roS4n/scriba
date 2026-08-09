@@ -364,6 +364,8 @@
     return { ok: true, status: 200, body: { id, nome_reale: body?.nome_reale, confermato: true } }
   }
 
+  const ascoltatori = new Set()
+
   window.scriba = {
     endpoint: () => Promise.resolve({ port: 1234 }),
     paths: () => Promise.resolve({ dataDir: 'C:\\finto', screenshotDir: 'C:\\finto\\shots' }),
@@ -390,6 +392,21 @@
     },
     registraScorciatoie: () => Promise.resolve({ overlay: 'Alt+R', screenshot: 'CommandOrControl+Shift+S' }),
     provaScorciatoia: () => Promise.resolve(true),
-    on: () => () => {},
+
+    // Tema e lingua arrivano dal processo principale, che qui non c'e'. Senza
+    // questi due l'anteprima parte con `undefined` e cade sul ripiego, che e'
+    // il caso peggiore per accorgersi di un difetto: sembra funzionare.
+    temaIniziale: 'scuro',
+    annunciaTema: () => Promise.resolve(),
+    linguaIniziale: 'it',
+    annunciaLingua: (l) => { ascoltatori.forEach((f) => f(l)); return Promise.resolve() },
+
+    // Un solo canale, quello della lingua: serve a provare che cambiandola le
+    // schermate si ridisegnano davvero, contesto compreso.
+    on: (canale, cb) => {
+      if (canale !== 'lingua:cambiata') return () => {}
+      ascoltatori.add(cb)
+      return () => ascoltatori.delete(cb)
+    },
   }
 })()

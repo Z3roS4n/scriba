@@ -8,6 +8,7 @@
  */
 
 import type { Schermo } from './scriba'
+import { useT } from './lingua'
 import { tempo } from './tipi'
 
 /** Rispecchia lo stato dell'evento `modello` del core: non serve un tipo condiviso per due file. */
@@ -44,15 +45,17 @@ export function Topbar(props: {
     onFerma,
   } = props
 
+  const t = useT()
+
   const testoStato = registrando
-    ? 'Registrazione'
+    ? t('stato.registrazione')
     : !corePronto
-      ? 'Avvio del core...'
+      ? t('stato.avvio')
       : modello === 'caricamento' || modello === 'in_attesa'
-        ? 'Carico il modello...'
+        ? t('stato.carico')
         : modello === 'errore'
-          ? 'Modello non disponibile'
-          : 'Pronto'
+          ? t('stato.modello_assente')
+          : t('stato.pronto')
 
   // "Registra" resta spento finche' non c'e' un modello di trascrizione pronto:
   // avviare una registrazione che nessuno trascrive sarebbe solo silenzio salvato.
@@ -83,7 +86,7 @@ export function Topbar(props: {
             disabled={!registrando}
             onClick={() => onScreenshot()}
           >
-            Screenshot
+            {t('azione.screenshot')}
           </button>
         ) : (
           schermi.map((s, i) => (
@@ -94,25 +97,25 @@ export function Topbar(props: {
               title={`${s.etichetta} — ${s.larghezza}×${s.altezza}${s.principale ? ' (principale)' : ''}`}
               onClick={() => onScreenshot(s.id)}
             >
-              Schermo {i + 1}
+              {t('azione.schermo_n', { n: i + 1 })}
             </button>
           ))
         )}
 
         <button className="btn" disabled={esportaDisabilitato} onClick={onEsporta}>
-          {esportando ? 'Esporto…' : 'Esporta'}
+          {esportando ? t('azione.esportando') : t('azione.esporta')}
         </button>
 
         {/* Non disabilitato quando non c'e' nessuna call: l'archivio spiega da
             solo di essere vuoto, ed e' anche da li' che si gestiscono i
             clienti prima di avere qualcosa da attribuirgli. */}
         <button className="btn" onClick={onArchivio}>
-          Archivio
+          {t('azione.archivio')}
         </button>
 
         <button
           className="btn btn--icon"
-          aria-label="Impostazioni"
+          aria-label={t('azione.impostazioni')}
           onClick={() => window.scriba.apriImpostazioni()}
         >
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -126,7 +129,7 @@ export function Topbar(props: {
           disabled={!registrando && registraDisabilitato}
           onClick={registrando ? onFerma : onRegistra}
         >
-          {registrando ? 'Ferma' : 'Registra'}
+          {registrando ? t('azione.ferma') : t('azione.registra')}
         </button>
       </div>
 
@@ -136,13 +139,13 @@ export function Topbar(props: {
           e altezze sue e che cambiano aspetto se il font cambia. Con i bordi,
           la linea è una linea da 1px in tutti e tre. */}
       <div className="wincontrols">
-        <button aria-label="Riduci a icona" onClick={() => window.scriba.finestra.riduci()}>
+        <button aria-label={t('finestra.riduci')} onClick={() => window.scriba.finestra.riduci()}>
           <i className="wc-min" />
         </button>
-        <button aria-label="Ingrandisci" onClick={() => window.scriba.finestra.ingrandisci()}>
+        <button aria-label={t('finestra.ingrandisci')} onClick={() => window.scriba.finestra.ingrandisci()}>
           <i className="wc-max" />
         </button>
-        <button aria-label="Chiudi" onClick={() => window.scriba.finestra.chiudi()}>
+        <button aria-label={t('finestra.chiudi')} onClick={() => window.scriba.finestra.chiudi()}>
           <i className="wc-close" />
         </button>
       </div>

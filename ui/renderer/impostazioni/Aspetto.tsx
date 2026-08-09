@@ -11,6 +11,7 @@
  */
 
 import type { Impostazioni } from '../tipi'
+import { linguaValida, useT, type Lingua } from '../lingua'
 import { applica, temaValido, type Tema } from '../tema'
 
 const TEMI: Array<{ id: Tema; etichetta: string }> = [
@@ -26,8 +27,25 @@ export function SezioneAspetto({
   impostazioni: Impostazioni
   onCambia: (patch: Partial<Impostazioni>) => void
 }) {
+  const t = useT()
   const i = impostazioni.interfaccia
   const tema = temaValido(i.tema)
+  const lingua = linguaValida(i.lingua)
+
+  /** Le tre scelte, tradotte: l'elenco delle lingue si legge nella lingua in
+   *  cui si sta guardando adesso, non in quella che nomina. */
+  const LINGUE: Array<{ id: Lingua; etichetta: string }> = [
+    { id: 'it', etichetta: t('lingua.it') },
+    { id: 'en', etichetta: t('lingua.en') },
+    { id: 'sistema', etichetta: t('lingua.sistema') },
+  ]
+
+  const scegliLingua = (nuova: Lingua) => {
+    // Stessa regola del tema: prima si vede, poi si salva. Il giro fino al
+    // core e ritorno non deve stare fra il clic e il testo che cambia.
+    window.scriba.annunciaLingua(nuova)
+    onCambia({ interfaccia: { ...i, lingua: nuova } })
+  }
 
   const scegli = (nuovo: Tema) => {
     // Prima si vede, poi si salva. Il salvataggio è un giro fino al core e
@@ -42,6 +60,24 @@ export function SezioneAspetto({
     <>
       <div className="settings__head">Aspetto</div>
       <div className="settings__body">
+        <div className="row">
+          <div className="row__t">
+            <b>{t('lingua.etichetta')}</b>
+            <span>{t('lingua.nota')}</span>
+          </div>
+          <div className="picker">
+            {LINGUE.map((l) => (
+              <button
+                key={l.id}
+                className={lingua === l.id ? 'is-on' : ''}
+                onClick={() => scegliLingua(l.id)}
+              >
+                {l.etichetta}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="row">
           <div className="row__t">
             <b>Tema</b>

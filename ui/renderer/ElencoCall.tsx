@@ -13,6 +13,7 @@
  * di tre righe invece di quattro.
  */
 
+import { useT, type Traduci } from './lingua'
 import { giornoBreve, tempo, type Sessione, type StatoSessione } from './tipi'
 
 /**
@@ -23,19 +24,26 @@ import { giornoBreve, tempo, type Sessione, type StatoSessione } from './tipi'
  * Il rosso resta ai suoi due usi legittimi qui — registrazione in corso e
  * guasto — e non compare per nient'altro (regola 17).
  */
-function codaCall(s: Sessione, stato: StatoSessione): { testo: string; classe: string } {
-  if (stato === 'recording') return { testo: 'in registrazione', classe: 'call__todo--err' }
-  if (stato === 'failed') return { testo: 'non riuscita', classe: 'call__todo--err' }
-  if (stato === 'analyzing') return { testo: 'in analisi', classe: '' }
+function codaCall(
+  s: Sessione,
+  stato: StatoSessione,
+  t: Traduci,
+): { testo: string; classe: string } {
+  if (stato === 'recording') return { testo: t('call.in_registrazione'), classe: 'call__todo--err' }
+  if (stato === 'failed') return { testo: t('call.non_riuscita'), classe: 'call__todo--err' }
+  if (stato === 'analyzing') return { testo: t('call.in_analisi'), classe: '' }
   if (s.n_da_confermare > 0) {
-    return { testo: `${s.n_da_confermare} da confermare`, classe: 'call__todo--now num' }
+    return {
+      testo: t('call.n_da_confermare', { n: s.n_da_confermare }),
+      classe: 'call__todo--now num',
+    }
   }
-  if (s.n_task > 0) return { testo: `${s.n_task} task`, classe: 'num' }
+  if (s.n_task > 0) return { testo: t('call.n_task', { n: s.n_task }), classe: 'num' }
   // Registrata e non ancora analizzata: qui lo stato **e'** l'informazione,
   // perche' nomina una cosa da fare. Diverso da «analizzata», che nomina una
   // cosa gia' successa e che si legge gia' dal conteggio delle task.
-  if (stato === 'recorded') return { testo: 'da analizzare', classe: '' }
-  return { testo: 'nessun impegno', classe: '' }
+  if (stato === 'recorded') return { testo: t('call.da_analizzare'), classe: '' }
+  return { testo: t('call.nessun_impegno'), classe: '' }
 }
 
 export function ElencoCall(props: {
@@ -48,12 +56,13 @@ export function ElencoCall(props: {
   /** clic sul `›` del binario: richiude il pannello prove e riapre l'elenco. */
   onRiapri: () => void
 }) {
+  const t = useT()
   const { sessioni, sessioneVista, sessioneCorrente, compatta, onApri, onRiapri } = props
 
   if (compatta) {
     return (
       <aside className="calls calls--rail">
-        <button className="btn btn--icon" aria-label="Riapri elenco call" onClick={onRiapri}>
+        <button className="btn btn--icon" aria-label={t('call.sezione')} onClick={onRiapri}>
           ›
         </button>
         {sessioni.map((s) => (
@@ -74,11 +83,11 @@ export function ElencoCall(props: {
       <aside className="calls">
         <div className="calls__head">
           <span className="thread" />
-          <span className="label">Call</span>
+          <span className="label">{t('call.sezione')}</span>
         </div>
         <div className="calls__vuoto">
-          <p>Nessuna call registrata.</p>
-          <p className="calls__vuoto-nota">Le registrazioni restano su questo computer.</p>
+          <p>{t('call.vuoto')}</p>
+          <p className="calls__vuoto-nota">{t('call.vuoto_nota')}</p>
         </div>
       </aside>
     )
@@ -88,12 +97,12 @@ export function ElencoCall(props: {
     <aside className="calls">
       <div className="calls__head">
         <span className="thread" />
-        <span className="label">Call</span>
+        <span className="label">{t('call.sezione')}</span>
         <span className="calls__count num">{sessioni.length}</span>
       </div>
       <div className="calls__list">
         {sessioni.map((s) => {
-          const { testo, classe } = codaCall(s, s.stato)
+          const { testo, classe } = codaCall(s, s.stato, t)
           return (
             <button
               key={s.id}
@@ -102,7 +111,7 @@ export function ElencoCall(props: {
               }`}
               onClick={() => onApri(s.id)}
             >
-              <span className="call__title">{s.titolo || `Call #${s.id}`}</span>
+              <span className="call__title">{s.titolo || t('call.senza_titolo', { n: s.id })}</span>
               <span className="call__meta">
                 <span className="num">{giornoBreve(s.started_at)}</span>
                 <span className="call__sep">·</span>
@@ -110,7 +119,7 @@ export function ElencoCall(props: {
               </span>
               <span className="call__foot">
                 <span className={`call__client${s.cliente ? '' : ' is-none'}`}>
-                  {s.cliente || 'Senza cliente'}
+                  {s.cliente || t('call.senza_cliente')}
                 </span>
                 <span className={`call__todo ${classe}`}>{testo}</span>
               </span>

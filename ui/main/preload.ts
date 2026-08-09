@@ -34,6 +34,8 @@ type Schermo = {
  * dipende da nessun processo.
  */
 const temaIniziale: string = ipcRenderer.sendSync('tema:iniziale')
+/** Idem per la lingua: serve prima che ci sia qualcosa da scrivere. */
+const linguaIniziale: string = ipcRenderer.sendSync('lingua:iniziale')
 
 // Applicato qui e non nel bundle React: la CSP delle pagine vieta gli script
 // inline (`script-src 'self'`), quindi non si puo' mettere una riga nel
@@ -59,6 +61,13 @@ const api = {
 
   /** Dice a tutte le finestre che il tema e' cambiato. Le altre lo applicano. */
   annunciaTema: (tema: string): Promise<void> => ipcRenderer.invoke('tema:annuncia', tema),
+
+  /** La lingua salvata ('sistema' | 'it' | 'en'), gia' disponibile all'avvio. */
+  linguaIniziale,
+
+  /** Dice a tutte le finestre che la lingua e' cambiata. */
+  annunciaLingua: (lingua: string): Promise<void> =>
+    ipcRenderer.invoke('lingua:annuncia', lingua),
 
   /** Stato del core: presente solo dopo che si e' avviato. Senza token, di proposito. */
   endpoint: (): Promise<{ port: number } | null> => ipcRenderer.invoke('core:endpoint'),
@@ -146,6 +155,7 @@ const api = {
       'scorciatoie:stato',
       'schermi:cambiati',
       'tema:cambiato',
+      'lingua:cambiata',
     ]
     if (!consentiti.includes(canale)) {
       throw new Error(`Canale non consentito: ${canale}`)

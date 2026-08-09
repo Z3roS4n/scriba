@@ -21,6 +21,7 @@ import { Archivio } from './Archivio'
 import { useSchermi } from './schermi'
 import { useTema } from './tema'
 import { scorciatoiaLeggibile, type Cliente, type DbDanneggiato, type EventoCore, type Scatto, type Segmento, type Sessione, type Task } from './tipi'
+import { ContestoLingua, useLingua } from './lingua'
 
 interface Avviso {
   testo: string
@@ -724,8 +725,21 @@ function App() {
   )
 }
 
+/**
+ * La lingua avvolge tutto l'albero. Un contesto e non una variabile di modulo:
+ * i componenti sotto `memo` non si ridisegnerebbero al cambio, perché le loro
+ * prop non cambiano — e una schermata che resta nella lingua di prima è il
+ * modo in cui una traduzione si dimentica un pezzo senza che nessuno lo veda.
+ */
+function ConLingua({ children }: { children: React.ReactNode }) {
+  const { risolta } = useLingua()
+  return <ContestoLingua.Provider value={risolta}>{children}</ContestoLingua.Provider>
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ConLingua>
+      <App />
+    </ConLingua>
   </StrictMode>,
 )

@@ -15,6 +15,7 @@ import { useSchermi } from './schermi'
 import { useTema } from './tema'
 import type { Impostazioni, Traccia } from './tipi'
 import { scorciatoiaLeggibile, tempo } from './tipi'
+import { ContestoLingua, useLingua } from './lingua'
 
 interface Riga {
   chiave: string
@@ -271,4 +272,19 @@ function App() {
   )
 }
 
-createRoot(document.getElementById('root')!).render(<App />)
+/**
+ * La lingua avvolge tutto l'albero. Un contesto e non una variabile di modulo:
+ * i componenti sotto `memo` non si ridisegnerebbero al cambio, perché le loro
+ * prop non cambiano — e una schermata che resta nella lingua di prima è il
+ * modo in cui una traduzione si dimentica un pezzo senza che nessuno lo veda.
+ */
+function ConLingua({ children }: { children: React.ReactNode }) {
+  const { risolta } = useLingua()
+  return <ContestoLingua.Provider value={risolta}>{children}</ContestoLingua.Provider>
+}
+
+createRoot(document.getElementById('root')!).render(
+  <ConLingua>
+    <App />
+  </ConLingua>,
+)

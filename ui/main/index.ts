@@ -110,6 +110,22 @@ let cartellaExportScelta: string | null = null
  * colore di fondo va deciso al momento della creazione della finestra, non
  * dopo.
  */
+/**
+ * La lingua dell'interfaccia salvata su disco.
+ *
+ * Stessa strada del tema, e per lo stesso motivo: il preload la chiede prima
+ * che il core sia partito, quindi non puo' passare da `GET /settings`.
+ */
+function linguaSalvata(): string {
+  try {
+    const dati = JSON.parse(readFileSync(join(DATA_DIR, 'settings.json'), 'utf-8'))
+    const lingua = dati?.interfaccia?.lingua
+    return lingua === 'it' || lingua === 'en' ? lingua : 'sistema'
+  } catch {
+    return 'sistema'
+  }
+}
+
 function temaSalvato(): string {
   try {
     const dati = JSON.parse(readFileSync(join(DATA_DIR, 'settings.json'), 'utf-8'))
@@ -602,6 +618,16 @@ function registerIpc(): void {
   // li' non servirebbe a niente perche' non c'e' ancora niente da dipingere.
   ipcMain.on('tema:iniziale', (evento) => {
     evento.returnValue = temaSalvato()
+  })
+
+  ipcMain.on('lingua:iniziale', (evento) => {
+    evento.returnValue = linguaSalvata()
+  })
+
+  ipcMain.handle('lingua:annuncia', (_evento, lingua: string) => {
+    // Come per il tema: tre processi, e una finestra in inglese accanto a una
+    // in italiano e' peggio che non poter scegliere.
+    trasmettiATutte('lingua:cambiata', lingua)
   })
 
   ipcMain.handle('tema:annuncia', (_evento, tema: string) => {
