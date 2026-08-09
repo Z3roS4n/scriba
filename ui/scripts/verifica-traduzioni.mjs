@@ -60,8 +60,28 @@ const ORIGINI = {
   'db2.': 'ui/renderer/impostazioni/DatabaseRemoto.tsx',
   'dat2.': 'ui/renderer/impostazioni/Dati.tsx',
   'ntipo.': 'ui/renderer/impostazioni/Notion.tsx',
+  'cli2.': 'ui/renderer/impostazioni/Clienti.tsx',
+  'ril2.': 'ui/renderer/impostazioni/Rilevamento.tsx',
+  // Queste due vengono dal core: erano frasi scritte in `detect/call.py` e
+  // mostrate cosi' come sono. Il confronto vale lo stesso — anzi, vale di
+  // piu': è la traversata più facile da fare a memoria.
+  'ril_esito.': 'core/scriba_core/detect/call.py',
+  'ril_perche.': 'core/scriba_core/detect/call.py',
   'ril2.': 'ui/renderer/impostazioni/Rilevamento.tsx',
 }
+
+/**
+ * Frasi montate da pezzi che nel sorgente stavano separati, e che verbatim non
+ * sono mai esistite. L'elenco è esplicito e corto apposta: la regola generale
+ * («ha un segnaposto, quindi è composta») copre quasi tutto, e per il resto è
+ * meglio una riga scritta a mano che si legge, di una regola più larga che
+ * lascia passare anche le riscritture vere.
+ */
+const COMPOSTE = new Set([
+  // `microfono {p.picco > 0 ? … : 'muto'}`: la parola stava fra i tag, lo
+  // stato dentro l'espressione. In inglese l'una senza l'altra non si traduce.
+  'ril2.mic_muto',
+])
 
 /** Il commit da cui parte il ramo: prima di qualunque traduzione. */
 const BASE = execSync('git merge-base HEAD main', { encoding: 'utf8' }).trim()
@@ -70,11 +90,23 @@ const catalogo = readFileSync('renderer/lingua.ts', 'utf8')
 // Solo il blocco italiano: l'inglese non deve ritrovarsi da nessuna parte.
 const italiano = catalogo.slice(0, catalogo.indexOf('const en:'))
 
-const voci = [...italiano.matchAll(/'([a-z]+\.[a-z_0-9]+)':\s*\n?\s*'((?:[^'\\]|\\.)*)'/g)].map(
+// La chiave può avere cifre e trattini bassi da entrambe le parti del punto.
+// Con `[a-z]+` a sinistra questa espressione saltava in silenzio ogni prefisso
+// numerato — `cli2.`, `db2.`, `ril2.`, `tra2.` — cioè quasi tutte le schermate
+// tradotte per seconde: il cancello contava, diceva un numero rassicurante, e
+// quelle non le guardava nessuno.
+const voci = [...italiano.matchAll(/'([a-z][a-z_0-9]*\.[a-z_0-9]+)':\s*\n?\s*'((?:[^'\\]|\\.)*)'/g)].map(
   (m) => [m[1], m[2].replace(/\\'/g, "'")],
 )
 
-const spazi = (s) => s.replace(/\s+/g, ' ').trim()
+// Oltre agli spazi si tolgono le giunzioni fra letterali adiacenti: in Python
+// una frase lunga si scrive `"prima met… " "seconda metà"`, e i due apici in
+// mezzo sono il modo in cui il linguaggio dice «continua», non testo.
+const spazi = (s) =>
+  s
+    .replace(/"\s*"/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
 const sorgenti = new Map()
 for (const [prefisso, file] of Object.entries(ORIGINI)) {
   try {
@@ -97,7 +129,7 @@ for (const [chiave, valore] of voci) {
   // Le stringhe con segnaposto sono COMPOSTE, non spostate: `{n} call` nasce
   // da `{call.length} call` e verbatim non e mai esistita. Confrontarle
   // produrrebbe un rosso perpetuo, e un rosso perpetuo si smette di leggere.
-  if (valore.includes('{')) continue
+  if (valore.includes('{') || COMPOSTE.has(chiave)) continue
   controllate++
   if (!sorgenti.get(prefisso).includes(spazi(valore))) perse.push(`${chiave} — ${spazi(valore).slice(0, 64)}`)
 }

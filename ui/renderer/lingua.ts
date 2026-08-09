@@ -892,6 +892,92 @@ const it = {
     'Non si torna indietro. Scrivi {parola} per confermare.',
   'dat2.parola':
     'ELIMINA',
+
+  // --- clienti, dentro le espressioni --------
+  'cli2.mai':
+    'mai',
+  'cli2.ultima':
+    'ultima:',
+  'cli2.aggiunto':
+    '{n} aggiunto',
+  'cli2.aggiunti':
+    '{n} aggiunti',
+  'cli2.presente':
+    '{n} già presente',
+  'cli2.presenti':
+    '{n} già presenti',
+  'cli2.scartata':
+    '{n} riga senza nome',
+  'cli2.scartate':
+    '{n} righe senza nome',
+  'cli2.niente':
+    'niente da aggiungere',
+  'cli2.nome_vuoto':
+    'Il nome non può essere vuoto.',
+  'cli2.nome_non_cambiato':
+    'Nome non cambiato: è vuoto, oppure è già di un altro cliente.',
+  'cli2.nessun_nome_nel_file':
+    'Nessun nome trovato nel file: serve almeno una colonna con i nomi.',
+  'cli2.eliminare_con_call':
+    'Eliminare «{nome}»? Le sue {n} call restano, ma senza cliente.',
+  'cli2.eliminare':
+    'Eliminare «{nome}»?',
+
+  // --- rilevamento, dentro le espressioni --------
+  'ril_esito.riunione':
+    'riunione',
+  'ril_esito.in_conferma':
+    'in conferma',
+  'ril_esito.gia_proposta':
+    'già proposta',
+  'ril_esito.in_attesa':
+    'in attesa',
+  'ril_esito.escluso':
+    'escluso',
+  'ril_perche.ignorato':
+    'è nell'elenco dei processi da ignorare',
+  'ril_perche.sessione_vecchia':
+    'ha una sessione microfono aperta ma non ha mai dato segnale: sembra una sessione vecchia, non una registrazione in corso',
+  'ril_perche.senza_audio':
+    'usa il microfono ma non risulta riprodurre audio, né lui né un suo processo figlio: in una riunione qualcuno parla',
+  'ril_perche.gia_proposta':
+    'la proposta è già stata fatta per questa riunione',
+  'ril_perche.in_conferma':
+    'sembra una riunione: si aspetta che la situazione regga',
+  'ril_perche.riunione':
+    'microfono in uso e audio in riproduzione da abbastanza tempo',
+  'ril2.in_valutazione':
+    'in valutazione',
+  'ril2.ancora_s':
+    ' · ancora {s}s',
+  'ril2.mic_attivo':
+    'microfono attivo ({picco})',
+  'ril2.mic_muto':
+    'microfono muto',
+  'ril2.riproduce':
+    'riproduce audio',
+  'ril2.riproduce_figlio':
+    'riproduce (da un processo figlio)',
+  'ril2.non_riproduce':
+    'non riproduce',
+  'ril2.sonda_attiva':
+    'Sonda audio attiva',
+  'ril2.sonda_spenta':
+    'Sonda audio non attiva',
+  'ril2.non_in_ascolto':
+    'Rilevamento non in ascolto',
+  'ril2.ultima_lettura':
+    'ultima lettura {s}s fa',
+  'ril2.conferma_dopo':
+    'conferma dopo {s}s',
+  'ril2.ripartenze':
+    '{n} ripartenze',
+  'ril2.rinunciato':
+    'La sonda audio non è riuscita a restare in piedi e il rilevamento si è sospeso: fino al prossimo riavvio di Scriba nessuna riunione verrà proposta.',
+  'ril2.ultimo_motivo':
+    'Ultimo motivo: {m}',
+  'ril2.sonda_zitta':
+    'L'ultima lettura è di {s}s fa, e ne dovrebbe arrivare una ogni {ogni}s: la sonda ha smesso di riferire.',
 } as const
 
 export type Chiave = keyof typeof it
@@ -1705,6 +1791,90 @@ const en: Record<Chiave, string> = {
     'There is no going back. Type {parola} to confirm.',
   'dat2.parola':
     'DELETE',
+
+  'cli2.mai':
+    'never',
+  'cli2.ultima':
+    'last:',
+  'cli2.aggiunto':
+    '{n} added',
+  'cli2.aggiunti':
+    '{n} added',
+  'cli2.presente':
+    '{n} already there',
+  'cli2.presenti':
+    '{n} already there',
+  'cli2.scartata':
+    '{n} row with no name',
+  'cli2.scartate':
+    '{n} rows with no name',
+  'cli2.niente':
+    'nothing to add',
+  'cli2.nome_vuoto':
+    'The name cannot be empty.',
+  'cli2.nome_non_cambiato':
+    'Name unchanged: it is empty, or it already belongs to another client.',
+  'cli2.nessun_nome_nel_file':
+    'No name found in the file: it needs at least one column with the names.',
+  'cli2.eliminare_con_call':
+    'Delete “{nome}”? Their {n} calls stay, but with no client.',
+  'cli2.eliminare':
+    'Delete “{nome}”?',
+
+  'ril_esito.riunione':
+    'meeting',
+  'ril_esito.in_conferma':
+    'confirming',
+  'ril_esito.gia_proposta':
+    'already proposed',
+  'ril_esito.in_attesa':
+    'waiting',
+  'ril_esito.escluso':
+    'excluded',
+  'ril_perche.ignorato':
+    'it is in the list of processes to ignore',
+  'ril_perche.sessione_vecchia':
+    'it has a microphone session open but has never given a signal: it looks like an old session, not a recording in progress',
+  'ril_perche.senza_audio':
+    'it uses the microphone but does not seem to be playing audio, neither it nor a child process: in a meeting somebody talks',
+  'ril_perche.gia_proposta':
+    'the offer has already been made for this meeting',
+  'ril_perche.in_conferma':
+    'it looks like a meeting: waiting to see whether it holds',
+  'ril_perche.riunione':
+    'microphone in use and audio playing for long enough',
+  'ril2.in_valutazione':
+    'being judged',
+  'ril2.ancora_s':
+    ' · {s}s to go',
+  'ril2.mic_attivo':
+    'microphone active ({picco})',
+  'ril2.mic_muto':
+    'microphone silent',
+  'ril2.riproduce':
+    'playing audio',
+  'ril2.riproduce_figlio':
+    'playing (from a child process)',
+  'ril2.non_riproduce':
+    'not playing',
+  'ril2.sonda_attiva':
+    'Audio probe running',
+  'ril2.sonda_spenta':
+    'Audio probe not running',
+  'ril2.non_in_ascolto':
+    'Detection not listening',
+  'ril2.ultima_lettura':
+    'last reading {s}s ago',
+  'ril2.conferma_dopo':
+    'confirms after {s}s',
+  'ril2.ripartenze':
+    '{n} restarts',
+  'ril2.rinunciato':
+    'The audio probe could not stay up and detection has suspended itself: until Scriba is restarted no meeting will be offered.',
+  'ril2.ultimo_motivo':
+    'Last reason: {m}',
+  'ril2.sonda_zitta':
+    'The last reading is {s}s old, and one should arrive every {ogni}s: the probe has stopped reporting.',
 }
 
 const CATALOGHI = { it, en } as const

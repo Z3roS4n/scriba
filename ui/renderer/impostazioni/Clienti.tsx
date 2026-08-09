@@ -14,22 +14,23 @@
 import { useCallback, useRef, useState } from 'react'
 
 import type { Cliente, EsitoImport } from '../tipi'
-import { useT } from '../lingua'
+import { useLocale, useT, type Traduci } from '../lingua'
 
 /** «14 ago 2026». Le call qui si contano, non si aprono: basta il giorno. */
-function quando(ms: number | null): string {
-  if (ms == null) return 'mai'
+function quando(ms: number | null, t: Traduci, locale: string): string {
+  if (ms == null) return t('cli2.mai')
   return new Date(ms)
-    .toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })
+    .toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
     .replace('.', '')
 }
 
-function riepilogoImport(e: EsitoImport): string {
+function riepilogoImport(e: EsitoImport, t: Traduci): string {
   const pezzi: string[] = []
-  if (e.creati) pezzi.push(`${e.creati} ${e.creati === 1 ? 'aggiunto' : 'aggiunti'}`)
-  if (e.gia_presenti) pezzi.push(`${e.gia_presenti} ${e.gia_presenti === 1 ? 'già presente' : 'già presenti'}`)
-  if (e.scartati) pezzi.push(`${e.scartati} ${e.scartati === 1 ? 'riga senza nome' : 'righe senza nome'}`)
-  return pezzi.length ? pezzi.join(', ') : 'niente da aggiungere'
+  if (e.creati) pezzi.push(t(e.creati === 1 ? 'cli2.aggiunto' : 'cli2.aggiunti', { n: e.creati }))
+  if (e.gia_presenti)
+    pezzi.push(t(e.gia_presenti === 1 ? 'cli2.presente' : 'cli2.presenti', { n: e.gia_presenti }))
+  if (e.scartati) pezzi.push(t(e.scartati === 1 ? 'cli2.scartata' : 'cli2.scartate', { n: e.scartati }))
+  return pezzi.length ? pezzi.join(', ') : t('cli2.niente')
 }
 
 export function SezioneClienti({
@@ -40,6 +41,7 @@ export function SezioneClienti({
   onRicarica: () => void
 }) {
   const t = useT()
+  const locale = useLocale()
   const [nuovo, setNuovo] = useState('')
   const [errore, setErrore] = useState<string | null>(null)
   const [esito, setEsito] = useState<string | null>(null)
@@ -52,7 +54,7 @@ export function SezioneClienti({
     setEsito(null)
     const r = await window.scriba.post<{ id: number }>('/clienti', { nome: nuovo })
     if (!r.ok) {
-      setErrore('Il nome non può essere vuoto.')
+      setErrore(t('cli2.nome_vuoto'))
       return
     }
     setNuovo('')
@@ -64,7 +66,7 @@ export function SezioneClienti({
       setErrore(null)
       const r = await window.scriba.patch(`/clienti/${id}`, { nome: bozza })
       if (!r.ok) {
-        setErrore('Nome non cambiato: è vuoto, oppure è già di un altro cliente.')
+        setErrore(t('cli2.nome_non_cambiato'))
         return
       }
       setInModifica(null)
@@ -87,8 +89,8 @@ export function SezioneClienti({
       // deve chiedersi se si sta portando via il lavoro.
       const avviso =
         c.n_call > 0
-          ? `Eliminare «${c.nome}»? Le sue ${c.n_call} call restano, ma senza cliente.`
-          : `Eliminare «${c.nome}»?`
+          ? t('cli2.eliminare_con_call', { nome: c.nome, n: c.n_call })
+          : t('cli2.eliminare', { nome: c.nome })
       if (!window.confirm(avviso)) return
       await window.scriba.post(`/clienti/${c.id}/elimina`)
       onRicarica()
@@ -103,10 +105,10 @@ export function SezioneClienti({
       const testo = await file.text()
       const r = await window.scriba.post<EsitoImport>('/clienti/importa', { csv: testo })
       if (!r.ok) {
-        setErrore('Nessun nome trovato nel file: serve almeno una colonna con i nomi.')
+        setErrore(t('cli2.nessun_nome_nel_file'))
         return
       }
-      setEsito(riepilogoImport(r.body))
+      setEsito(riepilogoImport(r.body, t))
       onRicarica()
     },
     [onRicarica],
@@ -203,7 +205,7 @@ export function SezioneClienti({
                     <span className="cli__meta">
                       {c.n_call} {c.n_call === 1 ? 'call' : 'call'}
                       <span>·</span>
-                      ultima: {quando(c.ultima_call)}
+                      {t('cli2.ultima')} {quando(c.ultima_call, t, locale)}
                       {c.archiviato ? <span> {t('cli.archiviato')}</span> : null}
                     </span>
                     <button

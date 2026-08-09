@@ -15,35 +15,37 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import type { DiagnosticaRilevamento, Impostazioni, ProcessoVisto } from '../tipi'
-import { useT } from '../lingua'
-// gia importato
+import { etichettaValore, useT } from '../lingua'
 
 /** Il colore dell'esito. Solo «riunione» è verde: il resto è informazione. */
 const CLASSE_ESITO: Record<string, string> = {
   riunione: 'vis__esito vis__esito--ok',
-  'in conferma': 'vis__esito vis__esito--attesa',
-  'già proposta': 'vis__esito vis__esito--ok',
+  in_conferma: 'vis__esito vis__esito--attesa',
+  gia_proposta: 'vis__esito vis__esito--ok',
 }
 
 function Processo({ p }: { p: ProcessoVisto }) {
+  const t = useT()
   return (
     <div className="vis__riga">
       <span className="vis__nome">{p.processo}</span>
       <span className="vis__pid">pid {p.pid}</span>
       <span className={CLASSE_ESITO[p.esito ?? ''] ?? 'vis__esito'}>
-        {p.esito ?? 'in valutazione'}
-        {p.mancano_s != null && ` · ancora ${p.mancano_s}s`}
+        {p.esito ? etichettaValore(t, 'ril_esito', p.esito) : t('ril2.in_valutazione')}
+        {p.mancano_s != null && t('ril2.ancora_s', { s: p.mancano_s })}
       </span>
       <span className="vis__segnale">
-        microfono {p.picco > 0 ? `attivo (${p.picco.toFixed(3)})` : 'muto'}
+        {p.picco > 0 ? t('ril2.mic_attivo', { picco: p.picco.toFixed(3) }) : t('ril2.mic_muto')}
         {' · '}
-        {p.riproduce
-          ? 'riproduce audio'
-          : p.riproduce_un_figlio
-            ? 'riproduce (da un processo figlio)'
-            : 'non riproduce'}
+        {t(
+          p.riproduce
+            ? 'ril2.riproduce'
+            : p.riproduce_un_figlio
+              ? 'ril2.riproduce_figlio'
+              : 'ril2.non_riproduce',
+        )}
       </span>
-      {p.perche && <span className="vis__perche">{p.perche}</span>}
+      {p.perche && <span className="vis__perche">{etichettaValore(t, 'ril_perche', p.perche)}</span>}
     </div>
   )
 }
@@ -109,26 +111,25 @@ function Diagnostica() {
           <div className="vis__stato">
             <span>
               {d.sonda?.viva
-                ? 'Sonda audio attiva'
+                ? t('ril2.sonda_attiva')
                 : d.in_ascolto
-                  ? 'Sonda audio non attiva'
-                  : 'Rilevamento non in ascolto'}
+                  ? t('ril2.sonda_spenta')
+                  : t('ril2.non_in_ascolto')}
             </span>
             {d.sonda?.ultima_lettura_fa_s != null && (
-              <span>ultima lettura {d.sonda.ultima_lettura_fa_s}s fa</span>
+              <span>{t('ril2.ultima_lettura', { s: d.sonda.ultima_lettura_fa_s })}</span>
             )}
-            {d.conferma_s != null && <span>conferma dopo {d.conferma_s}s</span>}
+            {d.conferma_s != null && <span>{t('ril2.conferma_dopo', { s: d.conferma_s })}</span>}
             {d.sonda != null && d.sonda.ripartenze > 0 && (
-              <span>{d.sonda.ripartenze} ripartenze</span>
+              <span>{t('ril2.ripartenze', { n: d.sonda.ripartenze })}</span>
             )}
           </div>
 
           {d.sonda?.rinunciato && (
             <div className="alert alert--inline">
               <p>
-                La sonda audio non è riuscita a restare in piedi e il rilevamento si è sospeso:
-                fino al prossimo riavvio di Scriba nessuna riunione verrà proposta.
-                {d.sonda.ultimo_motivo ? ` Ultimo motivo: ${d.sonda.ultimo_motivo}` : ''}
+                {t('ril2.rinunciato')}
+                {d.sonda.ultimo_motivo ? ` ${t('ril2.ultimo_motivo', { m: d.sonda.ultimo_motivo })}` : ''}
               </p>
             </div>
           )}
@@ -146,8 +147,7 @@ function Diagnostica() {
             d.sonda.ultima_lettura_fa_s != null &&
             d.sonda.ultima_lettura_fa_s > d.intervallo_s * 3 ? (
             <p className="vis__nota">
-              L'ultima lettura è di {d.sonda.ultima_lettura_fa_s}s fa, e ne dovrebbe arrivare una
-              ogni {d.intervallo_s}s: la sonda ha smesso di riferire.
+              {t('ril2.sonda_zitta', { s: d.sonda.ultima_lettura_fa_s, ogni: d.intervallo_s })}
             </p>
           ) : d.processi.length === 0 ? (
             <p className="vis__nota">
