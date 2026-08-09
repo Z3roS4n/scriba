@@ -7,6 +7,59 @@ Ogni voce è divisa in tre sezioni, ed è la più alta presente a decidere lo
 scatto di versione: **Cambiamenti che rompono** (maggiore), **Funzioni nuove**
 (minore), **Correzioni** (patch). Una sezione senza voci si lascia fuori.
 
+## 1.0.0 — 9 agosto 2026
+
+### Cambiamenti che rompono
+
+- **L'interfaccia è rifatta da capo.** Scriba adotta il design system di M's
+  Works: nuovo carattere (Montserrat, dentro l'installer, funziona offline),
+  nuova palette, e soprattutto una scala unica per i controlli — un pulsante
+  ha la stessa misura ovunque, e un campo di testo prende l'altezza del
+  pulsante che gli sta accanto. Niente si perde per strada, ma **diverse cose
+  hanno cambiato posto**, e le più notevoli sono queste:
+  - L'elenco delle call non scrive più lo stato («analizzata», «registrata»)
+    su ogni riga. Al suo posto dice quello che cambia una decisione: quante
+    task aspettano una conferma, quante ce ne sono, o che l'analisi non è
+    riuscita. Il cliente sta sulla stessa riga, a sinistra.
+  - Nel pannello dell'analisi, «Rifai la trascrizione» e le voci distinte sono
+    scese in fondo: sono lavori che si fanno sulla trascrizione a call finita,
+    non comandi dell'analisi, e in testa facevano aprire il pannello su tre
+    controlli prima di qualsiasi contenuto.
+  - La piega delle righe riprese dall'altoparlante è passata dalla barra del
+    titolo alla prima riga della trascrizione, dove sono le righe di cui parla.
+  - La confidenza di una task si scrive **solo sotto 0,80**, dove cambia una
+    decisione. Stampata su ogni riga era una colonna di numeri che non
+    leggeva nessuno.
+  - «Passa in rassegna» compare solo sopra le cinque task da confermare. Sotto
+    quella soglia si lavora in riga, e il conteggio resta comunque.
+
+### Funzioni nuove
+
+- **La ricerca nell'archivio mostra la frase, non solo il titolo.** Cercando
+  una parola dentro il parlato, ogni risultato riporta il punto in cui è stata
+  detta, con la parola evidenziata. L'indice full-text c'era da sempre e
+  serviva solo a filtrare. Le righe riprese dall'altoparlante non vengono mai
+  citate: sarebbero le tue stesse parole restituite come se le avesse dette
+  l'altro.
+- **Gli screenshot si vedono nella trascrizione.** Dove prima c'era un
+  rettangolo con scritto «screenshot 1280×760» adesso c'è la schermata. Il
+  clic la apre a dimensione piena come prima; se il file è stato spostato o
+  cancellato, la riga lo dice invece di mostrare un'immagine rotta.
+
+### Correzioni
+
+- **Le righe riprese dall'altoparlante non sembrano più tue.** Arrivano dal
+  microfono, quindi prendevano il filetto e la fascia con cui si riconosce
+  «Io» a colpo d'occhio — mentre l'etichetta accanto diceva «ripresa». A
+  guardarla era tua, a leggerla no.
+- **I menù a tendina non aprono più una finestra di sistema.** Erano `select`
+  nativi: su Windows ignorano il tema dell'applicazione e aprono un menù
+  chiaro sopra una finestra scura, con un carattere che non è quello
+  dell'interfaccia.
+- **I campi di testo usano il carattere dell'interfaccia.** Un campo non lo
+  eredita da solo, e nessuno gliel'aveva detto: ogni casella rendeva nel
+  carattere predefinito del browser.
+
 ## 0.6.3 — 9 agosto 2026
 
 ### Correzioni

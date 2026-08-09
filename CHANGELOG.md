@@ -7,6 +7,55 @@ Each entry is split into three sections, and the highest one present decides
 the version bump: **Breaking changes** (major), **New features** (minor),
 **Fixes** (patch). A section with nothing in it is left out.
 
+## 1.0.0 — 9 August 2026
+
+### Breaking changes
+
+- **The interface has been rebuilt.** Scriba adopts M's Works' design system:
+  a new typeface (Montserrat, inside the installer, works offline), a new
+  palette, and above all one scale for controls — a button is the same size
+  everywhere, and a text field takes the height of the button beside it.
+  Nothing is lost, but **several things have moved**, the notable ones being:
+  - The call list no longer prints the state ("analysed", "recorded") on every
+    row. It now says what changes a decision: how many tasks are waiting for a
+    confirmation, how many there are, or that the analysis failed. The client
+    sits on the same row, on the left.
+  - In the analysis panel, "Redo the transcription" and the distinct voices
+    moved to the bottom: they are work done on the transcript after the call,
+    not commands of the analysis, and at the top they made the panel open on
+    three controls before any content.
+  - The fold for lines picked up from the speakers moved from the title bar to
+    the first line of the transcript, where the lines it talks about are.
+  - A task's confidence is printed **only below 0.80**, where it changes a
+    decision. On every row it was a column of numbers nobody read.
+  - "Review them" appears only above five tasks to confirm. Below that you
+    work in place, and the count stays either way.
+
+### New features
+
+- **Archive search shows the sentence, not just the title.** Searching for a
+  word inside what was said, every result carries the passage where it was
+  said, with the word highlighted. The full-text index had always been there
+  and was only used to filter. Lines picked up from the speakers are never
+  quoted: they would be your own words handed back as if the other person had
+  said them.
+- **Screenshots are visible in the transcript.** Where there was a rectangle
+  reading "screenshot 1280×760" there is now the screen itself. Clicking still
+  opens it full size; if the file has been moved or deleted, the row says so
+  instead of showing a broken image.
+
+### Fixes
+
+- **Lines picked up from the speakers no longer look like yours.** They arrive
+  on the microphone track, so they took the rule and the band that mark "me"
+  at a glance — while the label beside them said "picked up". It looked like
+  yours and read as not.
+- **Dropdowns no longer open a system window.** They were native `select`
+  elements: on Windows those ignore the app's theme and open a light menu over
+  a dark window, in a typeface that is not the interface's.
+- **Text fields use the interface typeface.** A field does not inherit it, and
+  nobody had told them: every box rendered in the browser's default font.
+
 ## 0.6.3 — 9 August 2026
 
 ### Fixes
