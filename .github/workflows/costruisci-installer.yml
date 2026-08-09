@@ -112,6 +112,13 @@ jobs:
           # Il timbro dentro il pacchetto, letto dall'asar: e' la prova che la
           # build sa da che commit viene, non un'affermazione del workflow.
           node ui/scripts/leggi-timbro.mjs ui/release/win-unpacked/resources/app.asar
+          # E che dentro ci sia quello che serve a partire GIUSTA. `dist/` lo
+          # controlla gia' copia-risorse.mjs, ma fra `dist/` e l'asar c'e' il
+          # `files:` di electron-builder, e quel passaggio era dato per buono:
+          # un font copiato e non impacchettato produce la stessa cosa di un
+          # font mai copiato, cioe' un'applicazione che parte nel carattere di
+          # ripiego e sembra a posto (#81).
+          node ui/scripts/verifica-pacchetto.mjs ui/release/win-unpacked/resources/app.asar
 
       - uses: actions/upload-artifact@v4
         with:
