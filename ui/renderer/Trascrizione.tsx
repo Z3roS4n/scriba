@@ -189,7 +189,7 @@ const RigaVoceDaNominare = memo(function RigaVoceDaNominare({
       <input
         className="textfield textfield--sm"
         type="text"
-        placeholder="nome vero"
+        placeholder={t('tra.ph_nome_vero')}
         value={nome}
         disabled={salvando}
         onChange={(e) => setNome(e.target.value)}

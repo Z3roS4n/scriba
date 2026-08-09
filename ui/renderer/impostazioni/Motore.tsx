@@ -106,7 +106,7 @@ export function SezioneMotore({
                           type="password"
                           className="textfield textfield--sm"
                           style={{ width: 220 }}
-                          placeholder="Chiave API"
+                          placeholder={t('mot.ph_chiave')}
                           value={chiave}
                           autoFocus
                           onChange={(e) => setChiave(e.target.value)}

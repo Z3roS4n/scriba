@@ -76,7 +76,7 @@ export function ModaleConsenso(props: {
               ref={campoTitolo}
               type="text"
               value={titolo}
-              placeholder="Revisione sprint 24"
+              placeholder={t('dlg.esempio_titolo')}
               onChange={(e) => setTitolo(e.target.value)}
               // .textfield disegna già bordo, sfondo e padding: senza azzerare
               // quelli nativi dell'input comparirebbe una seconda cornice

@@ -600,7 +600,7 @@ function App() {
                 className="toolbar"
                 style={{ justifyContent: 'flex-end', padding: 'var(--sp-2)', borderBottom: '1px solid var(--line)' }}
               >
-                <button className="btn btn--icon" aria-label="Nascondi elenco call" onClick={() => setCallsForzate(false)}>
+                <button className="btn btn--icon" aria-label={t('idx.nascondi_call')} onClick={() => setCallsForzate(false)}>
                   ‹
                 </button>
               </div>
@@ -617,7 +617,7 @@ function App() {
             className="toolbar"
             style={{ flexDirection: 'column', flex: 'none', padding: 'var(--sp-3) 0', borderRight: '1px solid var(--line)' }}
           >
-            <button className="btn btn--icon" aria-label="Mostra elenco call" onClick={() => setCallsForzate(true)}>
+            <button className="btn btn--icon" aria-label={t('idx.mostra_call')} onClick={() => setCallsForzate(true)}>
               ›
             </button>
           </div>
@@ -649,7 +649,7 @@ function App() {
                 className="toolbar"
                 style={{ justifyContent: 'flex-start', padding: 'var(--sp-2)', borderBottom: '1px solid var(--line)' }}
               >
-                <button className="btn btn--icon" aria-label="Nascondi pannello analisi" onClick={() => setAnalisiForzata(false)}>
+                <button className="btn btn--icon" aria-label={t('idx.nascondi_analisi')} onClick={() => setAnalisiForzata(false)}>
                   ›
                 </button>
               </div>
@@ -666,7 +666,7 @@ function App() {
             className="toolbar"
             style={{ flexDirection: 'column', flex: 'none', padding: 'var(--sp-3) 0', borderLeft: '1px solid var(--line)' }}
           >
-            <button className="btn btn--icon" aria-label="Mostra pannello analisi" onClick={() => setAnalisiForzata(true)}>
+            <button className="btn btn--icon" aria-label={t('idx.mostra_analisi')} onClick={() => setAnalisiForzata(true)}>
               ‹
             </button>
           </div>

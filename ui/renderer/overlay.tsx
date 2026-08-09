@@ -192,16 +192,16 @@ function App() {
               {/* Nella striscia ridotta resta un pulsante solo, sul principale:
                   sono 420 px, e riempirli di numeri toglierebbe spazio proprio
                   alla trascrizione, che è il motivo per cui la striscia esiste. */}
-              <button className="ovbtn ovbtn--icon" aria-label="Scatta" onClick={() => scatta()}>
+              <button className="ovbtn ovbtn--icon" aria-label={t('ovl.scatta')} onClick={() => scatta()}>
                 ◎
               </button>
-              <button className="ovbtn ovbtn--icon" aria-label="Ferma" onClick={ferma}>
+              <button className="ovbtn ovbtn--icon" aria-label={t('ovl.ferma')} onClick={ferma}>
                 ■
               </button>
-              <button className="ovbtn ovbtn--icon" aria-label="Ingrandisci la striscia" onClick={alternaRidotto}>
+              <button className="ovbtn ovbtn--icon" aria-label={t('ovl.ingrandisci')} onClick={alternaRidotto}>
                 ▢
               </button>
-              <button className="ovbtn ovbtn--icon" aria-label="Chiudi" onClick={nascondi}>
+              <button className="ovbtn ovbtn--icon" aria-label={t('ovl.chiudi')} onClick={nascondi}>
                 ✕
               </button>
             </>
@@ -221,17 +221,17 @@ function App() {
                     title={`${s.etichetta} — ${s.larghezza}×${s.altezza}${s.principale ? ' (principale)' : ''}`}
                     onClick={() => scatta(s.id)}
                   >
-                    Scatta {i + 1}
+                    {t('ovl.scatto_n', { n: i + 1 })}
                   </button>
                 ))
               )}
               <button className="ovbtn ovbtn--stop" onClick={ferma}>
                 {t('ovl.ferma')}
               </button>
-              <button className="ovbtn ovbtn--icon" aria-label="Riduci la striscia" onClick={alternaRidotto}>
+              <button className="ovbtn ovbtn--icon" aria-label={t('ovl.riduci')} onClick={alternaRidotto}>
                 ▢
               </button>
-              <button className="ovbtn ovbtn--icon" aria-label="Chiudi" onClick={nascondi}>
+              <button className="ovbtn ovbtn--icon" aria-label={t('ovl.chiudi')} onClick={nascondi}>
                 ✕
               </button>
             </>
@@ -241,7 +241,7 @@ function App() {
             <button className="ovbtn ovbtn--stop" onClick={apriPrincipale}>
               {t('ovl.registra')}
             </button>
-            <button className="ovbtn ovbtn--icon" aria-label="Chiudi" onClick={nascondi}>
+            <button className="ovbtn ovbtn--icon" aria-label={t('ovl.chiudi')} onClick={nascondi}>
               ✕
             </button>
           </>

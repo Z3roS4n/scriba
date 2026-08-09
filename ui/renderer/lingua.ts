@@ -690,6 +690,42 @@ const it = {
     'I nomi dell’anagrafica entrano nel glossario da soli, senza riscriverli qui.',
   'tra2.quanto':
     'Quanto insistere',
+
+  // --- attributi che si leggono ------------
+  'ovl.ingrandisci':
+    'Ingrandisci la striscia',
+  'ovl.riduci':
+    'Riduci la striscia',
+  'ovl.chiudi':
+    'Chiudi',
+  'ovl.scatto_n':
+    'Scatta {n}',
+  'idx.nascondi_call':
+    'Nascondi elenco call',
+  'idx.mostra_call':
+    'Mostra elenco call',
+  'idx.nascondi_analisi':
+    'Nascondi pannello analisi',
+  'idx.mostra_analisi':
+    'Mostra pannello analisi',
+  'rif.conferma_nota':
+    'Ripassa ogni riga con un modello più preciso, a cui la lingua si può imporre davvero: è la correzione per le frasi finite in un’altra lingua. Il testo di adesso resta salvato. Gira in locale, e puoi chiudere la finestra.',
+  'rif.avvia':
+    'Avvia',
+  'rif.annulla':
+    'Annulla',
+  'arch.includi_integrale':
+    'Includi la trascrizione integrale',
+  'dlg.esempio_titolo':
+    'Revisione sprint 24',
+  'cli.ph_nome':
+    'Nome',
+  'mot.ph_chiave':
+    'Chiave API',
+  'prv.chiudi':
+    'Chiudi le prove',
+  'tra.ph_nome_vero':
+    'nome vero',
 } as const
 
 export type Chiave = keyof typeof it
@@ -1306,6 +1342,41 @@ const en: Record<Chiave, string> = {
     'The names in your client list join the glossary by themselves, without retyping them here.',
   'tra2.quanto':
     'How hard to try',
+
+  'ovl.ingrandisci':
+    'Expand the strip',
+  'ovl.riduci':
+    'Shrink the strip',
+  'ovl.chiudi':
+    'Close',
+  'ovl.scatto_n':
+    'Capture {n}',
+  'idx.nascondi_call':
+    'Hide the call list',
+  'idx.mostra_call':
+    'Show the call list',
+  'idx.nascondi_analisi':
+    'Hide the analysis panel',
+  'idx.mostra_analisi':
+    'Show the analysis panel',
+  'rif.conferma_nota':
+    'It goes over every line with a more accurate model, one you can really impose a language on: it is the fix for sentences that end up in another language. The text you have now stays saved. It runs locally, and you can close the window.',
+  'rif.avvia':
+    'Start',
+  'rif.annulla':
+    'Cancel',
+  'arch.includi_integrale':
+    'Include the full transcript',
+  'dlg.esempio_titolo':
+    'Sprint 24 review',
+  'cli.ph_nome':
+    'Name',
+  'mot.ph_chiave':
+    'API key',
+  'prv.chiudi':
+    'Close the evidence',
+  'tra.ph_nome_vero':
+    'real name',
 }
 
 const CATALOGHI = { it, en } as const

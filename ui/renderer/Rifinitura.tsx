@@ -175,16 +175,14 @@ export function ControlloRifinitura({
           </div>
         </div>
         <p className="refine__n">
-          Ripassa ogni riga con un modello più preciso, a cui la lingua si può imporre davvero: è la
-          correzione per le frasi finite in un’altra lingua. Il testo di adesso resta salvato. Gira in
-          locale, e puoi chiudere la finestra.
+          {t('rif.conferma_nota')}
         </p>
         <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
           <button className="btn btn--primary btn--sm" onClick={avvia}>
-            Avvia
+            {t('rif.avvia')}
           </button>
           <button className="btn btn--sm" onClick={() => setConferma(false)}>
-            Annulla
+            {t('rif.annulla')}
           </button>
         </div>
       </div>

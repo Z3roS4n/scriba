@@ -127,7 +127,7 @@ export function SezioneClienti({
             className="textfield textfield--md"
             style={{ maxWidth: 220 }}
             value={nuovo}
-            placeholder="Nome"
+            placeholder={t('cli.ph_nome')}
             onChange={(e) => setNuovo(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') aggiungi()

@@ -36,7 +36,7 @@ export function PannelloProve({
       <div className="evidence__head">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span className="label">{t('prv.titolo')}</span>
-          <button className="btn--link" onClick={onChiudi} aria-label="Chiudi le prove">
+          <button className="btn--link" onClick={onChiudi} aria-label={t('prv.chiudi')}>
             ✕
           </button>
         </div>

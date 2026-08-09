@@ -41,6 +41,23 @@ const ORIGINI = {
   'dlg.': 'ui/renderer/Dialoghi.tsx',
   'pan.': 'ui/renderer/Analisi.tsx',
   'tra2.': 'ui/renderer/impostazioni/Trascrizione.tsx',
+  'ana.': 'ui/renderer/impostazioni/Analisi.tsx',
+  'asp.': 'ui/renderer/impostazioni/Aspetto.tsx',
+  'exp.': 'ui/renderer/impostazioni/Export.tsx',
+  'mod.': 'ui/renderer/impostazioni/Modelli.tsx',
+  'mot.': 'ui/renderer/impostazioni/Motore.tsx',
+  'sco.': 'ui/renderer/impostazioni/Scorciatoie.tsx',
+  'ntn2.': 'ui/renderer/impostazioni/Notion.tsx',
+  'not.': 'ui/renderer/NotaDiLavoro.tsx',
+  'prv.': 'ui/renderer/Prove.tsx',
+  'rif.': 'ui/renderer/Rifinitura.tsx',
+  'sel.': 'ui/renderer/Select.tsx',
+  'top.': 'ui/renderer/Topbar.tsx',
+  'tra.': 'ui/renderer/Trascrizione.tsx',
+  'idx.': 'ui/renderer/index.tsx',
+  'arc2.': 'ui/renderer/Archivio.tsx',
+  'ras2.': 'ui/renderer/Rassegna.tsx',
+  'ril2.': 'ui/renderer/impostazioni/Rilevamento.tsx',
 }
 
 /** Il commit da cui parte il ramo: prima di qualunque traduzione. */
@@ -66,10 +83,14 @@ for (const [prefisso, file] of Object.entries(ORIGINI)) {
 }
 
 let controllate = 0
+let scoperte = 0
 const perse = []
 for (const [chiave, valore] of voci) {
   const prefisso = Object.keys(ORIGINI).find((p) => chiave.startsWith(p))
-  if (!prefisso) continue
+  if (!prefisso) {
+    scoperte++
+    continue
+  }
   // Le stringhe con segnaposto sono COMPOSTE, non spostate: `{n} call` nasce
   // da `{call.length} call` e verbatim non e mai esistita. Confrontarle
   // produrrebbe un rosso perpetuo, e un rosso perpetuo si smette di leggere.
@@ -86,6 +107,11 @@ if (controllate === 0) {
 }
 
 console.log(`${controllate} voci italiane confrontate con il sorgente da cui vengono.`)
+// Quante restano fuori si dice ad alta voce: sono le etichette dei valori
+// salvati (`voce.`, `priorita.`, `stato.`) e i testi composti, che verbatim
+// nel sorgente non sono mai esistiti. Un cancello che non dice cosa NON
+// guarda si legge come se guardasse tutto.
+console.log(`${scoperte} senza origine dichiarata: etichette di valori salvati e testo composto.`)
 if (perse.length) {
   console.error(`\n${perse.length} NON si ritrovano — riscritte, o accoppiate alla chiave sbagliata:`)
   for (const p of perse) console.error('   ' + p)

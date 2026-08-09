@@ -66,7 +66,11 @@ function daLeggere(s) {
   const p = s.trim()
   if (p.length < 2) return false
   if (!/[A-Za-zÀ-ÿ]{2,}/.test(p)) return false
-  if (/^[a-z][a-z0-9_-]*$/.test(p)) return false // chiave, classe, id
+  // Chiave, classe, id — e i segnaposto che mostrano la FORMA di un valore:
+  // `ntn_…` è il prefisso dei token di Notion, e si scrive così in tutte le
+  // lingue. Tradurlo non vuol dire niente; contarlo lascia il metro fermo a
+  // uno per sempre, che è il modo migliore per smettere di guardarlo.
+  if (/^[a-z][a-z0-9_-]*…?$/.test(p)) return false
   if (/^[a-z]+:\/\//.test(p)) return false // url
   // Un nodo di testo JSX non contiene parentesi, uguali o punti e virgola.
   if (/[(){}\[\];=]/.test(p)) return false
@@ -76,7 +80,6 @@ function daLeggere(s) {
   // I nomi di tipo che compaiono nei generici. Elenco corto e dichiarato: e'
   // meno peggio di una regola furba che un giorno scarta un'etichetta vera.
   if (/^(Promise|Record|Array|Set|Map|Partial|Omit|Pick)$/.test(p)) return false
-  if (/(const|let|return|useState|function|import|export)/.test(p)) return false
   return true
 }
 

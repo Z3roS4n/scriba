@@ -129,7 +129,7 @@ function PannelloIa({ call }: { call: Sessione[] }) {
       <button
         className={`checkbox ${conTrascrizione ? 'is-on' : ''}`}
         onClick={() => setConTrascrizione((v) => !v)}
-        aria-label="Includi la trascrizione integrale"
+        aria-label={t('arch.includi_integrale')}
       >
         {conTrascrizione ? '✓' : ''}
       </button>
