@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Scriba — finestra principale, call analizzata (EN)</title>
+<!-- Montserrat viaggia DENTRO il pacchetto: quattro .woff2 (400/700/800/900,
+     subset latin, ~120 KB in tutto) in ui/renderer/font/. Qui, per la sola
+     anteprima fuori dall'app, arriva dal CDN del design system. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+<style>
+  /* Solo ponteggio dell'anteprima: non fa parte della schermata. */
+  body { display:block; padding:30px; overflow:auto; }
+  .win { margin-inline:auto; }
+</style>
+</head>
+<body>
+<!-- Stessa schermata con i testi dell'interfaccia in inglese.
+     La trascrizione, le citazioni e i titoli delle task restano in italiano:
+     la lingua dell'interfaccia e la lingua della call sono due assi
+     indipendenti, e questa pagina serve anche a farlo vedere. -->
+<div class="win" data-screen-label="Finestra principale — call analizzata">
+
+  <div class="topbar">
+    <div class="brand">Scriba</div>
+    <div class="status"><span class="sq sq--hollow"></span>Ready</div>
+    <div class="topbar__spacer"></div>
+    <div class="toolbar">
+      <button class="btn btn--quiet">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="miter"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>
+        Export
+      </button>
+      <button class="btn btn--quiet">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="miter"><rect width="20" height="5" x="2" y="3"></rect><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path><path d="M10 12h4"></path></svg>
+        Archive
+      </button>
+      <button class="btn btn--quiet btn--icon" title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="miter"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+      </button>
+      <button class="btn btn--rec">Record</button>
+    </div>
+    <div class="wincontrols">
+      <button aria-label="Minimise"><i class="wc-min"></i></button>
+      <button aria-label="Maximise"><i class="wc-max"></i></button>
+      <button aria-label="Close"><i class="wc-close"></i></button>
+    </div>
+  </div>
+
+  <div class="win__body">
+
+    <div class="calls">
+      <div class="calls__head">
+        <span class="thread"></span>
+        <span class="label">Calls</span>
+        <span class="calls__count num">24</span>
+      </div>
+      <div class="calls__list">
+        <button class="call is-selected">
+          <span class="call__title">Allineamento sprint 14</span>
+          <span class="call__meta"><span class="num">12 Nov</span><span class="call__sep">·</span><span class="num">47:12</span></span>
+          <span class="call__foot"><span class="call__client">Ferrotecnica Sud</span><span class="call__todo call__todo--now num">6 to confirm</span></span>
+        </button>
+        <button class="call">
+          <span class="call__title">Revisione preventivo impianto</span>
+          <span class="call__meta"><span class="num">11 Nov</span><span class="call__sep">·</span><span class="num">28:40</span></span>
+          <span class="call__foot"><span class="call__client">Ferrotecnica Sud</span><span class="call__todo num">7 tasks</span></span>
+        </button>
+        <button class="call">
+          <span class="call__title">Call #12</span>
+          <span class="call__meta"><span class="num">9 Nov</span><span class="call__sep">·</span><span class="num">1:04:38</span></span>
+          <span class="call__foot"><span class="call__client is-none">No client</span><span class="call__todo call__todo--err">failed</span></span>
+        </button>
+        <button class="call">
+          <span class="call__title">Colloquio — profilo backend</span>
+          <span class="call__meta"><span class="num">8 Nov</span><span class="call__sep">·</span><span class="num">52:03</span></span>
+          <span class="call__foot"><span class="call__client is-none">No client</span><span class="call__todo num">3 tasks</span></span>
+        </button>
+        <button class="call">
+          <span class="call__title">Passaggio di consegne CRM</span>
+          <span class="call__meta"><span class="num">6 Nov</span><span class="call__sep">·</span><span class="num">1:12:55</span></span>
+          <span class="call__foot"><span class="call__client">Metalgraf</span><span class="call__todo num">11 tasks</span></span>
+        </button>
+        <button class="call">
+          <span class="call__title">Call #9</span>
+          <span class="call__meta"><span class="num">5 Nov</span><span class="call__sep">·</span><span class="num">19:22</span></span>
+          <span class="call__foot"><span class="call__client">Metalgraf</span><span class="call__todo">not analysed</span></span>
+        </button>
+        <button class="call">
+          <span class="call__title">Punto settimanale interno</span>
+          <span class="call__meta"><span class="num">4 Nov</span><span class="call__sep">·</span><span class="num">33:47</span></span>
+          <span class="call__foot"><span class="call__client is-none">No client</span><span class="call__todo num">5 tasks</span></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="transcript">
+      <div class="transcript__head">
+        <h1 class="transcript__title">Allineamento sprint 14</h1>
+        <span class="transcript__meta num">47:12 · 312 lines · Italian</span>
+        <div class="legend">
+          <span><i></i>Me</span>
+          <span><i class="is-other"></i>Others</span>
+        </div>
+      </div>
+      <div class="transcript__body">
+
+        <div class="echo">
+          <button class="echo__toggle">
+            <span class="chev"></span>
+            <span><b class="num">14 lines</b> your mic caught from the speakers</span>
+            <span class="echo__hint">kept out of the summary, notes and exports</span>
+          </button>
+        </div>
+
+        <div class="line line--other">
+          <button class="line__t num">12:03</button>
+          <span class="line__who">Others</span>
+          <p class="line__text">Allora, sul render del catalogo: quello che abbiamo adesso fa una query per ogni riga, e con quattromila articoli il tempo di risposta va sopra i due secondi anche con la cache calda.</p>
+        </div>
+
+        <div class="line line--me">
+          <button class="line__t num">12:14</button>
+          <span class="line__who">Me</span>
+          <p class="line__text">Sì, l'ho visto ieri sui log. La cosa strana è che in staging non succede, e lì il dataset è lo stesso — quindi o è l'indice che manca in produzione oppure c'è qualcosa nel</p>
+        </div>
+
+        <div class="line line--other">
+          <button class="line__t num">12:31</button>
+          <span class="line__who">Others</span>
+          <p class="line__text">È l'indice. L'ho controllato stamattina: sulla colonna categoria non c'è. Lo aggiungiamo e rimisuriamo, ma non credo basti da solo, perché il problema vero resta il numero di query.</p>
+        </div>
+
+        <div class="line line--me">
+          <button class="line__t num">12:48</button>
+          <span class="line__who">Me</span>
+          <p class="line__text">Va bene. Facciamo così: prima l'indice, che è mezz'ora di lavoro, poi guardiamo i numeri e decidiamo se rifare il caricamento in blocco. Non ha senso riscrivere prima di misurare.</p>
+        </div>
+
+        <div class="line line--other is-cited">
+          <button class="line__t num">13:12</button>
+          <span class="line__who">Others</span>
+          <p class="line__text">Un'altra cosa: dovremmo preparare i mockup della dashboard per il cliente, perché nella call di giovedì ce li chiedono di sicuro e adesso non abbiamo niente da mostrare.</p>
+        </div>
+
+        <div class="shot">
+          <span class="shot__t num">13:20</span>
+          <div class="shot__frame">
+            <div class="shot__img"></div>
+            <div class="shot__cap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="miter" style="width:13px;height:13px;stroke-width:1.75"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+              Tempi di risposta, ultimi 7 giorni
+            </div>
+          </div>
+        </div>
+
+        <div class="line line--me">
+          <button class="line__t num">13:34</button>
+          <span class="line__who">Me</span>
+          <p class="line__text">Sui mockup, quanto siamo lontani? Perché se bisogna ripartire dalle wireframe è un conto, se invece c'è già qualcosa da rifinire in Figma allora si chiude in due giorni.</p>
+        </div>
+
+        <div class="line line--other">
+          <button class="line__t num">13:41</button>
+          <span class="line__who">Others</span>
+          <p class="line__text">La struttura c'è già. Manca tutta la parte dei filtri e gli stati vuoti, che poi sono quelli che il cliente guarda per primi. Direi due giorni pieni, tre se vogliamo anche la versione stretta.</p>
+        </div>
+
+        <div class="line line--other line--echo">
+          <button class="line__t num">13:44</button>
+          <span class="line__who">Others</span>
+          <p class="line__text"><span class="echo__tag">echo</span>…due giorni pieni, tre se vogliamo anche la versione stretta.</p>
+        </div>
+
+        <div class="line line--me">
+          <button class="line__t num">13:58</button>
+          <span class="line__who">Me</span>
+          <p class="line__text">Tre allora, e li mettiamo in calendario prima del ticket sul login, che tanto quello è mezza giornata e non blocca nessuno. Poi giovedì li portiamo già in una forma presentabile.</p>
+        </div>
+
+        <div class="line line--other">
+          <button class="line__t num">14:11</button>
+          <span class="line__who">Others</span>
+          <p class="line__text">Perfetto. Ultima cosa, poi chiudo: il preventivo aggiornato per l'impianto lo aspettano, e l'ultima volta avevamo detto che sarebbe partito entro la settimana scorsa.</p>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="side__head">
+        <div class="side__eyebrow">
+          <span class="thread"></span>
+          <span class="label">Analysis</span>
+          <div class="side__actions">
+            <button class="btn btn--sm">Re-analyse</button>
+          </div>
+        </div>
+        <div class="side__meta">
+          <b>API Anthropic</b> · claude-sonnet-4 · <span class="num">$0.08</span> · <span class="num">2 min 14 s</span>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab">Summary</button>
+        <button class="tab">Highlights<span class="tab__n num">9</span></button>
+        <button class="tab is-on">Tasks<span class="tab__n num">15</span></button>
+      </div>
+
+      <div class="side__body">
+
+        <div class="callout">
+          <span class="thread"></span>
+          <p>The transcript of those 47 minutes left this computer and was sent to Anthropic.</p>
+        </div>
+
+        <div class="review">
+          <div>
+            <div class="review__n num">6</div>
+            <div class="review__t">tasks to confirm</div>
+          </div>
+          <button class="btn btn--primary btn--sm">Start the review</button>
+        </div>
+
+        <div class="tasks">
+
+          <div class="task is-todo">
+            <div class="task__head">
+              <p class="task__title">Preparare i mockup della dashboard per la call di giovedì</p>
+            </div>
+            <div class="task__fields">
+              <span class="field"><span class="field__k">who</span>Marco</span>
+              <span class="field"><span class="field__k">by</span><span class="num">14 Nov</span></span>
+              <span class="chip chip--fill">high</span>
+            </div>
+            <div class="evidence">
+              <div class="evidence__head">
+                <span class="label label--quiet">Where this comes from</span>
+                <button class="btn btn--quiet btn--sm">Hide</button>
+              </div>
+              <div class="ev">
+                <div class="ev__meta"><button class="ev__t num">13:12</button><span class="ev__k">title</span></div>
+                <p class="ev__q">dovremmo preparare i mockup della dashboard per il cliente</p>
+              </div>
+              <div class="ev">
+                <div class="ev__meta"><button class="ev__t num">31:47</button><span class="ev__k">by</span></div>
+                <p class="ev__q">diciamo entro il quattordici, così giovedì li vediamo insieme</p>
+              </div>
+              <div class="ev">
+                <div class="ev__meta"><button class="ev__t num">44:02</button><span class="ev__k">who</span></div>
+                <p class="ev__q">per i mockup se ne occupa Marco, ha già la struttura in mano</p>
+              </div>
+              <div class="ev ev--empty">
+                <div class="ev__meta"><span class="ev__t">—</span><span class="ev__k">priority</span></div>
+                <p class="ev__q">Inferred. No sentence in the meeting supports it.</p>
+              </div>
+            </div>
+            <div class="task__row">
+              <button class="btn btn--primary btn--sm">Confirm</button>
+              <button class="btn btn--sm">Discard</button>
+              <button class="btn btn--quiet btn--sm">Edit</button>
+                          </div>
+          </div>
+
+          <div class="task is-todo">
+            <div class="task__head">
+              <p class="task__title">Aggiungere l'indice sulla colonna categoria in produzione</p>
+            </div>
+            <div class="task__fields">
+              <span class="field is-missing"><span class="field__k">who</span>not stated</span>
+              <span class="field is-missing"><span class="field__k">by</span>not stated</span>
+              <span class="chip">medium</span>
+            </div>
+            <div class="task__row">
+              <button class="btn btn--sm">2 sources</button>
+              <button class="btn btn--quiet btn--sm">Confirm</button>
+                          </div>
+          </div>
+
+          <div class="task is-todo">
+            <div class="task__head">
+              <p class="task__title">Mandare il preventivo aggiornato dell'impianto a Ferrotecnica</p>
+            </div>
+            <div class="task__fields">
+              <span class="field"><span class="field__k">who</span>Antonio</span>
+              <span class="field"><span class="field__k">by</span><span class="field__raw">entro la settimana scorsa</span></span>
+              <span class="chip chip--critical">critical</span>
+            </div>
+            <div class="task__row">
+              <button class="btn btn--sm">2 sources</button>
+              <button class="btn btn--quiet btn--sm">Confirm</button>
+              <span class="task__conf num">confidence 0.74</span>
+            </div>
+          </div>
+
+          <div class="task is-todo">
+            <div class="task__head">
+              <p class="task__title">Rimisurare i tempi di risposta del catalogo dopo l'indice</p>
+            </div>
+            <div class="task__fields">
+              <span class="field"><span class="field__k">who</span>Antonio</span>
+              <span class="field is-missing"><span class="field__k">by</span>not stated</span>
+              <span class="chip">medium</span>
+            </div>
+            <div class="task__row">
+              <button class="btn btn--sm">2 sources</button>
+              <button class="btn btn--quiet btn--sm">Confirm</button>
+                          </div>
+          </div>
+
+          <div class="task is-done">
+            <div class="task__head">
+              <p class="task__title">Chiudere il ticket #212 sul login che scade dopo l'aggiornamento</p>
+            </div>
+            <div class="task__fields">
+              <span class="field"><span class="field__k">who</span>Giulia</span>
+              <span class="field"><span class="field__k">by</span><span class="num">10 Nov</span></span>
+              <span class="chip chip--quiet">low</span>
+            </div>
+            <div class="task__settled">
+              Confirmed
+              <button class="btn btn--quiet btn--sm">Undo</button>
+            </div>
+          </div>
+
+          <div class="task is-done">
+            <div class="task__head">
+              <p class="task__title">Scrivere a Metalgraf per fissare il passaggio di consegne</p>
+            </div>
+            <div class="task__fields">
+              <span class="field"><span class="field__k">who</span>Antonio</span>
+              <span class="field"><span class="field__k">by</span><span class="num">13 Nov</span></span>
+              <span class="chip chip--quiet">low</span>
+            </div>
+            <div class="task__settled">
+              Confirmed
+              <button class="btn btn--quiet btn--sm">Undo</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="side__foot">
+        <div class="refine">
+          <div>
+            <div class="refine__t">Redo the transcript</div>
+            <span class="refine__n">Canary, better with names · about 6 min</span>
+          </div>
+          <button class="btn btn--sm">Start</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

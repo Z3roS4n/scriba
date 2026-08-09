@@ -1,0 +1,199 @@
+/* ============================================================================
+   Scriba — token di design · 1.0
+   Sistema msworks applicato. Tema chiaro sul :root, tema scuro come
+   sovrascritture su [data-theme="dark"].
+
+   Tre livelli:
+     1. palette msworks, valori esatti, mai arrotondati
+     2. aggiunte di Scriba, dichiarate una per una col motivo
+     3. alias di ruolo — è QUESTO il livello che i componenti usano
+   ========================================================================== */
+
+:root {
+  /* ---- 1 · palette msworks, esatta ------------------------------------- */
+  --ms-ink:#111111;
+  --ms-red:#C60001;
+  --ms-red-dark:#9E0001;
+  --ms-slate:#54575A;
+  --ms-surface:#F5F5F3;
+  --ms-line:#E3E3E1;
+  --ms-grid:#E9E9E6;
+  --ms-grid-soft:#F0F0EE;
+  --ms-paper:#FFFFFF;
+  --ms-on-dark-text:#B9B9B6;
+  --ms-on-dark-label:#9A9A98;
+  --ms-on-dark-line:#3A3A38;
+
+  /* ---- 2 · aggiunte di Scriba ------------------------------------------
+     msworks ha un solo grigio di testo (Slate, 7:1) e lo dichiara col suo
+     contrasto: è quella dichiarazione a rendere visibile qualunque deriva.
+     Una finestra ne chiede uno in più, non tre. Qui ce ne sono due, e sono
+     due categorie diverse, non due sfumature:
+
+       --slate-soft  #6E7174  4,9:1 su bianco — PORTA INFORMAZIONE.
+                     Metadati, minuti, etichette di campo, note, righe di eco,
+                     testo provvisorio, «non detto», «Senza cliente». Tutto ciò
+                     che va letto, anche se va letto dopo.
+       --slate-faint #96999B  2,9:1 — NON PORTA INFORMAZIONE.
+                     Solo comandi disabilitati, separatori e segnaposto «—».
+                     Se una stringa scritta qui dice qualcosa, è nel token
+                     sbagliato.
+
+     `#8A8D90` resta fuori palette e non compare.                           */
+  --ink-soft:#2E3033;     /* 12,6:1 — corpo della trascrizione: meno duro del
+                             titolo, su trenta righe è la differenza fra
+                             leggere e sostenere lo sguardo */
+  --slate-soft:#6E7174;   /* 4,9:1 — terziario che si legge */
+  --slate-faint:#96999B;  /* 2,9:1 — spento, e quindi muto */
+
+  /* Un secondo fondo e una seconda linea: in un'app i pannelli sono
+     adiacenti, e una sola linea non basta a distinguere «bordo di pannello»
+     da «divisorio di riga». */
+  --surface-2:#EFEFED;    /* fondo pagina, fuori dalla finestra */
+  --line-soft:#EDEDEB;    /* divisorio interno: separa righe, non pannelli */
+  --band-me:#FAFAF9;      /* fascia delle righe «Io» — 50% di --ms-surface */
+
+  /* Rosso del tema scuro: #C60001 su #111111 fa 3,4:1, sotto soglia.
+     Stessa tinta (2°), schiarita fino a 4,87:1. Unica aggiunta alla palette. */
+  --red-lift:#F73A33;
+
+  /* Scrim: le superfici che galleggiano non hanno ombra — il contenuto
+     sotto si scurisce del 12% e la superficie resta bordata e piatta. */
+  --scrim:rgb(17 17 17 / .12);
+
+  /* ---- 3 · ruoli ------------------------------------------------------- */
+  --fg:var(--ms-ink);
+  --fg-body:var(--ink-soft);
+  --fg-2:var(--ms-slate);
+  --fg-3:var(--slate-soft);
+  --fg-4:var(--slate-faint);
+
+  --bg-page:var(--surface-2);
+  --bg-win:var(--ms-paper);
+  --bg-panel:var(--ms-surface);
+  --bg-quiet:var(--ms-grid-soft);
+  --bg-grid:var(--ms-grid);
+  --bg-read:var(--ms-paper);
+
+  --line:var(--ms-line);
+  --line-2:var(--line-soft);
+  --line-strong:var(--ms-ink);
+
+  /* Azione primaria = Ink pieno, NON rosso.
+     msworks usa il rosso per la CTA; in Scriba il rosso è riservato allo
+     stato «si sta registrando» e alle conseguenze. Se «Analizza la call»
+     fosse rossa, il pallino della registrazione smetterebbe di significare
+     qualcosa. L'hover di msworks (Ink → rosso) diventa Ink → #2E3033. */
+  --act:var(--ms-ink);
+  --act-hover:var(--ink-soft);
+  --act-fg:var(--ms-paper);
+
+  /* Rosso: registrazione · dati che escono · azione distruttiva ·
+     guasto che blocca · priorità critica. Cinque usi, nessun altro. */
+  --red:var(--ms-red);
+  --red-hover:var(--ms-red-dark);
+  --red-fg:var(--ms-paper);
+
+  --focus:var(--ms-red);
+  --focus-offset:2px;
+
+  /* ---- tipografia ------------------------------------------------------
+     Montserrat, quattro pesi, dentro il pacchetto come .woff2 latin.
+     Due scale: lettura (il testo corrente) e interfaccia (tutto il resto).
+     La regola msworks dei 17px vale dove il suo motivo esiste — testo
+     letto di seguito — e cede dove non esiste: celle, controlli, metadati. */
+  --font:"Montserrat", system-ui, "Segoe UI", sans-serif;
+  --font-code:Consolas, "Cascadia Mono", ui-monospace, monospace;
+
+  --fs-label:10.5px;   /* eyebrow msworks: 900, +.16em, maiuscolo */
+  --fs-xs:11.5px;      /* metadati, minuti, conteggi */
+  --fs-sm:12.5px;      /* controlli, chip, note */
+  --fs-ui:13.5px;      /* testo d'interfaccia corrente */
+  --fs-md:14px;        /* titoli di pannello, titolo task */
+  --fs-read:15px;      /* trascrizione a riposo */
+  --fs-read-rec:16px;  /* trascrizione in registrazione: sale, non scende */
+  --fs-h:17px;         /* titolo della call */
+
+  --w-body:400; --w-bold:700; --w-h:800; --w-label:900;
+  --ls-label:.16em; --ls-h:-.02em;
+  --lh-tight:1.34; --lh-ui:1.5; --lh-body:1.62; --lh-read:1.72;
+  --measure:68ch;
+
+  /* ---- spazio (msworks, base 4) ---------------------------------------- */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px;
+  --sp-6:24px; --sp-8:32px; --sp-10:40px;
+
+  /* ---- forma ----------------------------------------------------------- */
+  --r:0;               /* default assoluto */
+  --r-act:2px;         /* solo ciò che si clicca */
+  --thread-w:28px; --thread-h:3px;
+  --grid-step:28px;
+
+  /* ---- controlli -------------------------------------------------------
+     44×44 è una misura touch. Scriba è mouse e tastiera su Windows: la
+     barra in alto è alta 44px in tutto. Scala propria, dichiarata. */
+  --h-sm:26px; --h-md:30px; --h-lg:34px; --h-xl:38px;
+  --h-topbar:52px;
+
+  /* ---- movimento (msworks: una curva, quattro durate) ------------------- */
+  --ease:cubic-bezier(.2,.7,.2,1);
+  --t-state:160ms var(--ease);
+  --t-appear:240ms var(--ease);
+
+  /* ---- misure della finestra ------------------------------------------- */
+  --w-calls:236px; --w-calls-rail:44px;
+  --w-side:404px; --w-side-rec:288px;
+  --w-transcript-min:480px;
+}
+
+/* ===========================================================================
+   Tema scuro — inversione sul livello dei RUOLI, mai sulla palette base.
+   msworks il tema scuro ce l'ha già e non lo sa: le sue sezioni su fondo nero
+   hanno testo #B9B9B6, label #9A9A98, bordi #3A3A38. Il tema scuro di Scriba
+   è quella terna promossa da trattamento di sezione a trattamento di pagina.
+   ========================================================================= */
+[data-theme="dark"] {
+  --fg:#EDEDEA;              /* non bianco puro: abbaglia su near-black */
+  --fg-body:#D8D8D4;
+  --fg-2:var(--ms-on-dark-text);
+  --fg-3:var(--ms-on-dark-label);
+  --fg-4:#6E6E6B;
+
+  --bg-page:#0A0A09;
+  --bg-win:var(--ms-ink);
+  --bg-panel:#181817;
+  --bg-quiet:#1C1C1A;
+  --bg-grid:#232321;
+  --bg-read:var(--ms-ink);
+
+  --line:var(--ms-on-dark-line);
+  --line-2:#2A2A28;
+  --line-strong:#5E5E5B;
+  --band-me:#191918;
+
+  --act:#EDEDEA;
+  --act-hover:#FFFFFF;
+  --act-fg:var(--ms-ink);
+
+  --red:var(--red-lift);
+  --red-hover:#FF6259;
+  --red-fg:var(--ms-ink);
+
+  --focus:var(--red-lift);
+  --scrim:rgb(0 0 0 / .28);
+}
+
+/* ===========================================================================
+   Overlay — NON usa i token del tema. Sotto la striscia può esserci
+   qualunque cosa, quindi resta scura anche a tema chiaro. Sono i valori
+   «su fondo nero» di msworks, che è esattamente il trattamento per una
+   superficie sovrapposta a contenuto arbitrario.
+   ========================================================================= */
+:root {
+  --ov-bg:rgb(17 17 17 / .94);
+  --ov-fg:#EDEDEA;
+  --ov-fg-2:var(--ms-on-dark-text);
+  --ov-fg-3:var(--ms-on-dark-label);
+  --ov-line:var(--ms-on-dark-line);
+  --ov-red:var(--red-lift);
+}

@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Scriba — overlay e dialoghi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+<style>
+  /* Solo ponteggio dell'anteprima: non fa parte della schermata. */
+  body { display:block; padding:30px; overflow:auto; }
+  .win, .sheet { margin-inline:auto; }
+  .sheet { max-width:1264px; }
+</style>
+</head>
+<body>
+<!-- Pezzi, non una schermata: overlay in tre stati, consenso, proposta di
+     call rilevata, i quattro livelli di errore. L'overlay NON usa i token del
+     tema: resta scuro anche a tema chiaro. -->
+<div class="sheet" style="margin-inline:auto; gap:48px">
+
+  <div data-screen-label="Overlay — striscia intera e ridotta" style="background:var(--bg-page); padding:32px">
+    <div class="sheet__cap"><span class="thread"></span><span class="label">Overlay</span></div>
+    <p class="sheet__note" style="margin-top:12px">Colori fissi, non i token: sotto la striscia può esserci qualunque cosa e il vetro resta scuro anche a tema chiaro. Non prende il fuoco quando compare — durante una call la tastiera serve alla riunione. Le righe più vecchie sfumano, così l'occhio cade sull'ultima senza cercarla.</p>
+
+    <div style="display:flex; gap:32px; align-items:flex-start; margin-top:24px; flex-wrap:wrap">
+
+      <div>
+        <div class="overlay is-recording">
+          <div class="overlay__bar">
+            <i class="overlay__dot"></i>
+            <span class="overlay__timer num">12:04</span>
+            <span class="overlay__flash">Salvato nella trascrizione</span>
+            <div class="overlay__spacer"></div>
+            <button class="ovbtn ovbtn--icon" aria-label="Scatta">◎</button>
+            <button class="ovbtn ovbtn--icon" aria-label="Ferma">■</button>
+            <button class="ovbtn ovbtn--icon" aria-label="Riduci la striscia">▢</button>
+            <button class="ovbtn ovbtn--icon" aria-label="Nascondi">✕</button>
+          </div>
+          <div class="overlay__body">
+            <div class="ovline ovline--other">
+              <span class="ovline__t num">11:24</span>
+              <span class="ovline__text">Il quattro per cento su questa commessa lo assorbiamo.</span>
+            </div>
+            <div class="ovline ovline--me">
+              <span class="ovline__t num">11:41</span>
+              <span class="ovline__text">Sì, lo metto nel verbale. Anzi, questa call la sto registrando, quindi resta lì.</span>
+            </div>
+            <div class="ovline ovline--other">
+              <span class="ovline__t num">11:58</span>
+              <span class="ovline__text">Ultima cosa sul magazzino: abbiamo ancora duecento pezzi della serie vecchia.</span>
+            </div>
+            <div class="ovline ovline--other">
+              <span class="ovline__t num">12:03</span>
+              <span class="ovline__text"><span class="is-provisional">Direi di scalarli sul prossimo lotto invece di tenerli fermi</span><i class="caret"></i></span>
+            </div>
+          </div>
+        </div>
+        <p class="sheet__note" style="margin-top:12px">Striscia intera, 520px. In registrazione.</p>
+      </div>
+
+      <div>
+        <div class="overlay overlay--mini is-recording">
+          <div class="overlay__bar">
+            <i class="overlay__dot"></i>
+            <span class="overlay__timer num">12:04</span>
+            <div class="overlay__spacer"></div>
+            <button class="ovbtn ovbtn--icon" aria-label="Scatta">◎</button>
+            <button class="ovbtn ovbtn--icon" aria-label="Ferma">■</button>
+            <button class="ovbtn ovbtn--icon" aria-label="Ingrandisci la striscia">▢</button>
+          </div>
+          <div class="overlay__body">
+            <div class="ovline ovline--other">
+              <span class="ovline__text">Ultima cosa sul magazzino: abbiamo ancora duecento pezzi della serie vecchia.</span>
+            </div>
+            <div class="ovline ovline--other">
+              <span class="ovline__text"><span class="is-provisional">Direi di scalarli sul prossimo lotto invece di tenerli fermi</span><i class="caret"></i></span>
+            </div>
+          </div>
+        </div>
+        <p class="sheet__note" style="margin-top:12px">Ridotta, 420px: due righe, niente minuti, un comando in meno. È una preferenza salvata, non uno stato.</p>
+
+        <div class="overlay" style="margin-top:24px">
+          <div class="overlay__bar">
+            <i class="overlay__dot"></i>
+            <span style="font-size:var(--fs-ui)">Scriba</span>
+            <div class="overlay__spacer"></div>
+            <button class="ovbtn">Apri Scriba</button>
+            <button class="ovbtn ovbtn--icon" aria-label="Nascondi">✕</button>
+          </div>
+          <div class="overlay__hint">
+            <span class="key">Alt</span><span class="key">R</span>mostra e nasconde la striscia
+            <span class="call__sep">·</span>
+            <span class="key">Alt</span><span class="key">S</span>scatta
+          </div>
+        </div>
+        <p class="sheet__note" style="margin-top:12px">A riposo. Da qui non si salta il consenso: «Apri Scriba» porta alla finestra grande, dove la conferma c'è.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <div data-screen-label="Dialoghi — consenso e call rilevata" style="background:var(--bg-page); padding:32px">
+    <div class="sheet__cap"><span class="thread"></span><span class="label">Consenso e proposta</span></div>
+
+    <div style="display:flex; gap:32px; align-items:flex-start; margin-top:24px; flex-wrap:wrap">
+
+      <div>
+        <div style="position:relative; padding:40px; background:var(--bg-panel); border:1px solid var(--line)">
+          <div class="scrim"></div>
+          <div class="modal" style="position:relative">
+            <div class="modal__head">
+              <h2>Registrare questa call</h2>
+              <p>Verranno registrati il tuo microfono e l'audio del computer.</p>
+            </div>
+            <div class="modal__field">
+              <span class="label">Titolo (facoltativo)</span>
+              <div class="textfield is-placeholder">Revisione sprint 24</div>
+            </div>
+            <div class="consent">
+              <button class="checkbox" aria-pressed="false">✓</button>
+              <div class="consent__text">
+                <b>Ho avvisato le persone in call che sto registrando.</b>
+                <span>Registrare gli altri significa trattare i loro dati personali. Questa spunta viene annotata nella sessione, ma non sostituisce l'averglielo detto.</span>
+              </div>
+            </div>
+            <div class="modal__foot">
+              <span class="modal__hint">Senza la conferma non si registra.</span>
+              <button class="btn">Annulla</button>
+              <button class="btn btn--primary" disabled>Registra</button>
+            </div>
+          </div>
+        </div>
+        <p class="sheet__note" style="margin-top:12px">L'unico modale dell'app. Il pulsante resta spento finché la spunta non c'è, anche quando la call è stata rilevata da sola. Si stacca con lo scrim al 12%, non con un'ombra.</p>
+      </div>
+
+      <div>
+        <div class="toast">
+          <div class="toast__top">
+            <i class="toast__dot"></i>
+            <div class="toast__text">
+              <b>Sembra che tu sia in una call su Google Meet</b>
+              <span>Posso registrarla. Include l'audio degli altri partecipanti, non solo la tua voce.</span>
+            </div>
+            <button class="btn--link" aria-label="Chiudi">✕</button>
+          </div>
+          <div class="toast__actions">
+            <button class="btn btn--primary btn--sm">Registra</button>
+            <button class="btn btn--sm">No grazie</button>
+            <span class="toast__note">torna alla prossima call</span>
+          </div>
+        </div>
+        <p class="sheet__note" style="margin-top:12px">In basso a destra, mai al centro: arriva mentre si sta entrando in riunione. «No grazie» dimentica solo questa proposta, non il rilevamento — per questo la nota accanto.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <div data-screen-label="Dialoghi — i quattro livelli di errore" style="background:var(--bg-page); padding:32px">
+    <div class="sheet__cap"><span class="thread"></span><span class="label">I quattro livelli di errore</span></div>
+    <p class="sheet__note" style="margin-top:12px">Nessuno dei quattro è modale. Il livello dipende da quanto impedisce, non da quanto è grave in astratto.</p>
+
+    <div style="display:flex; flex-direction:column; gap:24px; margin-top:24px">
+
+      <div>
+        <div class="notice" style="border:1px solid var(--line)">
+          Alt+R è già usata da un'altra applicazione: la scorciatoia dell'overlay non risponde.
+          <span class="notice__spacer"></span>
+          <button class="btn btn--sm">Cambia scorciatoia</button>
+          <button class="btn--link" aria-label="Chiudi">✕</button>
+        </div>
+        <p class="sheet__note" style="margin-top:8px"><b>1 · Barra in alto.</b> Non impedisce niente: tutto il resto continua a funzionare. Si può chiudere.</p>
+      </div>
+
+      <div style="max-width:520px">
+        <div class="alert">
+          <h3>Il modello locale non risponde</h3>
+          <p>Il server si è avviato ma non accetta richieste. L'analisi non può partire; la registrazione e la trascrizione non sono toccate.</p>
+          <div class="alert__actions">
+            <button class="btn btn--primary btn--sm">Riavvia il modello</button>
+            <button class="btn btn--sm">Usa un altro motore</button>
+          </div>
+        </div>
+        <p class="sheet__note" style="margin-top:8px"><b>2 · Riquadro nel pannello.</b> Blocca una funzione sola. I comandi che servono a risolverlo stanno qui dentro, non in Impostazioni.</p>
+      </div>
+
+      <div style="max-width:520px">
+        <div class="alert alert--risk">
+          <h3>Il microfono non è quello che pensi</h3>
+          <p>La periferica scelta è scollegata. Registrando adesso prenderesti solo l'audio del computer, e la tua voce non ci sarebbe: una trascrizione a metà che sembra completa.</p>
+          <div class="alert__actions">
+            <button class="btn btn--primary btn--sm">Scegli un microfono</button>
+            <button class="btn btn--sm">Registra solo l'audio del computer</button>
+          </div>
+        </div>
+        <p class="sheet__note" style="margin-top:8px"><b>3 · Riquadro prima di cominciare.</b> Cambierebbe il risultato senza dirlo. Filo rosso perché la conseguenza è una perdita silenziosa di dati.</p>
+      </div>
+
+      <div style="max-width:520px">
+        <div class="alert">
+          <h3>Export non riuscito</h3>
+          <p>La cartella scelta non è più raggiungibile: <span class="mono" style="font-size:var(--fs-xs)">D:\Condivisa\Scriba</span>. Il documento non è stato scritto.</p>
+          <div class="alert__actions">
+            <button class="btn btn--primary btn--sm">Scegli un'altra cartella</button>
+            <button class="btn btn--sm">Riprova</button>
+          </div>
+        </div>
+        <p class="sheet__note" style="margin-top:8px"><b>4 · Riquadro nel punto in cui si è premuto.</b> Compare dove è partito il comando, non altrove: chi ha premuto sta guardando lì.</p>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

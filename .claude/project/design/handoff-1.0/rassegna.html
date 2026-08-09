@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Scriba — rassegna task</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+<style>
+  /* Solo ponteggio dell'anteprima: non fa parte della schermata. */
+  body { display:block; padding:30px; overflow:auto; }
+  .win, .sheet { margin-inline:auto; }
+  .sheet { max-width:1264px; }
+</style>
+</head>
+<body>
+<!-- Piano a tutta finestra sotto la barra. Si entra dalla proposta in cima
+     al pannello task e si esce con Esc, tornando alla lista sulla task da cui
+     si è entrati. La trascrizione a sinistra è ferma sulle righe citate: non
+     si ricarica cambiando task, si sposta. -->
+<div class="win" style="position:relative" data-screen-label="Rassegna task">
+
+  <div class="topbar">
+    <div class="brand">Scriba</div>
+    <div class="status"><span class="sq sq--hollow"></span>Pronto</div>
+    <div class="topbar__spacer"></div>
+    <div class="toolbar">
+      <button class="btn btn--rec">Registra</button>
+    </div>
+    <div class="wincontrols">
+      <button aria-label="Riduci a icona"><i class="wc-min"></i></button>
+      <button aria-label="Ingrandisci"><i class="wc-max"></i></button>
+      <button aria-label="Chiudi"><i class="wc-close"></i></button>
+    </div>
+  </div>
+
+  <div class="plane">
+    <div class="plane__head">
+      <span class="thread"></span>
+      <span class="plane__title">Rassegna</span>
+      <span class="plane__sub">Allineamento sprint 14 · Ferrotecnica Sud</span>
+      <span class="plane__spacer"></span>
+      <span class="rev__count num">4 di 15 · 6 da confermare</span>
+      <span class="esc"><span class="key">Esc</span>torna alla lista</span>
+    </div>
+    <div class="progress"><i style="width:26.6%"></i></div>
+
+    <div class="plane__body">
+
+      <div class="rev__left">
+        <div class="transcript__head">
+          <span class="label label--quiet">Trascrizione</span>
+          <span class="transcript__meta num">ferma sulle righe citate</span>
+        </div>
+        <div class="transcript__body">
+
+          <div class="line line--me">
+            <button class="line__t num">12:48</button>
+            <span class="line__who">Io</span>
+            <p class="line__text">Va bene. Facciamo così: prima l'indice, che è mezz'ora di lavoro, poi guardiamo i numeri e decidiamo se rifare il caricamento in blocco.</p>
+          </div>
+
+          <div class="line line--other is-cited">
+            <button class="line__t num">13:12</button>
+            <span class="line__who">Altri</span>
+            <p class="line__text">Un'altra cosa: dovremmo preparare i mockup della dashboard per il cliente, perché nella call di giovedì ce li chiedono di sicuro e adesso non abbiamo niente da mostrare.</p>
+          </div>
+
+          <div class="line line--me">
+            <button class="line__t num">13:34</button>
+            <span class="line__who">Io</span>
+            <p class="line__text">Sui mockup, quanto siamo lontani? Perché se bisogna ripartire dalle wireframe è un conto, se invece c'è già qualcosa da rifinire in Figma allora si chiude in due giorni.</p>
+          </div>
+
+          <div class="line line--other">
+            <button class="line__t num">13:41</button>
+            <span class="line__who">Altri</span>
+            <p class="line__text">La struttura c'è già. Manca tutta la parte dei filtri e gli stati vuoti, che poi sono quelli che il cliente guarda per primi.</p>
+          </div>
+
+          <div class="line line--other is-cited">
+            <button class="line__t num">31:47</button>
+            <span class="line__who">Altri</span>
+            <p class="line__text">Sulla dashboard diciamo entro il quattordici, così giovedì li vediamo insieme e se serve correggiamo prima di mandarli.</p>
+          </div>
+
+          <div class="line line--me">
+            <button class="line__t num">32:10</button>
+            <span class="line__who">Io</span>
+            <p class="line__text">D'accordo. Metto in calendario anche mezza giornata di margine, perché la volta scorsa i filtri hanno portato via più tempo del previsto.</p>
+          </div>
+
+          <div class="line line--me is-cited">
+            <button class="line__t num">44:02</button>
+            <span class="line__who">Io</span>
+            <p class="line__text">Riepilogo: per i mockup se ne occupa Marco, ha già la struttura in mano; io chiudo l'indice e rimisuro; il preventivo lo mando io entro domani.</p>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="rev__right">
+        <div class="rev__body">
+          <span class="label label--quiet">Task 4 di 15</span>
+          <h2 class="rev__title" style="margin-top:12px">Preparare i mockup della dashboard per la call di giovedì</h2>
+
+          <div class="rev__fields">
+
+            <div class="rf">
+              <div class="rf__k">
+                <span class="label label--quiet">Titolo</span>
+                <button class="btn btn--quiet btn--sm rf__edit">Modifica</button>
+              </div>
+              <div class="rf__v">Preparare i mockup della dashboard per la call di giovedì</div>
+              <div class="rf__ev">
+                <button class="ev__t num">13:12</button>
+                <p class="rf__q">dovremmo preparare i mockup della dashboard per il cliente</p>
+              </div>
+            </div>
+
+            <div class="rf">
+              <div class="rf__k">
+                <span class="label label--quiet">Responsabile</span>
+                <button class="btn btn--quiet btn--sm rf__edit">Modifica</button>
+              </div>
+              <div class="rf__v">Marco</div>
+              <div class="rf__ev">
+                <button class="ev__t num">44:02</button>
+                <p class="rf__q">per i mockup se ne occupa Marco, ha già la struttura in mano</p>
+              </div>
+            </div>
+
+            <div class="rf">
+              <div class="rf__k">
+                <span class="label label--quiet">Scadenza</span>
+                <button class="btn btn--quiet btn--sm rf__edit">Modifica</button>
+              </div>
+              <div class="rf__v">14 nov 2026 · «entro il quattordici»</div>
+              <div class="rf__ev">
+                <button class="ev__t num">31:47</button>
+                <p class="rf__q">diciamo entro il quattordici, così giovedì li vediamo insieme</p>
+              </div>
+            </div>
+
+            <div class="rf">
+              <div class="rf__k">
+                <span class="label label--quiet">Priorità</span>
+                <button class="btn btn--quiet btn--sm rf__edit">Modifica</button>
+              </div>
+              <div class="rf__v">alta</div>
+              <div class="rf__ev">
+                <span class="ev__t">—</span>
+                <p class="rf__q is-empty">Dedotta. Nessuna frase della riunione la sostiene.</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="rev__foot">
+          <button class="btn btn--primary btn--lg">Conferma</button>
+          <button class="btn btn--lg">Scarta</button>
+          <div class="rev__keys">
+            <span class="key">C</span>conferma
+            <span class="key">X</span>scarta
+            <span class="key">←</span><span class="key">→</span>scorri
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</body>
+</html>
