@@ -28,11 +28,20 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi.exception_handlers import http_exception_handler
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.requests import Request
 from pydantic import BaseModel
 
 from .api import traduci_stato_sessione as _traduci_stato_sessione
 from .api.diarizzazione import numero_voce
-from .i18n import LinguaUI, fase as _fase, motore as _motore
+from .i18n import (
+    LinguaUI,
+    errore as _errore,
+    fase as _fase,
+    lingua_da_header,
+    motore as _motore,
+)
 from .db import manutenzione
 from .db.store import Store
 from .recorder import Recorder
@@ -413,6 +422,23 @@ def create_app(
     secondi e aprire i device audio veri legherebbe i test all'hardware.
     """
     app = FastAPI(title="Scriba core", docs_url=None, redoc_url=None)
+
+    # I messaggi d'errore si traducono all'uscita, non dove nascono. `ErroreSql`
+    # viene sollevato in fondo al modulo Postgres e arriva qui tre livelli più
+    # su: per dargli la lingua bisognerebbe passarla a mezza libreria. Qui la
+    # richiesta c'è — quindi `Accept-Language` — e il testo è già scritto. Vale
+    # per tutte le rotte, comprese quelle che nessuno ha ancora scritto.
+    @app.exception_handler(StarletteHTTPException)
+    async def _errore_tradotto(richiesta: Request, exc: StarletteHTTPException):
+        lingua = lingua_da_header(richiesta.headers.get("accept-language"))
+        if isinstance(exc.detail, str):
+            exc = StarletteHTTPException(
+                status_code=exc.status_code,
+                detail=_errore(exc.detail, lingua),
+                headers=exc.headers,
+            )
+        return await http_exception_handler(richiesta, exc)
+
     broadcaster = Broadcaster()
 
     # Prima di aprirlo per scriverci: un database che non si legge non si usa.

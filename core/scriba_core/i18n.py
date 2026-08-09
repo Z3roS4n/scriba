@@ -22,6 +22,7 @@ normale, e i due file non si parlano.
 
 from __future__ import annotations
 
+import re
 from typing import Annotated, Any
 
 from fastapi import Depends, Header
@@ -256,5 +257,96 @@ def colonna_sql(
     if lingua == "it":
         return etichetta_it, descrizione_it
     return _COLONNE_SQL_EN.get(f"{tabella}.{colonna}", (etichetta_it, descrizione_it))
+
+#: I messaggi d'errore, chiave l'italiano esatto.
+#:
+#: Chiave il testo e non un identificatore perché l'alternativa era dare un id
+#: a ognuno dei quarantacinque punti in cui nascono, e passare la lingua fin
+#: là dentro. Se un giorno l'italiano cambia e qui non lo si aggiorna, esce
+#: l'italiano: si vede, e nel frattempo l'utente legge una frase giusta invece
+#: di una chiave.
+_ERRORI_EN: dict[str, str] = {
+    "token non valido": "invalid token",
+    "registrazione già in corso": "already recording",
+    "nessuna registrazione in corso": "nothing is being recorded",
+    "un'analisi è già in corso": "an analysis is already running",
+    "Il modello di analisi non è raggiungibile. Se usi quello locale, avvia llama-server; "
+    "se usi l'abbonamento Claude, rifai l'accesso con `claude auth login`; se usi un'API, "
+    "controlla la chiave nelle impostazioni.": "The analysis model cannot be reached. If you "
+    "are using the local one, start llama-server; if you are using the Claude subscription, "
+    "sign in again with `claude auth login`; if you are using an API, check the key in "
+    "Settings.",
+    "nessun campo modificabile": "no editable field",
+    "task inesistente": "no such task",
+    "Il nome del cliente non può essere vuoto.": "The client name cannot be empty.",
+    "Cliente non aggiornato: non esiste, oppure quel nome è già di un altro.":
+        "Client not updated: it does not exist, or that name already belongs to another one.",
+    "Cliente inesistente.": "No such client.",
+    "Nessun nome trovato nel file: serve almeno una colonna con i nomi.":
+        "No name found in the file: it needs at least one column with the names.",
+    "Call o cliente inesistente.": "No such call or client.",
+    "c'è già una diarizzazione in corso (su un'altra sessione, se non su questa): il modello "
+    "resta in memoria un'esecuzione alla volta.": "the voices are already being told apart "
+    "(on another call, if not on this one): the model stays in memory one run at a time.",
+    "sessione inesistente": "no such call",
+    "diarizzazione non disponibile: manca pyannote.audio/torch, o un token Hugging Face che "
+    "abbia accettato le condizioni del modello.": "telling the voices apart is not available: "
+    "pyannote.audio/torch is missing, or a Hugging Face token that has accepted the model's "
+    "conditions.",
+    "il nome non può essere vuoto": "the name cannot be empty",
+    "voce inesistente": "no such voice",
+    "una rifinitura è già in corso": "a touch-up is already running",
+    "Questa call non ha una trascrizione da rifinire.":
+        "This call has no transcript to touch up.",
+    "Il modello della rifinitura non è ancora scaricato. Impostazioni → Modelli locali → "
+    "Canary 1B v2 (circa 1 GB).": "The touch-up model has not been downloaded yet. Settings → "
+    "Local models → Canary 1B v2 (about 1 GB).",
+    "nessuna analisi in corso per questa sessione": "no analysis running for this call",
+    "la sessione è in registrazione: fermala prima di eliminarla":
+        "the call is being recorded: stop it before deleting it",
+    "Manca l'indirizzo del database.": "The database address is missing.",
+    "Nell'indirizzo manca il nome del server.": "The address has no server name in it.",
+    "Nome di tabella o colonna vuoto.": "Empty table or column name.",
+    "Nome di tabella o colonna non valido.": "Invalid table or column name.",
+    "Nessun database remoto collegato.": "No remote database connected.",
+    "Non è stata scelta nessuna tabella da creare.": "No table was chosen to create.",
+}
+
+#: Quelli montati con un valore dentro. L'ordine conta: si prende il primo che
+#: combacia.
+_ERRORI_MOTIVI: tuple[tuple[str, str], ...] = (
+    (r"^priorità «(.+?)» non ammessa\. Valori possibili: (.+?), oppure nessuna\.$",
+     r"priority “\1” is not allowed. Possible values: \2, or none."),
+    (r"^Stato sconosciuto: (.+)$", r"Unknown state: \1"),
+    (r"^Tabella sconosciuta: (.+)$", r"Unknown table: \1"),
+    (r"^Modalità di connessione sconosciuta: (.+)$", r"Unknown connection mode: \1"),
+    (r"^L'indirizzo deve cominciare con postgresql:// \(o postgres://\)\. Questo comincia con «(.+?)»\.$",
+     r"The address must start with postgresql:// (or postgres://). This one starts with “\1”."),
+    (r"^La tabella «(.+?)» non ha una chiave su cui riconoscere le righe già scritte\.$",
+     r"Table “\1” has no key to recognise rows already written."),
+    (r"^Manca il nome della tabella remota per «(.+?)»\.$",
+     r"The remote table name for “\1” is missing."),
+    (r"^«(.+?)» non ha un campo che si chiama (.+?)\.$",
+     r"“\1” has no field called \2."),
+    (r"^«(.+?)»: senza (.+?) non si riconoscono le righe già inviate, e ogni sincronizzazione "
+     r"ne aggiungerebbe di nuove\.$",
+     r"“\1”: without \2 the rows already sent cannot be recognised, and every sync would add "
+     r"new ones."),
+)
+
+
+def errore(messaggio: str, lingua: str) -> str:
+    """Un messaggio d'errore nella lingua chiesta, o com'era."""
+    if lingua == "it" or not messaggio:
+        return messaggio
+    diretto = _ERRORI_EN.get(messaggio)
+    if diretto is not None:
+        return diretto
+    for schema, inglese in _ERRORI_MOTIVI:
+        nuovo, quanti = re.subn(schema, inglese, messaggio)
+        if quanti:
+            return nuovo
+    return messaggio
+
 
 
