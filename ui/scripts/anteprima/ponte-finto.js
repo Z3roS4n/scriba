@@ -287,6 +287,17 @@
     '/export/notion/stato': notionStato,
     '/export/notion/campi': notionCampi,
     '/sessions': sessioni,
+    // Senza queste due voci l'archivio non si apriva affatto nell'anteprima:
+    // `risolvi` tornava `null`, e `call.map` su null faceva saltare tutto
+    // l'albero React. Cioe' l'unica schermata che l'anteprima non sapeva
+    // mostrare era anche l'unica che non si poteva verificare.
+    '/clienti': [
+      { id: 1, nome: 'Ferrotecnica Sud', n_call: 6 },
+      { id: 2, nome: 'Metalgraf', n_call: 4 },
+    ],
+    // La ricerca vera filtra lato core; qui bastano le stesse call, perche'
+    // quello che si verifica e' come sono messe in pagina.
+    '/archivio': sessioni,
     '/providers': providers,
     '/settings': impostazioni,
     '/modelli': modelli,
