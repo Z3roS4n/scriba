@@ -111,8 +111,21 @@ const COMPOSTE = new Set([
   'tra3.riprese',
 ])
 
-/** Il commit da cui parte il ramo: prima di qualunque traduzione. */
-const BASE = execSync('git merge-base HEAD main', { encoding: 'utf8' }).trim()
+/**
+ * Il commit prima di qualunque traduzione — l'ultimo in cui i sorgenti sono
+ * ancora tutti in italiano.
+ *
+ * Era `git merge-base HEAD main`, e ha funzionato finché il lavoro viveva sul
+ * suo ramo. Appena quel ramo è entrato in `main` la base è diventata un
+ * commit **già tradotto**: l'italiano nei sorgenti non c'era più, e il
+ * controllo dichiarava riscritte 329 voci su 402. Un rosso che non vuol dire
+ * niente è peggio di nessun controllo, perché lo si impara a saltare.
+ *
+ * Fissato, quindi. La domanda che questo cancello pone — «questa frase
+ * italiana c'era davvero, prima che cominciassimo?» — ha una sola risposta
+ * giusta, e sta a un commit solo.
+ */
+const BASE = '955af93'
 
 const catalogo = readFileSync('renderer/lingua.ts', 'utf8')
 // Solo il blocco italiano: l'inglese non deve ritrovarsi da nessuna parte.
