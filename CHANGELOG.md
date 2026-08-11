@@ -7,6 +7,34 @@ Each entry is split into three sections, and the highest one present decides
 the version bump: **Breaking changes** (major), **New features** (minor),
 **Fixes** (patch). A section with nothing in it is left out.
 
+## 1.1.1 — 11 August 2026
+
+### Fixes
+
+- **Eleven screens were rendering without their styles.** Swapping in the 1.0
+  stylesheet renamed several classes; the components kept writing the old
+  names, so those rules reached nothing. The work note showed its label and
+  its minute stuck together — «NOTA DI LAVOROfino a 29:59» — and the models,
+  evidence, shortcuts, file paths, clients, analysis phases and the strip's
+  screenshots all came out as bare text. Thirty-five classes, now either
+  renamed to what the design calls them or written down as declared
+  additions.
+- **The «Analyse the call» button could be out of reach at the end of a
+  call.** With incremental notes on, the notes pushed it below the bottom
+  of a column that did not scroll. Four branches of the panel had the same
+  problem. At the end of a call the note now sits under the button instead
+  of above it, because the button is what you come there for.
+- **During a call the right-hand column would not scroll.** The work note
+  grows at every update — each one rewrites the previous ones into itself —
+  so from the second one on the bottom was cut off with no scrollbar and no
+  way to reach it.
+- **The work note showed the Markdown asterisks** instead of bold. There were
+  two renderers for the same text and only one of them did bold; now there is
+  one, and it also renders numbered lists as lists.
+- Three sentences stayed Italian in an English interface: the note's «fino
+  a», the engine warning in the analysis panel, and the archive's export
+  result.
+
 ## 1.1.0 — 10 August 2026
 
 ### New features

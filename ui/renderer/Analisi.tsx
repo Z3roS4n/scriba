@@ -8,67 +8,14 @@
  * la sezione 5 di comportamento.md.
  */
 
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Riquadro } from './Dialoghi'
 import { etichettaValore, useLocale, useT, type Traduci } from './lingua'
 import { NotaDiLavoro } from './NotaDiLavoro'
 import { ControlloRifinitura, useRifinitura } from './Rifinitura'
 import type { Analisi, FaseAnalisi, Provider, Segmento, Sessione, StatoAnalisi, StatoTask, Task } from './tipi'
 import { tempo } from './tipi'
-
-/**
- * Rende il Markdown prodotto dal modello, quando il core non manda ancora le
- * versioni già divise in pezzi.
- *
- * Esce con le stesse classi del riassunto vero (`.sum__g`, `.label`,
- * `.sum__p`) invece che con un contenitore proprio: un contenitore proprio
- * vorrebbe dire CSS che il design non ha, quindi testo senza stile — e la
- * ricaduta si vede solo quando il modello ha scritto qualcosa di inatteso,
- * cioè proprio quando la schermata deve restare leggibile.
- *
- * Volutamente minimale e senza librerie: intestazioni, elenchi e grassetto, e
- * tutto il resto resta testo. Il contenuto arriva da un modello di
- * linguaggio, quindi non gli si concede di produrre HTML arbitrario.
- */
-const Markdown = memo(function Markdown({ testo }: { testo: string }) {
-  const gruppi: Array<{ titolo: string | null; voci: string[] }> = []
-  const ultimo = () => {
-    if (!gruppi.length) gruppi.push({ titolo: null, voci: [] })
-    return gruppi[gruppi.length - 1]
-  }
-
-  for (const riga of testo.split('\n')) {
-    const pulita = riga.trim()
-    if (!pulita) continue
-    if (pulita.startsWith('## ')) {
-      gruppi.push({ titolo: pulita.slice(3), voci: [] })
-    } else if (pulita.startsWith('- ') || pulita.startsWith('* ')) {
-      ultimo().voci.push(pulita.slice(2))
-    } else {
-      ultimo().voci.push(pulita)
-    }
-  }
-
-  return (
-    <>
-      {gruppi.map((g, i) => (
-        <div className="sum__g" key={i}>
-          {g.titolo && <h3 className="label">{g.titolo}</h3>}
-          {g.voci.map((v, j) => (
-            <p className="sum__p" key={j}>
-              <span>{grassetto(v)}</span>
-            </p>
-          ))}
-        </div>
-      ))}
-    </>
-  )
-})
-
-function grassetto(testo: string): React.ReactNode {
-  const pezzi = testo.split(/(\*\*[^*]+\*\*)/g)
-  return pezzi.map((p, i) => (p.startsWith('**') && p.endsWith('**') ? <b key={i}>{p.slice(2, -2)}</b> : p))
-}
+import { Markdown } from './markdown'
 
 /**
  * Le quattro priorità che il design colora, scritte per esteso.
@@ -78,6 +25,9 @@ function grassetto(testo: string): React.ReactNode {
  * stile. Il chip uscirebbe senza colore, che è esattamente il modo in cui una
  * priorità critica smette di sembrare critica senza che nessuno se ne accorga.
  */
+/** I nomi che il foglio di stile dà ai pezzi del riassunto. */
+const CLASSI_SOMMARIO = { gruppo: 'sum__g', paragrafo: 'sum__p', elenco: 'sum__l' }
+
 const CHIP_PRIORITA: Record<string, string> = {
   bassa: 'chip chip--quiet',
   media: 'chip',
@@ -375,7 +325,7 @@ function ControlloDiarizzazione({
       <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--fg-3)' }}>
         {stato.fase === 'in_corso_altrove'
           ? stato.messaggio
-          : "C'è già una diarizzazione in corso, su un'altra call."}
+          : t('pan.diariz_altrove')}
       </span>
     )
   }
@@ -554,7 +504,7 @@ export function PannelloAnalisi({
       if (r.status === 409) {
         setDiarizStato({
           fase: 'in_corso_altrove',
-          messaggio: r.body?.detail ?? "C'è già una diarizzazione in corso.",
+          messaggio: r.body?.detail ?? t('pan.diariz_gia'),
         })
       } else {
         setDiarizStato((c) => (c?.fase === 'in_corso' && c.sessionId === idSessione ? null : c))
@@ -583,7 +533,7 @@ export function PannelloAnalisi({
     // né l'orario esatto del tentativo: l'evento che li portava è passato
     // prima che questa finestra si aprisse. Meglio dirlo in modo generico che
     // tacere l'errore.
-    setErrore(sessione.stato === 'failed' ? { messaggio: "L'ultima analisi non è riuscita.", ora: null } : null)
+    setErrore(sessione.stato === 'failed' ? { messaggio: t('pan.ultima_fallita'), ora: null } : null)
 
     // Si chiede subito se un'analisi sta già girando, comprese le fasi.
     // Senza, riaprendo la finestra mentre il lavoro è in corso l'interfaccia
@@ -738,11 +688,13 @@ export function PannelloAnalisi({
   if (!sessione) {
     return (
       <section className="side">
-        <div className="pad">
-          <span className="label">{t('pan.label')}</span>
-          <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-2)' }}>
-            {t('pan.scegli_call')}
-          </p>
+        <div className="side__body">
+          <div className="pad">
+            <span className="label">{t('pan.label')}</span>
+            <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-2)' }}>
+              {t('pan.scegli_call')}
+            </p>
+          </div>
         </div>
       </section>
     )
@@ -751,7 +703,14 @@ export function PannelloAnalisi({
   if (compatto) {
     return (
       <section className="side side--rec">
-        <div className="pad">
+        {/* `side__body` e non `pad`: è il pezzo del sistema che descrive «la
+            parte che scorre» (flex:1, overflow-y:auto, min-height:0), e
+            durante la call è proprio qui che il contenuto cresce — la nota di
+            lavoro si riscrive incorporando le precedenti. Con il solo `pad`,
+            che è spaziatura, dalla seconda nota in poi il fondo restava
+            tagliato fuori senza barra e senza modo di arrivarci (#87). */}
+        <div className="side__body">
+          <div className="pad">
           {/* La nota di lavoro sta qui, prima di tutto. `compatto` vale quanto
               `registrando` (index.tsx), quindi durante una call si esce da
               questo ramo e non si arriva mai a quelli sotto: la nota era
@@ -768,11 +727,12 @@ export function PannelloAnalisi({
           <p style={{ fontSize: 'var(--fs-md)', lineHeight: 1.6, color: 'var(--fg-2)' }}>
             {t('pan.a_call_finita')}
           </p>
-          {providerAttivo?.esce_dal_computer && (
-            <div className="callout callout--inline">
-              <p>Motore: {providerAttivo.etichetta}. La trascrizione lascia questo computer.</p>
-            </div>
-          )}
+            {providerAttivo?.esce_dal_computer && (
+              <div className="alert alert--inline">
+                <p>{t('pan.motore_esce', { motore: providerAttivo.etichetta })}</p>
+              </div>
+            )}
+          </div>
         </div>
       </section>
     )
@@ -781,32 +741,34 @@ export function PannelloAnalisi({
   if (inCorsoEffettivo) {
     return (
       <section className="side">
-        <div className="pad">
-          <span className="label">{t('pan.label_in_corso')}</span>
-          <div className="progress">
-            <i></i>
+        <div className="side__body">
+          <div className="pad">
+            <span className="label">{t('pan.label_in_corso')}</span>
+            <div className="progress">
+              <i></i>
+            </div>
+            <div className="stages">
+              {fasi.map((f) => (
+                <div
+                  key={f.chiave}
+                  className={`stage${f.stato === 'fatta' ? ' is-done' : f.stato === 'in_corso' ? ' is-current' : ''}`}
+                >
+                  <span className="stage__mark">{f.stato === 'fatta' ? '✓' : ''}</span>
+                  {f.titolo}
+                  <span className="stage__note">{f.nota ?? 'in attesa'}</span>
+                </div>
+              ))}
+            </div>
+            <div className="kv">
+              <p style={{ fontSize: 'var(--fs-ui)', color: 'var(--fg-body)' }}>{t('pan.puoi_chiudere')}</p>
+              <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg-2)' }}>
+                {t('pan.lavoro_continua')}
+              </p>
+            </div>
+            <button className="btn" style={{ alignSelf: 'flex-start' }} onClick={interrompi}>
+              {t('pan.interrompi')}
+            </button>
           </div>
-          <div className="stages">
-            {fasi.map((f) => (
-              <div
-                key={f.chiave}
-                className={`stage${f.stato === 'fatta' ? ' is-done' : f.stato === 'in_corso' ? ' is-current' : ''}`}
-              >
-                <span className="stage__mark">{f.stato === 'fatta' ? '✓' : ''}</span>
-                {f.titolo}
-                <span className="stage__note">{f.nota ?? 'in attesa'}</span>
-              </div>
-            ))}
-          </div>
-          <div className="kv">
-            <p style={{ fontSize: 'var(--fs-ui)', color: 'var(--fg-body)' }}>{t('pan.puoi_chiudere')}</p>
-            <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg-2)' }}>
-              {t('pan.lavoro_continua')}
-            </p>
-          </div>
-          <button className="btn" style={{ alignSelf: 'flex-start' }} onClick={interrompi}>
-            {t('pan.interrompi')}
-          </button>
         </div>
       </section>
     )
@@ -854,9 +816,11 @@ export function PannelloAnalisi({
   if (!analisi) {
     return (
       <section className="side">
-        <div className="pad">
-          <span className="label">{t('pan.label')}</span>
-          <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-2)' }}>{t('pan.carico')}</p>
+        <div className="side__body">
+          <div className="pad">
+            <span className="label">{t('pan.label')}</span>
+            <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-2)' }}>{t('pan.carico')}</p>
+          </div>
         </div>
       </section>
     )
@@ -877,67 +841,72 @@ export function PannelloAnalisi({
     const costoTesto = !providerAttivo
       ? '—'
       : providerAttivo.costo_ora_usd == null
-        ? 'gratis'
+        ? t('pan.gratis')
         : formattaDollari(providerAttivo.costo_ora_usd * ore)
 
     return (
       <section className="side">
-        <div className="pad">
-          {/* Prima dell'analisi, non dopo: durante la call e' l'unica cosa
-              che ha qualcosa da dire, e a call appena finita e' quello che
-              c'e' finche' il riassunto non arriva. */}
-          <NotaDiLavoro sessionId={sessione.id} registrando={registrando} />
-          <span className="label">{t('pan.label')}</span>
-          <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-body)' }}>
-            {t('pan.non_analizzata')}
-          </p>
-          <button className="btn btn--primary btn--block" onClick={analizza} disabled={registrando}>
-            {t('pan.analizza')}
-          </button>
-          <div className="kv">
-            <div className="kv__row">
-              <span>{t('pan.motore')}</span>
-              <b>{providerAttivo?.etichetta ?? '—'}</b>
+        <div className="side__body">
+          <div className="pad">
+            <span className="label">{t('pan.label')}</span>
+            <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-body)' }}>
+              {t('pan.non_analizzata')}
+            </p>
+            <button className="btn btn--primary btn--block" onClick={analizza} disabled={registrando}>
+              {t('pan.analizza')}
+            </button>
+            <div className="kv">
+              <div className="kv__row">
+                <span>{t('pan.motore')}</span>
+                <b>{providerAttivo?.etichetta ?? '—'}</b>
+              </div>
+              <div className="kv__row">
+                <span>{t('pan.durata_stimata')}</span>
+                <b>{minutiStimati != null ? t('pan.circa_min', { n: minutiStimati }) : '—'}</b>
+              </div>
+              <div className="kv__row">
+                <span>{t('pan.costo')}</span>
+                <b>{costoTesto}</b>
+              </div>
             </div>
-            <div className="kv__row">
-              <span>{t('pan.durata_stimata')}</span>
-              <b>{minutiStimati != null ? `circa ${minutiStimati} min` : '—'}</b>
-            </div>
-            <div className="kv__row">
-              <span>{t('pan.costo')}</span>
-              <b>{costoTesto}</b>
-            </div>
+            {/* Conseguenza, non errore: resta visibile anche a motore già scelto. */}
+            {providerAttivo?.esce_dal_computer && (
+              <div className="callout">
+                <p>
+                  {t('pan.esce_dal_computer', { min: minutiSessione, dove: providerAttivo.etichetta })}
+                </p>
+              </div>
+            )}
+            {/* Sotto il comando, non sopra. Durante la call la nota è l'unica
+                cosa che ha qualcosa da dire e sta in cima; a call finita
+                quello che si viene a cercare qui è «Analizza la call», e con
+                le note incrementali accese cinque note sopra il pulsante lo
+                spingevano sotto il bordo della finestra. */}
+            <NotaDiLavoro sessionId={sessione.id} registrando={registrando} />
+
+            {/* Indipendente dall'analisi sopra: lavora sull'audio, non sul suo
+                risultato, quindi ha senso anche prima che l'analisi sia mai
+                partita. */}
+            <ControlloDiarizzazione
+              sessione={sessione}
+              disponibile={diarizDisponibile}
+              giaDiarizzata={giaDiarizzata}
+              stato={diarizStato}
+              errore={diarizErrore}
+              conferma={diarizConferma}
+              onChiediConferma={() => setDiarizConferma(true)}
+              onAnnullaConferma={() => setDiarizConferma(false)}
+              onAvvia={avviaDiarizzazione}
+            />
+            {/* Anche qui prima dell'analisi: lavora sull'audio, e rifare la
+                trascrizione ha senso soprattutto *prima* di analizzarla — le
+                task escono da quel testo. */}
+            <ControlloRifinitura
+              sessione={sessione}
+              stato={statoRifinitura}
+              onFinita={onRicaricaSegmenti}
+            />
           </div>
-          {/* Conseguenza, non errore: resta visibile anche a motore già scelto. */}
-          {providerAttivo?.esce_dal_computer && (
-            <div className="callout">
-              <p>
-                {t('pan.esce_dal_computer', { min: minutiSessione, dove: providerAttivo.etichetta })}
-              </p>
-            </div>
-          )}
-          {/* Indipendente dall'analisi sopra: lavora sull'audio, non sul suo
-              risultato, quindi ha senso anche prima che l'analisi sia mai
-              partita. */}
-          <ControlloDiarizzazione
-            sessione={sessione}
-            disponibile={diarizDisponibile}
-            giaDiarizzata={giaDiarizzata}
-            stato={diarizStato}
-            errore={diarizErrore}
-            conferma={diarizConferma}
-            onChiediConferma={() => setDiarizConferma(true)}
-            onAnnullaConferma={() => setDiarizConferma(false)}
-            onAvvia={avviaDiarizzazione}
-          />
-          {/* Anche qui prima dell'analisi: lavora sull'audio, e rifare la
-              trascrizione ha senso soprattutto *prima* di analizzarla — le
-              task escono da quel testo. */}
-          <ControlloRifinitura
-            sessione={sessione}
-            stato={statoRifinitura}
-            onFinita={onRicaricaSegmenti}
-          />
         </div>
       </section>
     )
@@ -1010,7 +979,7 @@ export function PannelloAnalisi({
                   ))}
                 </div>
               ))
-            : analisi.riassunto && <Markdown testo={analisi.riassunto} />}
+            : analisi.riassunto && <Markdown testo={analisi.riassunto} classi={CLASSI_SOMMARIO} />}
           {/* In fondo, non in cima: a call analizzata la nota è il modo in cui
               la riunione si vedeva mentre andava, e il riassunto la supera.
               Resta perché è quella che si è letta al momento — e perché è la
@@ -1041,7 +1010,7 @@ export function PannelloAnalisi({
                   </div>
                 </div>
               ))
-            : analisi.punti_salienti && <Markdown testo={analisi.punti_salienti} />}
+            : analisi.punti_salienti && <Markdown testo={analisi.punti_salienti} classi={CLASSI_SOMMARIO} />}
         </div>
       </div>
 

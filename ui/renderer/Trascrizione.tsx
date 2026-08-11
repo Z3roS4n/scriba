@@ -502,7 +502,7 @@ export const Trascrizione = forwardRef<
                 aria-expanded={mostraEco}
                 onClick={() => setMostraEco((v) => !v)}
               >
-                <span className={`chev${mostraEco ? ' is-open' : ''}`} />
+                <span className={`chev${mostraEco ? ' chev--down' : ''}`} />
                 <span>
                   <b className="num">{t(quantiEco === 1 ? 'tra3.riga_1' : 'tra3.righe_n', { n: quantiEco })}</b>{' '}
                   {t(quantiEco === 1 ? 'tra3.ripresa' : 'tra3.riprese')}

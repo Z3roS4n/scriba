@@ -455,7 +455,7 @@ function App() {
     window.scriba.registraScorciatoie().then(({ overlay }) => {
       setScorciatoiaOverlay(overlay)
       if (!overlay) {
-        mostraAvviso("La scorciatoia per la striscia non è disponibile: la sta già usando un'altra applicazione.", {
+        mostraAvviso(t('idx2.scorciatoia_presa'), {
           etichetta: 'Cambia scorciatoia',
           onClick: () => window.scriba.apriImpostazioni(),
         })

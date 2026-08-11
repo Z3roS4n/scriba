@@ -1162,6 +1162,35 @@ const it = {
     'trascrizione',
   'uso.analisi':
     'analisi',
+  // --- rimasti indietro ----------------
+  'not2.fino_a':
+    'fino a {t}',
+  'pan.motore_esce':
+    'Motore: {motore}. La trascrizione lascia questo computer.',
+  'arc3.scritto':
+    'Scritto: {n} token stimati.',
+
+  // --- nascoste dietro un apostrofo --------
+  'pan.diariz_altrove':
+    'C\'è già una diarizzazione in corso, su un\'altra call.',
+  'pan.diariz_gia':
+    'C\'è già una diarizzazione in corso.',
+  'pan.ultima_fallita':
+    'L\'ultima analisi non è riuscita.',
+  'pan.gratis':
+    'gratis',
+  'pan.circa_min':
+    'circa {n} min',
+  'idx2.scorciatoia_presa':
+    'La scorciatoia per la striscia non è disponibile: la sta già usando un\'altra applicazione.',
+  'formato.markdown':
+    'Markdown',
+  'formato.testo':
+    'Testo',
+  'formato.json':
+    'JSON',
+  'formato.contesto':
+    "Per l'IA",
 } as const
 
 export type Chiave = keyof typeof it
@@ -2239,6 +2268,33 @@ const en: Record<Chiave, string> = {
     'transcription',
   'uso.analisi':
     'analysis',
+  'not2.fino_a':
+    'up to {t}',
+  'pan.motore_esce':
+    'Engine: {motore}. The transcript leaves this computer.',
+  'arc3.scritto':
+    'Written: {n} estimated tokens.',
+
+  'pan.diariz_altrove':
+    'The voices are already being told apart, on another call.',
+  'pan.diariz_gia':
+    'The voices are already being told apart.',
+  'pan.ultima_fallita':
+    'The last analysis did not work.',
+  'pan.gratis':
+    'free',
+  'pan.circa_min':
+    'about {n} min',
+  'idx2.scorciatoia_presa':
+    'The shortcut for the strip is not available: another application is already using it.',
+  'formato.markdown':
+    'Markdown',
+  'formato.testo':
+    'Text',
+  'formato.json':
+    'JSON',
+  'formato.contesto':
+    'For AI',
 }
 
 const CATALOGHI = { it, en } as const

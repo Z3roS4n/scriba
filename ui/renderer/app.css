@@ -632,6 +632,18 @@ a:hover { color:var(--red); border-bottom-color:var(--red); }
 .model__dl { margin-top:var(--sp-4); }
 .model__dlmeta { display:flex; align-items:center; gap:var(--sp-2); margin-top:var(--sp-2); font-size:var(--fs-xs); color:var(--fg-3); }
 .model__dlmeta .btn { margin-left:auto; }
+/* Il testo della riga prende lo spazio che avanza: lo stato e i comandi
+   restano a destra, allineati in alto come nel handoff. */
+.model__testo { flex:1; min-width:0; }
+.model__dlmeta .call__sep { color:var(--fg-3); }
+/* Lo spazio non basta: la frase la si legge quando il download NON parte,
+   quindi non può essere una nota fra le altre. Filo rosso a sinistra e basta
+   — nessun riquadro dentro il riquadro della scheda. */
+.model__err {
+  margin-top:var(--sp-3); padding-left:var(--sp-3);
+  border-left:2px solid var(--red);
+  font-size:var(--fs-sm); line-height:var(--lh-body); color:var(--fg-body);
+}
 
 /* ============================================================================
    OVERLAY — colori fissi, non i token: sotto la striscia può esserci
@@ -781,9 +793,26 @@ a:hover { color:var(--red); border-bottom-color:var(--red); }
 .nota__when { margin-left:auto; font-size:var(--fs-xs); color:var(--fg-3); white-space:nowrap; }
 .nota__titolo { font-size:var(--fs-sm); font-weight:var(--w-bold); margin:var(--sp-4) 0 var(--sp-2); }
 .nota__par { font-size:var(--fs-sm); line-height:var(--lh-body); color:var(--fg-body); margin-bottom:var(--sp-3); text-wrap:pretty; }
-.nota__elenco { display:flex; flex-direction:column; gap:var(--sp-2); margin-bottom:var(--sp-3); }
-.nota__elenco li { display:grid; grid-template-columns:7px 1fr; gap:var(--sp-3); align-items:baseline; font-size:var(--fs-sm); line-height:var(--lh-body); color:var(--fg-body); }
-.nota__elenco li::before { content:""; width:7px; height:7px; background:var(--fg); display:block; transform:translateY(-2px); }
+.nota__corpo + .nota__corpo { margin-top:var(--sp-5); }
+/* Il riquadro di errore dentro la nota: sta fra la testa e il testo, e la
+   riga sotto la stacca da quello che segue. */
+.nota__errore { margin-bottom:var(--sp-4); }
+
+/* Elenchi del Markdown dei modelli — `renderer/markdown.tsx`, usato sia qui
+   sia nel riassunto.
+
+   Puntato: il quadratino da 7px, che è il segno dell'elenco nel sistema.
+   Numerato: il numero, perché «1.» e «2.» dicono un ordine che il quadratino
+   perderebbe. Lì il marcatore è quello nativo e non un `::before`, così un
+   elenco che il modello comincia da «3.» comincia davvero da tre. */
+.nota__elenco, .sum__l { display:flex; flex-direction:column; gap:var(--sp-2); margin-bottom:var(--sp-3); }
+.nota__elenco li, .sum__l li { font-size:var(--fs-sm); line-height:var(--lh-body); color:var(--fg-body); text-wrap:pretty; }
+.sum__l li { font-size:var(--fs-ui); }
+ul.nota__elenco li, ul.sum__l li { display:grid; grid-template-columns:7px 1fr; gap:var(--sp-3); align-items:baseline; }
+ul.nota__elenco li::before, ul.sum__l li::before { content:""; width:7px; height:7px; background:var(--fg); display:block; transform:translateY(-2px); }
+ol.nota__elenco, ol.sum__l { padding-left:var(--sp-6); }
+ol.nota__elenco li, ol.sum__l li { list-style:decimal; }
+ol.nota__elenco li::marker, ol.sum__l li::marker { color:var(--fg-3); font-variant-numeric:tabular-nums; }
 .nota__vuota { font-size:var(--fs-sm); color:var(--fg-3); line-height:var(--lh-body); }
 
 /* scatti presi e dispositivi, sotto la nota durante la call */
@@ -927,6 +956,73 @@ select.arow__c {
   font-family:inherit; padding:2px 4px; max-width:100%;
 }
 select.arow__c:hover { border-color:var(--line); }
+
+
+/* ===========================================================================
+   PEZZI CHE IL HANDOFF NON DISEGNA
+
+   Delle schermate dell'applicazione il handoff 1.0 ne disegna una parte. Il
+   resto si deriva: stessi token, stessa grammatica — raggio 0 tranne 2px su
+   ciò che si clicca, nessuna ombra, la separazione la fa la linea da 1px, e
+   in hover cambia il bordo o il fondo, mai l'opacità.
+
+   Ognuna di queste regole nasce da una classe che i componenti scrivevano e
+   che non esisteva: fino a #86 quei pezzi uscivano col testo nudo.
+   ========================================================================= */
+
+/* prove: il titolo della task in testa al pannello, e la nota in fondo */
+.evidence__titolo { font-size:var(--fs-sm); line-height:var(--lh-body); color:var(--fg-body); margin-top:var(--sp-2); text-wrap:pretty; }
+.evidence__list { max-height:320px; overflow-y:auto; }
+.evidence__nota { padding:var(--sp-3) var(--sp-4); font-size:var(--fs-xs); line-height:var(--lh-body); color:var(--fg-3); border-top:1px solid var(--line-2); }
+
+/* archivio: la riga «per l'IA» in fondo. Il handoff scrive queste due con lo
+   stile in linea; qui hanno un nome perché si ripetono. */
+.ia__voce { font-size:var(--fs-sm); color:var(--fg-2); }
+.ia__esito { font-size:var(--fs-xs); color:var(--fg-2); }
+
+/* impostazioni · analisi: la terza riga di una `row--risk` dice cosa esce dal
+   computer. Non un altro filo rosso — quello ce l'ha già la riga — ma il
+   colore del testo, che è il modo in cui il rosso parla senza gridare. */
+.row__rischio { display:block; font-size:var(--fs-sm); line-height:var(--lh-body); color:var(--red); margin-top:5px; }
+
+/* impostazioni · clienti: l'elenco, e una riga archiviata. Archiviato non
+   vuol dire cancellato: resta leggibile, più indietro delle altre. */
+.cli { display:flex; flex-direction:column; }
+.cli__row.is-off { color:var(--fg-3); }
+.cli__row.is-off .cli__nome { color:var(--fg-3); }
+
+/* impostazioni · scorciatoie. Una riga è la stessa cosa di una `.row`: nome a
+   sinistra, il tasto e il comando a destra. Il conflitto lo dice il bordo
+   rosso del tasto, com'è per `.key.is-capturing`. */
+.shortcut { padding:var(--sp-5) 0; border-bottom:1px solid var(--line-2); }
+.shortcut:last-child { border-bottom:0; }
+.shortcut__top { display:flex; align-items:center; gap:var(--sp-4); }
+.shortcut__name { flex:1; font-size:var(--fs-ui); color:var(--fg); }
+.shortcut__conflict { display:block; margin-top:var(--sp-2); font-size:var(--fs-sm); line-height:var(--lh-body); color:var(--red); }
+.shortcut.has-conflict .key { border-color:var(--red); color:var(--red); }
+
+/* impostazioni · dati: i percorsi sul disco. Il percorso è in tondo mono
+   perché lo si copia, il peso in cifre tabulari perché lo si confronta. */
+.pathrow { display:flex; align-items:baseline; gap:var(--sp-4); padding:var(--sp-3) 0; border-bottom:1px solid var(--line-2); }
+.pathrow:last-child { border-bottom:0; }
+.pathrow__text { flex:1; min-width:0; font-family:var(--font-code); font-size:var(--fs-xs); color:var(--fg-2); overflow-wrap:anywhere; }
+.pathrow__size { font-size:var(--fs-xs); color:var(--fg-3); font-variant-numeric:tabular-nums; white-space:nowrap; }
+/* Le cancellazioni: la sezione che non si torna indietro. */
+.danger { margin-top:var(--sp-6); padding-left:var(--sp-4); border-left:3px solid var(--red); }
+
+/* pannello analisi · le fasi mentre lavora. Non una barra per fase: una
+   colonna di righe, quella in corso in evidenza e quelle fatte con la
+   spunta. È l'unico posto in cui si vede che l'analisi è a più passaggi. */
+.stages { display:flex; flex-direction:column; gap:var(--sp-2); }
+.stage { display:grid; grid-template-columns:14px 1fr; gap:var(--sp-3); align-items:baseline; font-size:var(--fs-sm); color:var(--fg-3); }
+.stage.is-current { color:var(--fg); font-weight:var(--w-bold); }
+.stage.is-done { color:var(--fg-2); }
+.stage__mark { font-size:var(--fs-xs); color:var(--fg-2); }
+.stage__note { display:block; font-size:var(--fs-xs); color:var(--fg-3); font-weight:var(--w-body); }
+
+/* striscia: gli scatti presi e le righe di trascrizione che scorrono sotto */
+.overlay__shot { display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) var(--sp-4); border-top:1px solid var(--ov-line); }
+.overlay__lines { display:flex; flex-direction:column; gap:var(--sp-2); padding:var(--sp-3) var(--sp-4); border-top:1px solid var(--ov-line); max-height:180px; overflow-y:auto; }
 
 /* ===========================================================================
    IMPOSTAZIONI — parti che il handoff non disegna.

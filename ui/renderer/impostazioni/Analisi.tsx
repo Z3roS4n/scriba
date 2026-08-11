@@ -51,7 +51,7 @@ export function SezioneAnalisi({
           <div className="row__t">
             <b>{t('ana.note')}</b>
             <span>{t('ana.note_nota')}</span>
-            <span className="row__risk">
+            <span className="row__rischio">
               {t('ana.note_rete')}
             </span>
           </div>

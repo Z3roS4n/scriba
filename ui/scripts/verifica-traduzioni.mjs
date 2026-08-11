@@ -14,10 +14,11 @@
  *    Annulla. Il conteggio torna lo stesso, ed è per questo che contare non
  *    basta.
  *
- * Il confronto è con il file al **punto in cui il ramo è nato**, non con
- * HEAD: su HEAD i file già tradotti nei commit precedenti non contengono più
- * l'italiano, e il controllo li segnalerebbe tutti come riscritti. La domanda
- * è «questa frase c'era prima che cominciassimo», e la base è quella.
+ * Il confronto è con il file a un commit fissato — l'ultimo prima di
+ * qualunque traduzione — e non con HEAD: su HEAD i file tradotti non
+ * contengono più l'italiano, e il controllo li segnalerebbe tutti come
+ * riscritti. La domanda è «questa frase c'era prima che cominciassimo», e ha
+ * una risposta sola. Vedi `BASE` più sotto.
  *
  *   node scripts/verifica-traduzioni.mjs
  *
@@ -86,7 +87,6 @@ const ORIGINI = {
   'imp2.': 'ui/renderer/Impostazioni.tsx',
   'ras3.': 'ui/renderer/Rassegna.tsx',
   'tra3.': 'ui/renderer/Trascrizione.tsx',
-  'ril2.': 'ui/renderer/impostazioni/Rilevamento.tsx',
 }
 
 /**
@@ -111,8 +111,21 @@ const COMPOSTE = new Set([
   'tra3.riprese',
 ])
 
-/** Il commit da cui parte il ramo: prima di qualunque traduzione. */
-const BASE = execSync('git merge-base HEAD main', { encoding: 'utf8' }).trim()
+/**
+ * Il commit prima di qualunque traduzione — l'ultimo in cui i sorgenti sono
+ * ancora tutti in italiano.
+ *
+ * Era `git merge-base HEAD main`, e ha funzionato finché il lavoro viveva sul
+ * suo ramo. Appena quel ramo è entrato in `main` la base è diventata un
+ * commit **già tradotto**: l'italiano nei sorgenti non c'era più, e il
+ * controllo dichiarava riscritte 329 voci su 402. Un rosso che non vuol dire
+ * niente è peggio di nessun controllo, perché lo si impara a saltare.
+ *
+ * Fissato, quindi. La domanda che questo cancello pone — «questa frase
+ * italiana c'era davvero, prima che cominciassimo?» — ha una sola risposta
+ * giusta, e sta a un commit solo.
+ */
+const BASE = '955af93'
 
 const catalogo = readFileSync('renderer/lingua.ts', 'utf8')
 // Solo il blocco italiano: l'inglese non deve ritrovarsi da nessuna parte.
@@ -212,6 +225,9 @@ const UGUALI_APPOSTA = new Set([
   'azione.screenshot',
   'call.senza_titolo',
   'ntipo.url',
+  // Nomi propri di formato: Markdown e JSON si chiamano così ovunque.
+  'formato.markdown',
+  'formato.json',
 ])
 
 const segnaposti = (s) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort()

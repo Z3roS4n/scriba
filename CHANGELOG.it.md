@@ -7,6 +7,34 @@ Ogni voce è divisa in tre sezioni, ed è la più alta presente a decidere lo
 scatto di versione: **Cambiamenti che rompono** (maggiore), **Funzioni nuove**
 (minore), **Correzioni** (patch). Una sezione senza voci si lascia fuori.
 
+## 1.1.1 — 11 agosto 2026
+
+### Correzioni
+
+- **Undici schermate uscivano senza stile.** Con il foglio di stile 1.0
+  diverse classi hanno cambiato nome; i componenti hanno continuato a
+  scrivere i nomi vecchi, quindi quelle regole non si applicavano a niente.
+  Nella nota di lavoro l'etichetta e il minuto uscivano attaccati — «NOTA DI
+  LAVOROfino a 29:59» — e modelli, prove, scorciatoie, percorsi dei file,
+  clienti, fasi dell'analisi e scatti nella striscia comparivano col testo
+  nudo. Trentacinque classi, adesso rinominate come le chiama il design o
+  scritte come aggiunte dichiarate.
+- **Il pulsante «Analizza la call» poteva restare irraggiungibile a call
+  finita.** Con le note incrementali accese le note lo spingevano sotto il
+  bordo di una colonna che non scorreva. Quattro rami del pannello avevano
+  lo stesso difetto. A call finita la nota sta adesso sotto il pulsante
+  invece che sopra, perché il pulsante è quello che si viene a cercare.
+- **Durante la call la colonna di destra non scorreva.** La nota di lavoro
+  cresce a ogni aggiornamento — ognuna riscrive dentro di sé le precedenti —
+  quindi dalla seconda in poi il fondo restava tagliato via, senza barra e
+  senza modo di arrivarci.
+- **Nella nota di lavoro si vedevano gli asterischi del Markdown** invece del
+  grassetto. C'erano due renderer per lo stesso testo e solo uno lo faceva;
+  adesso è uno solo, e rende come elenchi anche quelli numerati.
+- Tre frasi restavano in italiano con l'interfaccia in inglese: il «fino a»
+  della nota, l'avviso sul motore nel pannello analisi e l'esito dell'export
+  nell'archivio.
+
 ## 1.1.0 — 10 agosto 2026
 
 ### Funzioni nuove
