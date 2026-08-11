@@ -61,7 +61,7 @@ function senzaCommenti(t) {
  * — `passo === 'crea'` — e restavano in cima al metro per sempre. Un numero
  * che non puo' arrivare a zero e' un numero che si smette di guardare. */
 const SPIA =
-  /\b(il|lo|la|le|gli|un|una|del|della|dei|delle|che|non|per|con|su|sul|sulla|nel|nella|dal|dalla|al|alla|allo|agli|alle|tra|fra|questo|questa|quando|come|dove|più|già|sono|sta|sto|stanno|essere|fare|dice|detto|detta|salva|salvando|creando|apri|chiudi|scegli|serve|servono|vale|torna|manda|mandare|resta|restano|esce|viene|vengono|nessun|nessuna|ogni|tutte|tutti|tutto|tutta|ancora|adesso|solo|anche|senza|fino|oppure|invece|mentre|però|così|qui|niente|prova|prove|voce|voci|riga|righe|minuto|minuti|campo|campi|colonna|colonne|pagina|nome|nomi|confermata|scartata|entro|chi)\b/i
+  /\b(il|lo|la|le|gli|un|una|del|della|dei|delle|che|non|per|con|su|sul|sulla|nel|nella|dal|dalla|al|alla|allo|agli|alle|tra|fra|questo|questa|quando|come|dove|più|già|sono|sta|sto|stanno|essere|fare|dice|detto|detta|salva|salvando|creando|apri|chiudi|scegli|serve|servono|vale|torna|manda|mandare|resta|restano|esce|viene|vengono|nessun|nessuna|ogni|tutte|tutti|tutto|tutta|ancora|adesso|solo|anche|senza|fino|circa|gratis|oppure|invece|mentre|però|così|qui|niente|prova|prove|voce|voci|riga|righe|minuto|minuti|campo|campi|colonna|colonne|pagina|nome|nomi|confermata|scartata|entro|chi)\b/i
 
 const perFile = new Map()
 
@@ -76,12 +76,18 @@ for (const percorso of file(RADICE)) {
   // salta ogni nodo di testo in cui compaia un'espressione — «Database
   // «{schema.titolo}». Un campo lasciato su…» non lo vedeva nessuno dei due.
   const pezzi = []
-  for (const m of testo.matchAll(/(?<![\w$)])(['"])((?:[^'"\\\n]|\\.){2,})\1/g)) {
+  // I due apici si cercano separatamente: con una classe sola —
+  // `[^'"]` — una stringa fra doppi apici che contenga un apostrofo si
+  // interrompe al primo, e «"L'ultima analisi non è riuscita."» non veniva
+  // vista da nessuno dei due metri.
+  const LETTERALE = /(?<![\w$)])"((?:[^"\\\n]|\\.){2,})"|(?<![\w$)])'((?:[^'\\\n]|\\.){2,})'/g
+  for (const m of testo.matchAll(LETTERALE)) {
+    const valore = m[1] ?? m[2]
     // `{t('a')}{' '}{x.map(…).join(t('b'))}`: gli apici si accoppiano a due a
     // due, e quello di chiusura di `' '` con quello di apertura di `'b'`
     // racchiudono del codice. Una stringa mostrata non contiene graffe — i
     // segnaposto le hanno solo nel catalogo, non qui.
-    if (!/[{}]/.test(m[2])) pezzi.push([m[2], m.index])
+    if (!/[{}]/.test(valore)) pezzi.push([valore, m.index])
   }
   // I pezzi che vengono da un taglio (template e nodi misti) possono finire a
   // metà di un'espressione: `${` annidati e `=>` mandano a spasso qualunque

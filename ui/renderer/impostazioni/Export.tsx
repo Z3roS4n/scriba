@@ -6,14 +6,12 @@
 
 import type { Impostazioni } from '../tipi'
 import { SezioneNotion } from './Notion'
-import { useT } from '../lingua'
+import { etichettaValore, useT } from '../lingua'
 
-const FORMATI = [
-  { id: 'markdown', etichetta: 'Markdown' },
-  { id: 'testo', etichetta: 'Testo' },
-  { id: 'json', etichetta: 'JSON' },
-  { id: 'contesto', etichetta: "Per l'IA" },
-] as const
+/* Tre nomi su quattro sono nomi propri di formato e non si traducono.
+   «Per l'IA» sì, ed è per questo che l'elenco non può più essere una
+   costante di modulo: là fuori il traduttore non c'è. */
+const FORMATI = ['markdown', 'testo', 'json', 'contesto'] as const
 
 export function SezioneExport({
   impostazioni,
@@ -48,13 +46,13 @@ export function SezioneExport({
             </span>
           </div>
           <div className="picker">
-            {FORMATI.map((f) => (
+            {FORMATI.map((id) => (
               <button
-                key={f.id}
-                className={esp.formato === f.id ? 'is-on' : ''}
-                onClick={() => onCambia({ export: { ...esp, formato: f.id } })}
+                key={id}
+                className={esp.formato === id ? 'is-on' : ''}
+                onClick={() => onCambia({ export: { ...esp, formato: id } })}
               >
-                {f.etichetta}
+                {etichettaValore(t, 'formato', id)}
               </button>
             ))}
           </div>

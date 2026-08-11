@@ -325,7 +325,7 @@ function ControlloDiarizzazione({
       <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--fg-3)' }}>
         {stato.fase === 'in_corso_altrove'
           ? stato.messaggio
-          : "C'è già una diarizzazione in corso, su un'altra call."}
+          : t('pan.diariz_altrove')}
       </span>
     )
   }
@@ -504,7 +504,7 @@ export function PannelloAnalisi({
       if (r.status === 409) {
         setDiarizStato({
           fase: 'in_corso_altrove',
-          messaggio: r.body?.detail ?? "C'è già una diarizzazione in corso.",
+          messaggio: r.body?.detail ?? t('pan.diariz_gia'),
         })
       } else {
         setDiarizStato((c) => (c?.fase === 'in_corso' && c.sessionId === idSessione ? null : c))
@@ -533,7 +533,7 @@ export function PannelloAnalisi({
     // né l'orario esatto del tentativo: l'evento che li portava è passato
     // prima che questa finestra si aprisse. Meglio dirlo in modo generico che
     // tacere l'errore.
-    setErrore(sessione.stato === 'failed' ? { messaggio: "L'ultima analisi non è riuscita.", ora: null } : null)
+    setErrore(sessione.stato === 'failed' ? { messaggio: t('pan.ultima_fallita'), ora: null } : null)
 
     // Si chiede subito se un'analisi sta già girando, comprese le fasi.
     // Senza, riaprendo la finestra mentre il lavoro è in corso l'interfaccia
@@ -688,11 +688,13 @@ export function PannelloAnalisi({
   if (!sessione) {
     return (
       <section className="side">
-        <div className="pad">
-          <span className="label">{t('pan.label')}</span>
-          <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-2)' }}>
-            {t('pan.scegli_call')}
-          </p>
+        <div className="side__body">
+          <div className="pad">
+            <span className="label">{t('pan.label')}</span>
+            <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-2)' }}>
+              {t('pan.scegli_call')}
+            </p>
+          </div>
         </div>
       </section>
     )
@@ -739,32 +741,34 @@ export function PannelloAnalisi({
   if (inCorsoEffettivo) {
     return (
       <section className="side">
-        <div className="pad">
-          <span className="label">{t('pan.label_in_corso')}</span>
-          <div className="progress">
-            <i></i>
+        <div className="side__body">
+          <div className="pad">
+            <span className="label">{t('pan.label_in_corso')}</span>
+            <div className="progress">
+              <i></i>
+            </div>
+            <div className="stages">
+              {fasi.map((f) => (
+                <div
+                  key={f.chiave}
+                  className={`stage${f.stato === 'fatta' ? ' is-done' : f.stato === 'in_corso' ? ' is-current' : ''}`}
+                >
+                  <span className="stage__mark">{f.stato === 'fatta' ? '✓' : ''}</span>
+                  {f.titolo}
+                  <span className="stage__note">{f.nota ?? 'in attesa'}</span>
+                </div>
+              ))}
+            </div>
+            <div className="kv">
+              <p style={{ fontSize: 'var(--fs-ui)', color: 'var(--fg-body)' }}>{t('pan.puoi_chiudere')}</p>
+              <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg-2)' }}>
+                {t('pan.lavoro_continua')}
+              </p>
+            </div>
+            <button className="btn" style={{ alignSelf: 'flex-start' }} onClick={interrompi}>
+              {t('pan.interrompi')}
+            </button>
           </div>
-          <div className="stages">
-            {fasi.map((f) => (
-              <div
-                key={f.chiave}
-                className={`stage${f.stato === 'fatta' ? ' is-done' : f.stato === 'in_corso' ? ' is-current' : ''}`}
-              >
-                <span className="stage__mark">{f.stato === 'fatta' ? '✓' : ''}</span>
-                {f.titolo}
-                <span className="stage__note">{f.nota ?? 'in attesa'}</span>
-              </div>
-            ))}
-          </div>
-          <div className="kv">
-            <p style={{ fontSize: 'var(--fs-ui)', color: 'var(--fg-body)' }}>{t('pan.puoi_chiudere')}</p>
-            <p style={{ fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-body)', color: 'var(--fg-2)' }}>
-              {t('pan.lavoro_continua')}
-            </p>
-          </div>
-          <button className="btn" style={{ alignSelf: 'flex-start' }} onClick={interrompi}>
-            {t('pan.interrompi')}
-          </button>
         </div>
       </section>
     )
@@ -812,9 +816,11 @@ export function PannelloAnalisi({
   if (!analisi) {
     return (
       <section className="side">
-        <div className="pad">
-          <span className="label">{t('pan.label')}</span>
-          <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-2)' }}>{t('pan.carico')}</p>
+        <div className="side__body">
+          <div className="pad">
+            <span className="label">{t('pan.label')}</span>
+            <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-2)' }}>{t('pan.carico')}</p>
+          </div>
         </div>
       </section>
     )
@@ -835,67 +841,72 @@ export function PannelloAnalisi({
     const costoTesto = !providerAttivo
       ? '—'
       : providerAttivo.costo_ora_usd == null
-        ? 'gratis'
+        ? t('pan.gratis')
         : formattaDollari(providerAttivo.costo_ora_usd * ore)
 
     return (
       <section className="side">
-        <div className="pad">
-          {/* Prima dell'analisi, non dopo: durante la call e' l'unica cosa
-              che ha qualcosa da dire, e a call appena finita e' quello che
-              c'e' finche' il riassunto non arriva. */}
-          <NotaDiLavoro sessionId={sessione.id} registrando={registrando} />
-          <span className="label">{t('pan.label')}</span>
-          <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-body)' }}>
-            {t('pan.non_analizzata')}
-          </p>
-          <button className="btn btn--primary btn--block" onClick={analizza} disabled={registrando}>
-            {t('pan.analizza')}
-          </button>
-          <div className="kv">
-            <div className="kv__row">
-              <span>{t('pan.motore')}</span>
-              <b>{providerAttivo?.etichetta ?? '—'}</b>
+        <div className="side__body">
+          <div className="pad">
+            <span className="label">{t('pan.label')}</span>
+            <p style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.6, color: 'var(--fg-body)' }}>
+              {t('pan.non_analizzata')}
+            </p>
+            <button className="btn btn--primary btn--block" onClick={analizza} disabled={registrando}>
+              {t('pan.analizza')}
+            </button>
+            <div className="kv">
+              <div className="kv__row">
+                <span>{t('pan.motore')}</span>
+                <b>{providerAttivo?.etichetta ?? '—'}</b>
+              </div>
+              <div className="kv__row">
+                <span>{t('pan.durata_stimata')}</span>
+                <b>{minutiStimati != null ? t('pan.circa_min', { n: minutiStimati }) : '—'}</b>
+              </div>
+              <div className="kv__row">
+                <span>{t('pan.costo')}</span>
+                <b>{costoTesto}</b>
+              </div>
             </div>
-            <div className="kv__row">
-              <span>{t('pan.durata_stimata')}</span>
-              <b>{minutiStimati != null ? `circa ${minutiStimati} min` : '—'}</b>
-            </div>
-            <div className="kv__row">
-              <span>{t('pan.costo')}</span>
-              <b>{costoTesto}</b>
-            </div>
+            {/* Conseguenza, non errore: resta visibile anche a motore già scelto. */}
+            {providerAttivo?.esce_dal_computer && (
+              <div className="callout">
+                <p>
+                  {t('pan.esce_dal_computer', { min: minutiSessione, dove: providerAttivo.etichetta })}
+                </p>
+              </div>
+            )}
+            {/* Sotto il comando, non sopra. Durante la call la nota è l'unica
+                cosa che ha qualcosa da dire e sta in cima; a call finita
+                quello che si viene a cercare qui è «Analizza la call», e con
+                le note incrementali accese cinque note sopra il pulsante lo
+                spingevano sotto il bordo della finestra. */}
+            <NotaDiLavoro sessionId={sessione.id} registrando={registrando} />
+
+            {/* Indipendente dall'analisi sopra: lavora sull'audio, non sul suo
+                risultato, quindi ha senso anche prima che l'analisi sia mai
+                partita. */}
+            <ControlloDiarizzazione
+              sessione={sessione}
+              disponibile={diarizDisponibile}
+              giaDiarizzata={giaDiarizzata}
+              stato={diarizStato}
+              errore={diarizErrore}
+              conferma={diarizConferma}
+              onChiediConferma={() => setDiarizConferma(true)}
+              onAnnullaConferma={() => setDiarizConferma(false)}
+              onAvvia={avviaDiarizzazione}
+            />
+            {/* Anche qui prima dell'analisi: lavora sull'audio, e rifare la
+                trascrizione ha senso soprattutto *prima* di analizzarla — le
+                task escono da quel testo. */}
+            <ControlloRifinitura
+              sessione={sessione}
+              stato={statoRifinitura}
+              onFinita={onRicaricaSegmenti}
+            />
           </div>
-          {/* Conseguenza, non errore: resta visibile anche a motore già scelto. */}
-          {providerAttivo?.esce_dal_computer && (
-            <div className="callout">
-              <p>
-                {t('pan.esce_dal_computer', { min: minutiSessione, dove: providerAttivo.etichetta })}
-              </p>
-            </div>
-          )}
-          {/* Indipendente dall'analisi sopra: lavora sull'audio, non sul suo
-              risultato, quindi ha senso anche prima che l'analisi sia mai
-              partita. */}
-          <ControlloDiarizzazione
-            sessione={sessione}
-            disponibile={diarizDisponibile}
-            giaDiarizzata={giaDiarizzata}
-            stato={diarizStato}
-            errore={diarizErrore}
-            conferma={diarizConferma}
-            onChiediConferma={() => setDiarizConferma(true)}
-            onAnnullaConferma={() => setDiarizConferma(false)}
-            onAvvia={avviaDiarizzazione}
-          />
-          {/* Anche qui prima dell'analisi: lavora sull'audio, e rifare la
-              trascrizione ha senso soprattutto *prima* di analizzarla — le
-              task escono da quel testo. */}
-          <ControlloRifinitura
-            sessione={sessione}
-            stato={statoRifinitura}
-            onFinita={onRicaricaSegmenti}
-          />
         </div>
       </section>
     )
