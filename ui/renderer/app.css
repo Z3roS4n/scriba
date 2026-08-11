@@ -781,9 +781,26 @@ a:hover { color:var(--red); border-bottom-color:var(--red); }
 .nota__when { margin-left:auto; font-size:var(--fs-xs); color:var(--fg-3); white-space:nowrap; }
 .nota__titolo { font-size:var(--fs-sm); font-weight:var(--w-bold); margin:var(--sp-4) 0 var(--sp-2); }
 .nota__par { font-size:var(--fs-sm); line-height:var(--lh-body); color:var(--fg-body); margin-bottom:var(--sp-3); text-wrap:pretty; }
-.nota__elenco { display:flex; flex-direction:column; gap:var(--sp-2); margin-bottom:var(--sp-3); }
-.nota__elenco li { display:grid; grid-template-columns:7px 1fr; gap:var(--sp-3); align-items:baseline; font-size:var(--fs-sm); line-height:var(--lh-body); color:var(--fg-body); }
-.nota__elenco li::before { content:""; width:7px; height:7px; background:var(--fg); display:block; transform:translateY(-2px); }
+.nota__corpo + .nota__corpo { margin-top:var(--sp-5); }
+/* Il riquadro di errore dentro la nota: sta fra la testa e il testo, e la
+   riga sotto la stacca da quello che segue. */
+.nota__errore { margin-bottom:var(--sp-4); }
+
+/* Elenchi del Markdown dei modelli — `renderer/markdown.tsx`, usato sia qui
+   sia nel riassunto.
+
+   Puntato: il quadratino da 7px, che è il segno dell'elenco nel sistema.
+   Numerato: il numero, perché «1.» e «2.» dicono un ordine che il quadratino
+   perderebbe. Lì il marcatore è quello nativo e non un `::before`, così un
+   elenco che il modello comincia da «3.» comincia davvero da tre. */
+.nota__elenco, .sum__l { display:flex; flex-direction:column; gap:var(--sp-2); margin-bottom:var(--sp-3); }
+.nota__elenco li, .sum__l li { font-size:var(--fs-sm); line-height:var(--lh-body); color:var(--fg-body); text-wrap:pretty; }
+.sum__l li { font-size:var(--fs-ui); }
+ul.nota__elenco li, ul.sum__l li { display:grid; grid-template-columns:7px 1fr; gap:var(--sp-3); align-items:baseline; }
+ul.nota__elenco li::before, ul.sum__l li::before { content:""; width:7px; height:7px; background:var(--fg); display:block; transform:translateY(-2px); }
+ol.nota__elenco, ol.sum__l { padding-left:var(--sp-6); }
+ol.nota__elenco li, ol.sum__l li { list-style:decimal; }
+ol.nota__elenco li::marker, ol.sum__l li::marker { color:var(--fg-3); font-variant-numeric:tabular-nums; }
 .nota__vuota { font-size:var(--fs-sm); color:var(--fg-3); line-height:var(--lh-body); }
 
 /* scatti presi e dispositivi, sotto la nota durante la call */

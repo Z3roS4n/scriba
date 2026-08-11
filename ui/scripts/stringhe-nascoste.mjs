@@ -52,13 +52,16 @@ function senzaCommenti(t) {
  * L'elenco è cresciuto leggendo: la prima versione trovava «non detto» e si
  * lasciava dietro «Sto salvando…» e «campi su Notion», che stanno nello
  * stesso file e nella stessa schermata. Ogni parola aggiunta viene da una
+ * stringa vera che era sfuggita, non da un dizionario — `fino` è arrivata
+ * così, dopo che «fino a 29:59» è uscito in italiano in un'interfaccia
+ * inglese con tutti e due i metri a zero (#89).
  *
  * Tre parole sono uscite dall'elenco per la ragione opposta: `crea`,
  * `elenco` e `conferma` qui non sono testo, sono i passi di una schermata
  * — `passo === 'crea'` — e restavano in cima al metro per sempre. Un numero
  * che non puo' arrivare a zero e' un numero che si smette di guardare. */
 const SPIA =
-  /\b(il|lo|la|le|gli|un|una|del|della|dei|delle|che|non|per|con|su|sul|sulla|nel|nella|dal|dalla|al|alla|allo|agli|alle|tra|fra|questo|questa|quando|come|dove|più|già|sono|sta|sto|stanno|essere|fare|dice|detto|detta|salva|salvando|creando|apri|chiudi|scegli|serve|servono|vale|torna|manda|mandare|resta|restano|esce|viene|vengono|nessun|nessuna|ogni|tutte|tutti|tutto|tutta|ancora|adesso|solo|anche|senza|oppure|invece|mentre|però|così|qui|niente|prova|prove|voce|voci|riga|righe|minuto|minuti|campo|campi|colonna|colonne|pagina|nome|nomi|confermata|scartata|entro|chi)\b/i
+  /\b(il|lo|la|le|gli|un|una|del|della|dei|delle|che|non|per|con|su|sul|sulla|nel|nella|dal|dalla|al|alla|allo|agli|alle|tra|fra|questo|questa|quando|come|dove|più|già|sono|sta|sto|stanno|essere|fare|dice|detto|detta|salva|salvando|creando|apri|chiudi|scegli|serve|servono|vale|torna|manda|mandare|resta|restano|esce|viene|vengono|nessun|nessuna|ogni|tutte|tutti|tutto|tutta|ancora|adesso|solo|anche|senza|fino|oppure|invece|mentre|però|così|qui|niente|prova|prove|voce|voci|riga|righe|minuto|minuti|campo|campi|colonna|colonne|pagina|nome|nomi|confermata|scartata|entro|chi)\b/i
 
 const perFile = new Map()
 
@@ -99,7 +102,10 @@ for (const percorso of file(RADICE)) {
     // come se fosse una frase. E un nodo di testo non contiene mai `(` o `:`.
     for (const m of testo.matchAll(/(?<![=\-!<>])>([^<>]{2,})</g)) {
       for (const parte of m[1].split(/\{[^{}]*\}/)) {
-        if (prosa(parte) && !/[():]/.test(parte)) pezzi.push([parte.trim(), m.index])
+        // I due punti in una frase ci stanno («Motore: …»); in un generico
+        // TypeScript no, e un generico non ha spazi. Si guarda quello.
+        const codice = /[()]/.test(parte) || (/:/.test(parte) && !/\s/.test(parte))
+        if (prosa(parte) && !codice) pezzi.push([parte.trim(), m.index])
       }
     }
   }
@@ -116,7 +122,10 @@ for (const percorso of file(RADICE)) {
     // hanno la stessa forma e sono quello che l'utente legge sulla riga. Se è
     // una parola-spia vince la spia.
     if (/^[a-z][\w-]*$/.test(s) && !SPIA.test(s)) continue
-    if (/^[/.]/.test(s)) continue // percorso o rotta
+    // Percorso o rotta: `/database-remoto/prova`, `./lingua`. Un punto
+    // seguito da spazio no — è la coda di una frase che riprende dopo
+    // un'espressione, «. La trascrizione lascia questo computer.»
+    if (/^\/|^\.[^\s]/.test(s)) continue
     if (/^\w+(\.\w+)+$/.test(s)) continue // chiave puntata: `call.in_analisi`
     if (/^[-\w\s,.#%()/]+$/.test(s) && !SPIA.test(s)) continue // css, formati, inglese
     if (!SPIA.test(s) && !/[àèéìòù«»]/.test(s)) continue

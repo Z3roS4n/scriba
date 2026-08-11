@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 
+import { Markdown } from './markdown'
 import { tempo } from './tipi'
 import { useT } from './lingua'
 
@@ -32,50 +33,12 @@ interface Risposta {
   attive: boolean
 }
 
-/** Righe di Markdown semplice — quello che il prompt chiede: elenchi e paragrafi. */
-function Corpo({ testo }: { testo: string }) {
-  const righe = testo.split('\n').map((r) => r.trim())
-  const blocchi: React.ReactNode[] = []
-  let elenco: string[] = []
-
-  const chiudiElenco = () => {
-    if (!elenco.length) return
-    blocchi.push(
-      <ul key={`u${blocchi.length}`} className="nota__elenco">
-        {elenco.map((v, i) => (
-          <li key={i}>{v}</li>
-        ))}
-      </ul>,
-    )
-    elenco = []
-  }
-
-  for (const riga of righe) {
-    if (!riga) {
-      chiudiElenco()
-      continue
-    }
-    if (/^[-*•]\s+/.test(riga)) {
-      elenco.push(riga.replace(/^[-*•]\s+/, ''))
-      continue
-    }
-    chiudiElenco()
-    if (/^#{1,6}\s+/.test(riga)) {
-      blocchi.push(
-        <div key={`h${blocchi.length}`} className="nota__titolo">
-          {riga.replace(/^#{1,6}\s+/, '')}
-        </div>,
-      )
-    } else {
-      blocchi.push(
-        <p key={`p${blocchi.length}`} className="nota__par">
-          {riga}
-        </p>,
-      )
-    }
-  }
-  chiudiElenco()
-  return <>{blocchi}</>
+/** I nomi dei pezzi che il foglio di stile dà alla nota. */
+const CLASSI = {
+  gruppo: 'nota__corpo',
+  paragrafo: 'nota__par',
+  elenco: 'nota__elenco',
+  titolo: 'nota__titolo',
 }
 
 export function NotaDiLavoro({
@@ -130,31 +93,34 @@ export function NotaDiLavoro({
 
   return (
     <div className="nota">
-      <div className="nota__testa">
-        <span className="label">{t('not.titolo')}</span>
-        {inCorso && <span className="nota__stato">{t('not.aggiorno')}</span>}
+      <div className="nota__head">
+        <span className="label label--quiet">{t('not.titolo')}</span>
+        {inCorso && <span className="nota__when">{t('not.aggiorno')}</span>}
         {!inCorso && ultima?.scope_end_ms != null && (
-          <span className="nota__stato">fino a {tempo(ultima.scope_end_ms)}</span>
+          <span className="nota__when num">{t('not2.fino_a', { t: tempo(ultima.scope_end_ms) })}</span>
         )}
       </div>
 
-      {errore && <p className="nota__errore">{errore}</p>}
+      {errore && (
+        <div className="alert alert--inline nota__errore">
+          <p>{errore}</p>
+        </div>
+      )}
 
       {ultima ? (
         <>
-          <Corpo testo={tutte ? note.map((n) => n.content_md).join('\n\n') : ultima.content_md} />
+          <Markdown
+            testo={tutte ? note.map((n) => n.content_md).join('\n\n') : ultima.content_md}
+            classi={CLASSI}
+          />
           {note.length > 1 && (
-            <button className="btn--link" onClick={() => setTutte((v) => !v)}>
+            <button className="btn btn--quiet btn--sm" onClick={() => setTutte((v) => !v)}>
               {tutte ? t('not2.solo_ultima') : t('not2.tutte_e', { n: note.length })}
             </button>
           )}
         </>
       ) : (
-        <p className="nota__par nota__attesa">
-          {registrando
-            ? t('not2.la_prima')
-            : t('not2.finita_prima')}
-        </p>
+        <p className="nota__vuota">{registrando ? t('not2.la_prima') : t('not2.finita_prima')}</p>
       )}
     </div>
   )

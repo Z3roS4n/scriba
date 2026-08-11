@@ -1162,6 +1162,11 @@ const it = {
     'trascrizione',
   'uso.analisi':
     'analisi',
+  // --- rimasti indietro ----------------
+  'not2.fino_a':
+    'fino a {t}',
+  'pan.motore_esce':
+    'Motore: {motore}. La trascrizione lascia questo computer.',
 } as const
 
 export type Chiave = keyof typeof it
@@ -2239,6 +2244,10 @@ const en: Record<Chiave, string> = {
     'transcription',
   'uso.analisi':
     'analysis',
+  'not2.fino_a':
+    'up to {t}',
+  'pan.motore_esce':
+    'Engine: {motore}. The transcript leaves this computer.',
 }
 
 const CATALOGHI = { it, en } as const

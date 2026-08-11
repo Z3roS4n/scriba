@@ -8,67 +8,14 @@
  * la sezione 5 di comportamento.md.
  */
 
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Riquadro } from './Dialoghi'
 import { etichettaValore, useLocale, useT, type Traduci } from './lingua'
 import { NotaDiLavoro } from './NotaDiLavoro'
 import { ControlloRifinitura, useRifinitura } from './Rifinitura'
 import type { Analisi, FaseAnalisi, Provider, Segmento, Sessione, StatoAnalisi, StatoTask, Task } from './tipi'
 import { tempo } from './tipi'
-
-/**
- * Rende il Markdown prodotto dal modello, quando il core non manda ancora le
- * versioni già divise in pezzi.
- *
- * Esce con le stesse classi del riassunto vero (`.sum__g`, `.label`,
- * `.sum__p`) invece che con un contenitore proprio: un contenitore proprio
- * vorrebbe dire CSS che il design non ha, quindi testo senza stile — e la
- * ricaduta si vede solo quando il modello ha scritto qualcosa di inatteso,
- * cioè proprio quando la schermata deve restare leggibile.
- *
- * Volutamente minimale e senza librerie: intestazioni, elenchi e grassetto, e
- * tutto il resto resta testo. Il contenuto arriva da un modello di
- * linguaggio, quindi non gli si concede di produrre HTML arbitrario.
- */
-const Markdown = memo(function Markdown({ testo }: { testo: string }) {
-  const gruppi: Array<{ titolo: string | null; voci: string[] }> = []
-  const ultimo = () => {
-    if (!gruppi.length) gruppi.push({ titolo: null, voci: [] })
-    return gruppi[gruppi.length - 1]
-  }
-
-  for (const riga of testo.split('\n')) {
-    const pulita = riga.trim()
-    if (!pulita) continue
-    if (pulita.startsWith('## ')) {
-      gruppi.push({ titolo: pulita.slice(3), voci: [] })
-    } else if (pulita.startsWith('- ') || pulita.startsWith('* ')) {
-      ultimo().voci.push(pulita.slice(2))
-    } else {
-      ultimo().voci.push(pulita)
-    }
-  }
-
-  return (
-    <>
-      {gruppi.map((g, i) => (
-        <div className="sum__g" key={i}>
-          {g.titolo && <h3 className="label">{g.titolo}</h3>}
-          {g.voci.map((v, j) => (
-            <p className="sum__p" key={j}>
-              <span>{grassetto(v)}</span>
-            </p>
-          ))}
-        </div>
-      ))}
-    </>
-  )
-})
-
-function grassetto(testo: string): React.ReactNode {
-  const pezzi = testo.split(/(\*\*[^*]+\*\*)/g)
-  return pezzi.map((p, i) => (p.startsWith('**') && p.endsWith('**') ? <b key={i}>{p.slice(2, -2)}</b> : p))
-}
+import { Markdown } from './markdown'
 
 /**
  * Le quattro priorità che il design colora, scritte per esteso.
@@ -78,6 +25,9 @@ function grassetto(testo: string): React.ReactNode {
  * stile. Il chip uscirebbe senza colore, che è esattamente il modo in cui una
  * priorità critica smette di sembrare critica senza che nessuno se ne accorga.
  */
+/** I nomi che il foglio di stile dà ai pezzi del riassunto. */
+const CLASSI_SOMMARIO = { gruppo: 'sum__g', paragrafo: 'sum__p', elenco: 'sum__l' }
+
 const CHIP_PRIORITA: Record<string, string> = {
   bassa: 'chip chip--quiet',
   media: 'chip',
@@ -751,7 +701,14 @@ export function PannelloAnalisi({
   if (compatto) {
     return (
       <section className="side side--rec">
-        <div className="pad">
+        {/* `side__body` e non `pad`: è il pezzo del sistema che descrive «la
+            parte che scorre» (flex:1, overflow-y:auto, min-height:0), e
+            durante la call è proprio qui che il contenuto cresce — la nota di
+            lavoro si riscrive incorporando le precedenti. Con il solo `pad`,
+            che è spaziatura, dalla seconda nota in poi il fondo restava
+            tagliato fuori senza barra e senza modo di arrivarci (#87). */}
+        <div className="side__body">
+          <div className="pad">
           {/* La nota di lavoro sta qui, prima di tutto. `compatto` vale quanto
               `registrando` (index.tsx), quindi durante una call si esce da
               questo ramo e non si arriva mai a quelli sotto: la nota era
@@ -768,11 +725,12 @@ export function PannelloAnalisi({
           <p style={{ fontSize: 'var(--fs-md)', lineHeight: 1.6, color: 'var(--fg-2)' }}>
             {t('pan.a_call_finita')}
           </p>
-          {providerAttivo?.esce_dal_computer && (
-            <div className="callout callout--inline">
-              <p>Motore: {providerAttivo.etichetta}. La trascrizione lascia questo computer.</p>
-            </div>
-          )}
+            {providerAttivo?.esce_dal_computer && (
+              <div className="alert alert--inline">
+                <p>{t('pan.motore_esce', { motore: providerAttivo.etichetta })}</p>
+              </div>
+            )}
+          </div>
         </div>
       </section>
     )
@@ -1010,7 +968,7 @@ export function PannelloAnalisi({
                   ))}
                 </div>
               ))
-            : analisi.riassunto && <Markdown testo={analisi.riassunto} />}
+            : analisi.riassunto && <Markdown testo={analisi.riassunto} classi={CLASSI_SOMMARIO} />}
           {/* In fondo, non in cima: a call analizzata la nota è il modo in cui
               la riunione si vedeva mentre andava, e il riassunto la supera.
               Resta perché è quella che si è letta al momento — e perché è la
@@ -1041,7 +999,7 @@ export function PannelloAnalisi({
                   </div>
                 </div>
               ))
-            : analisi.punti_salienti && <Markdown testo={analisi.punti_salienti} />}
+            : analisi.punti_salienti && <Markdown testo={analisi.punti_salienti} classi={CLASSI_SOMMARIO} />}
         </div>
       </div>
 
