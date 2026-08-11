@@ -19,6 +19,11 @@ the version bump: **Breaking changes** (major), **New features** (minor),
   screenshots all came out as bare text. Thirty-five classes, now either
   renamed to what the design calls them or written down as declared
   additions.
+- **The «Analyse the call» button could be out of reach at the end of a
+  call.** With incremental notes on, the notes pushed it below the bottom
+  of a column that did not scroll. Four branches of the panel had the same
+  problem. At the end of a call the note now sits under the button instead
+  of above it, because the button is what you come there for.
 - **During a call the right-hand column would not scroll.** The work note
   grows at every update — each one rewrites the previous ones into itself —
   so from the second one on the bottom was cut off with no scrollbar and no

@@ -19,6 +19,11 @@ scatto di versione: **Cambiamenti che rompono** (maggiore), **Funzioni nuove**
   clienti, fasi dell'analisi e scatti nella striscia comparivano col testo
   nudo. Trentacinque classi, adesso rinominate come le chiama il design o
   scritte come aggiunte dichiarate.
+- **Il pulsante «Analizza la call» poteva restare irraggiungibile a call
+  finita.** Con le note incrementali accese le note lo spingevano sotto il
+  bordo di una colonna che non scorreva. Quattro rami del pannello avevano
+  lo stesso difetto. A call finita la nota sta adesso sotto il pulsante
+  invece che sopra, perché il pulsante è quello che si viene a cercare.
 - **Durante la call la colonna di destra non scorreva.** La nota di lavoro
   cresce a ogni aggiornamento — ognuna riscrive dentro di sé le precedenti —
   quindi dalla seconda in poi il fondo restava tagliato via, senza barra e
