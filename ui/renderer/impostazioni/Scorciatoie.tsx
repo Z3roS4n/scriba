@@ -97,7 +97,7 @@ export function SezioneScorciatoie({
                 <div className="shortcut__top">
                   <span className="shortcut__name">{etichettaValore(t, 'sco_nome', chiave)}</span>
                   <button
-                    className={`keycap ${catturando === chiave ? 'is-capturing' : ''}`}
+                    className={`key ${catturando === chiave ? 'is-capturing' : ''}`}
                     onClick={(e) => {
                       setCatturando(chiave)
                       e.currentTarget.focus()

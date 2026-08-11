@@ -112,12 +112,12 @@ function PannelloIa({ call }: { call: Sessione[] }) {
       return
     }
     setPercorso(r.body.percorso)
-    setEsito(`Scritto: ${conPunti(r.body.token_stimati, locale)} token stimati.`)
+    setEsito(t('arc3.scritto', { n: conPunti(r.body.token_stimati, locale) }))
   }
 
   return (
     <div className="ia">
-      <div className="ia__testo">
+      <div className="ia__t">
         <b>
           {t('arc3.in_un_documento', { n: call.length })}
         </b>

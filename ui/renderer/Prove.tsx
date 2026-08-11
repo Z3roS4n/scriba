@@ -31,24 +31,24 @@ export function PannelloProve({
             ✕
           </button>
         </div>
-        <p className="evidence__task">{task.titolo}</p>
+        <p className="evidence__titolo">{task.titolo}</p>
       </div>
       <div className="evidence__list">
         {task.evidence.map((e, i) => (
           // L'indice nella chiave copre il caso di due prove sullo stesso campo
           // (es. due frasi diverse che citano la scadenza).
           <div className="ev" key={`${e.supports}-${e.t_ms}-${i}`}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <button className="ev__t" onClick={() => onVaiA(e.t_ms)}>
+            <div className="ev__meta">
+              <button className="ev__t num" onClick={() => onVaiA(e.t_ms)}>
                 {tempo(e.t_ms)}
               </button>
-              <span className="ev__field">{etichettaValore(t, 'prv_campo', e.supports).toUpperCase()}</span>
+              <span className="ev__k">{etichettaValore(t, 'prv_campo', e.supports).toUpperCase()}</span>
             </div>
             {/* Una prova senza frase non si finge: si dice che è dedotta. */}
-            <p className="ev__quote">{e.quote ?? t('ras3.dedotta')}</p>
+            <p className="ev__q">{e.quote ?? t('ras3.dedotta')}</p>
           </div>
         ))}
-        <p className="ev__note">
+        <p className="evidence__nota">
           {t('prv.nota')}
         </p>
       </div>

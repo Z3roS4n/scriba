@@ -1167,6 +1167,8 @@ const it = {
     'fino a {t}',
   'pan.motore_esce':
     'Motore: {motore}. La trascrizione lascia questo computer.',
+  'arc3.scritto':
+    'Scritto: {n} token stimati.',
 } as const
 
 export type Chiave = keyof typeof it
@@ -2248,6 +2250,8 @@ const en: Record<Chiave, string> = {
     'up to {t}',
   'pan.motore_esce':
     'Engine: {motore}. The transcript leaves this computer.',
+  'arc3.scritto':
+    'Written: {n} estimated tokens.',
 }
 
 const CATALOGHI = { it, en } as const

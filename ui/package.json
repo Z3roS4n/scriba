@@ -11,6 +11,7 @@
     "build:renderer": "esbuild renderer/index.tsx renderer/overlay.tsx renderer/avvio-impostazioni.tsx --bundle --minify --target=chrome120 --define:process.env.NODE_ENV=\\\"production\\\" --outdir=dist/renderer --entry-names=[name] && node -e \"require('fs').renameSync('dist/renderer/index.js','dist/renderer/bundle.js')\"",
     "copy:assets": "node scripts/copia-risorse.mjs",
     "typecheck": "tsc --noEmit",
+    "controlla": "node scripts/classi-senza-stile.mjs && node scripts/verifica-traduzioni.mjs",
     "confronta": "node scripts/confronta-handoff.mjs",
     "anteprima": "npm run build && node -e \"const{cpSync}=require('fs');cpSync('../.claude/project/design/handoff','scripts/anteprima/design',{recursive:true,filter:(s)=>!s.endsWith('.js')})\"",
     "build": "npm run build:main && npm run copy:assets && npm run build:renderer && node scripts/stampa-versione.mjs",

@@ -957,6 +957,73 @@ select.arow__c {
 }
 select.arow__c:hover { border-color:var(--line); }
 
+
+/* ===========================================================================
+   PEZZI CHE IL HANDOFF NON DISEGNA
+
+   Delle schermate dell'applicazione il handoff 1.0 ne disegna una parte. Il
+   resto si deriva: stessi token, stessa grammatica — raggio 0 tranne 2px su
+   ciò che si clicca, nessuna ombra, la separazione la fa la linea da 1px, e
+   in hover cambia il bordo o il fondo, mai l'opacità.
+
+   Ognuna di queste regole nasce da una classe che i componenti scrivevano e
+   che non esisteva: fino a #86 quei pezzi uscivano col testo nudo.
+   ========================================================================= */
+
+/* prove: il titolo della task in testa al pannello, e la nota in fondo */
+.evidence__titolo { font-size:var(--fs-sm); line-height:var(--lh-body); color:var(--fg-body); margin-top:var(--sp-2); text-wrap:pretty; }
+.evidence__list { max-height:320px; overflow-y:auto; }
+.evidence__nota { padding:var(--sp-3) var(--sp-4); font-size:var(--fs-xs); line-height:var(--lh-body); color:var(--fg-3); border-top:1px solid var(--line-2); }
+
+/* archivio: la riga «per l'IA» in fondo. Il handoff scrive queste due con lo
+   stile in linea; qui hanno un nome perché si ripetono. */
+.ia__voce { font-size:var(--fs-sm); color:var(--fg-2); }
+.ia__esito { font-size:var(--fs-xs); color:var(--fg-2); }
+
+/* impostazioni · analisi: la terza riga di una `row--risk` dice cosa esce dal
+   computer. Non un altro filo rosso — quello ce l'ha già la riga — ma il
+   colore del testo, che è il modo in cui il rosso parla senza gridare. */
+.row__rischio { display:block; font-size:var(--fs-sm); line-height:var(--lh-body); color:var(--red); margin-top:5px; }
+
+/* impostazioni · clienti: l'elenco, e una riga archiviata. Archiviato non
+   vuol dire cancellato: resta leggibile, più indietro delle altre. */
+.cli { display:flex; flex-direction:column; }
+.cli__row.is-off { color:var(--fg-3); }
+.cli__row.is-off .cli__nome { color:var(--fg-3); }
+
+/* impostazioni · scorciatoie. Una riga è la stessa cosa di una `.row`: nome a
+   sinistra, il tasto e il comando a destra. Il conflitto lo dice il bordo
+   rosso del tasto, com'è per `.key.is-capturing`. */
+.shortcut { padding:var(--sp-5) 0; border-bottom:1px solid var(--line-2); }
+.shortcut:last-child { border-bottom:0; }
+.shortcut__top { display:flex; align-items:center; gap:var(--sp-4); }
+.shortcut__name { flex:1; font-size:var(--fs-ui); color:var(--fg); }
+.shortcut__conflict { display:block; margin-top:var(--sp-2); font-size:var(--fs-sm); line-height:var(--lh-body); color:var(--red); }
+.shortcut.has-conflict .key { border-color:var(--red); color:var(--red); }
+
+/* impostazioni · dati: i percorsi sul disco. Il percorso è in tondo mono
+   perché lo si copia, il peso in cifre tabulari perché lo si confronta. */
+.pathrow { display:flex; align-items:baseline; gap:var(--sp-4); padding:var(--sp-3) 0; border-bottom:1px solid var(--line-2); }
+.pathrow:last-child { border-bottom:0; }
+.pathrow__text { flex:1; min-width:0; font-family:var(--font-code); font-size:var(--fs-xs); color:var(--fg-2); overflow-wrap:anywhere; }
+.pathrow__size { font-size:var(--fs-xs); color:var(--fg-3); font-variant-numeric:tabular-nums; white-space:nowrap; }
+/* Le cancellazioni: la sezione che non si torna indietro. */
+.danger { margin-top:var(--sp-6); padding-left:var(--sp-4); border-left:3px solid var(--red); }
+
+/* pannello analisi · le fasi mentre lavora. Non una barra per fase: una
+   colonna di righe, quella in corso in evidenza e quelle fatte con la
+   spunta. È l'unico posto in cui si vede che l'analisi è a più passaggi. */
+.stages { display:flex; flex-direction:column; gap:var(--sp-2); }
+.stage { display:grid; grid-template-columns:14px 1fr; gap:var(--sp-3); align-items:baseline; font-size:var(--fs-sm); color:var(--fg-3); }
+.stage.is-current { color:var(--fg); font-weight:var(--w-bold); }
+.stage.is-done { color:var(--fg-2); }
+.stage__mark { font-size:var(--fs-xs); color:var(--fg-2); }
+.stage__note { display:block; font-size:var(--fs-xs); color:var(--fg-3); font-weight:var(--w-body); }
+
+/* striscia: gli scatti presi e le righe di trascrizione che scorrono sotto */
+.overlay__shot { display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) var(--sp-4); border-top:1px solid var(--ov-line); }
+.overlay__lines { display:flex; flex-direction:column; gap:var(--sp-2); padding:var(--sp-3) var(--sp-4); border-top:1px solid var(--ov-line); max-height:180px; overflow-y:auto; }
+
 /* ===========================================================================
    IMPOSTAZIONI — parti che il handoff non disegna.
 

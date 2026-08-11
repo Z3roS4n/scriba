@@ -97,6 +97,13 @@ jobs:
           cd ui
           npx tsc --noEmit
           if ($LASTEXITCODE -ne 0) { throw "L'interfaccia non compila." }
+          # I due cancelli: ogni classe scritta nei componenti deve esistere
+          # nel foglio di stile, e ogni frase italiana del catalogo deve
+          # ritrovarsi identica nel sorgente da cui viene. Il primo nasce da
+          # undici componenti rimasti senza stile per due rilasci (#86): un
+          # elemento senza regole compila, si impacchetta e si installa.
+          npm run controlla
+          if ($LASTEXITCODE -ne 0) { throw "I controlli dell'interfaccia non passano." }
 
       - name: Installer
         working-directory: ui

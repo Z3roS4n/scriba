@@ -55,6 +55,19 @@ const css = FOGLI.map((n) => readFileSync(join(RADICE, n), 'utf8')).join('\n')
 const definite = new Set([...css.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)].map((m) => m[1]))
 
 /**
+ * Classi che il design lascia apposta senza regole.
+ *
+ * `.line--other` è la riga di chi non sei tu: nel foglio di stile ha una
+ * regola solo `.line--me`, perché «gli altri» è il caso normale e il caso
+ * normale non si dipinge. La classe serve lo stesso — a leggere il markup, e
+ * a poterci attaccare qualcosa un giorno senza cambiare i componenti.
+ *
+ * L'elenco è corto e scritto a mano di proposito: ogni voce è una decisione,
+ * non una scappatoia. Se diventa lungo, il difetto è altrove.
+ */
+const SENZA_REGOLA = new Set(['line--other'])
+
+/**
  * I letterali dentro `className={…}` non sono tutti classi.
  *
  *     className={(stt.glossario_livello ?? 'prudente') === id ? 'is-on' : ''}
@@ -113,7 +126,7 @@ for (const percorso of file(RADICE)) {
   const perse = []
   for (const [nome, indice] of classiDi(testo)) {
     guardate += 1
-    if (!definite.has(nome)) perse.push([nome, numeroRiga(indice)])
+    if (!definite.has(nome) && !SENZA_REGOLA.has(nome)) perse.push([nome, numeroRiga(indice)])
   }
   if (perse.length) perFile.set(relative(RADICE, percorso).replaceAll(sep, '/'), perse)
 }

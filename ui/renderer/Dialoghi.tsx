@@ -118,7 +118,7 @@ export function ModaleConsenso(props: {
           <button type="button" className="btn" onClick={onAnnulla}>
             {t('dlg.annulla')}
           </button>
-          <button type="button" className="btn btn--go" disabled={!consenso} onClick={() => onConferma(titolo, consenso)}>
+          <button type="button" className="btn btn--rec" disabled={!consenso} onClick={() => onConferma(titolo, consenso)}>
             {t('dlg.registra')}
           </button>
         </div>
