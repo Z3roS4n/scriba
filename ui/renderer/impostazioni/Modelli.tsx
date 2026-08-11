@@ -10,13 +10,25 @@
  * genitore tiene aggiornata, non interroga niente.
  */
 
+import { Fragment } from 'react'
+
 import type { Disco, Modello } from '../tipi'
 import { dataBreve, dimensione } from '../tipi'
-import { etichettaValore, useLocale, useT, type Traduci } from '../lingua'
+import { etichettaValore, useLocale, useT, type Chiave, type Traduci } from '../lingua'
 
 function tempoRimanente(secondi: number, t: Traduci): string {
   if (secondi < 60) return t('mod2.secondi', { n: Math.round(secondi) })
   return t('mod2.minuti', { n: Math.round(secondi / 60) })
+}
+
+/** Le voci di una riga di `meta`, separate dal punto del sistema. */
+function separa(voci: string[]): React.ReactNode[] {
+  return voci.map((v, i) => (
+    <Fragment key={i}>
+      {i > 0 && <span className="call__sep">·</span>}
+      <span>{v}</span>
+    </Fragment>
+  ))
 }
 
 function classeStato(stato: Modello['stato']): string {
@@ -123,122 +135,104 @@ function RigaModello({
   const percentualeScaricata = m.size_bytes > 0 ? Math.round((m.scaricati_bytes / m.size_bytes) * 100) : 0
   const mancano = disco ? Math.max(0, m.size_bytes - disco.libero_bytes) : null
 
+  /* La riga com'è disegnata nel handoff 1.0: nome, descrizione e una riga di
+     `meta` a sinistra, lo stato a destra, i comandi in fondo. Prima nome, uso
+     e dimensione erano tre voci pari, con `.model__name`, `.model__use`,
+     `.model__size`, `.model__bar` — nomi del design vecchio, che nel foglio
+     1.0 non esistono più: quella riga usciva senza stile (#86). */
+  const comandi: Array<{ chiave: Chiave; onClick: () => void; primaria?: boolean }> = []
+  if (m.stato === 'non_installato') comandi.push({ chiave: 'mod.scarica', onClick: onScarica, primaria: true })
+  if (m.stato === 'in_download') comandi.push({ chiave: 'mod.sospendi', onClick: onSospendi })
+  if (m.stato === 'in_pausa') comandi.push({ chiave: 'mod.riprendi', onClick: onScarica })
+  if (m.stato === 'installato' && m.uso === 'analisi') comandi.push({ chiave: 'mod.avvia', onClick: onAvvia })
+  if (m.stato === 'installato') comandi.push({ chiave: 'mod.elimina', onClick: onElimina })
+  if (m.stato === 'in_uso' || m.stato === 'in_avvio') comandi.push({ chiave: 'mod.ferma', onClick: onFerma })
+  if (m.stato === 'spazio_insufficiente' || m.stato === 'errore') {
+    comandi.push({ chiave: 'mod.scarica', onClick: onScarica })
+  }
+
+  /** La riga sotto il nome: quanto pesa, a cosa serve, e cosa sta facendo. */
+  const meta: string[] = [dimensione(m.size_bytes, locale), etichettaValore(t, 'uso', m.uso)]
+  if (m.stato === 'installato' && m.installato_at != null) {
+    meta.push(t('mod2.installato_il', { data: dataBreve(m.installato_at, locale, t('data.oggi')) }))
+  }
+  if (m.stato === 'in_uso') {
+    if (m.endpoint) meta.push(m.endpoint)
+    if (m.ram_bytes != null) meta.push(t('mod2.ram', { ram: dimensione(m.ram_bytes, locale) }))
+  }
+  if (m.stato === 'in_avvio') {
+    meta.push(t('mod2.in_memoria'))
+    if (m.ram_bytes != null) meta.push(t('mod2.ram_finora', { ram: dimensione(m.ram_bytes, locale) }))
+  }
+  if (m.stato === 'spazio_insufficiente') {
+    meta.push(
+      t('mod2.servono', {
+        servono: dimensione(m.size_bytes, locale),
+        restano: disco ? dimensione(disco.libero_bytes, locale) : '—',
+      }),
+    )
+  }
+
+  /* Sotto la barra: quanto è sceso e quanto manca. Per la verifica la nota del
+     core ha la precedenza — per i modelli affidati a una libreria esterna lì
+     non si sta controllando un hash, si sta ancora scaricando, e una riga che
+     descrive la cosa sbagliata è peggio di una riga assente. */
+  let scaricamento: string[] | null = null
+  if (m.stato === 'in_download' || m.stato === 'in_pausa') {
+    scaricamento = [
+      t('mod2.scaricati', {
+        fatti: dimensione(m.scaricati_bytes, locale),
+        totale: dimensione(m.size_bytes, locale),
+      }),
+    ]
+    if (m.stato === 'in_pausa') scaricamento.push(etichettaValore(t, 'mod_stato', 'in_pausa'))
+    else {
+      if (m.velocita_bps != null) scaricamento.push(`${dimensione(m.velocita_bps, locale)}/s`)
+      if (m.secondi_rimanenti != null) scaricamento.push(tempoRimanente(m.secondi_rimanenti, t))
+    }
+  } else if (m.stato === 'in_verifica') {
+    scaricamento = [m.nota || t('mod2.integrita')]
+  }
+
   return (
     <div className="model">
       <div className="model__top">
-        <span className="model__name">{m.nome}</span>
-        <span className="model__use">{etichettaValore(t, 'uso', m.uso)}</span>
-        <span className="model__size">{dimensione(m.size_bytes, locale)}</span>
-        <span className={`model__state ${classeStato(m.stato)}`}>{etichettaValore(t, 'mod_stato', m.stato)}</span>
-
-        {m.stato === 'non_installato' && (
-          <button className="btn btn--sm btn--primary" onClick={onScarica}>
-            {t('mod.scarica')}
+        <div className="model__testo">
+          <span className="model__n">{m.nome}</span>
+          {m.nota && m.stato !== 'in_verifica' && <span className="model__d">{m.nota}</span>}
+          <div className="model__meta">{separa(meta)}</div>
+        </div>
+        <span className={`model__state ${classeStato(m.stato)}`}>
+          {etichettaValore(t, 'mod_stato', m.stato)}
+        </span>
+        {comandi.map((c) => (
+          <button
+            key={c.chiave}
+            className={`btn btn--sm${c.primaria ? ' btn--primary' : ''}`}
+            onClick={c.onClick}
+          >
+            {t(c.chiave)}
           </button>
-        )}
-        {m.stato === 'in_download' && (
-          <button className="btn btn--sm" onClick={onSospendi}>
-            {t('mod.sospendi')}
-          </button>
-        )}
-        {m.stato === 'in_pausa' && (
-          <button className="btn btn--sm" onClick={onScarica}>
-            {t('mod.riprendi')}
-          </button>
-        )}
-        {m.stato === 'installato' && m.uso === 'analisi' && (
-          <button className="btn btn--sm" onClick={onAvvia}>
-            {t('mod.avvia')}
-          </button>
-        )}
-        {m.stato === 'installato' && (
-          <button className="btn btn--sm" onClick={onElimina}>
-            {t('mod.elimina')}
-          </button>
-        )}
-        {(m.stato === 'in_uso' || m.stato === 'in_avvio') && (
-          <button className="btn btn--sm" onClick={onFerma}>
-            {t('mod.ferma')}
-          </button>
-        )}
-        {(m.stato === 'spazio_insufficiente' || m.stato === 'errore') && (
-          <button className="btn btn--sm" onClick={onScarica}>
-            {t('mod.scarica')}
-          </button>
-        )}
+        ))}
       </div>
 
-      {(m.stato === 'in_download' || m.stato === 'in_pausa') && (
-        <div className="model__bar">
-          <i style={{ width: `${percentualeScaricata}%` }} />
+      {scaricamento && (
+        <div className="model__dl">
+          {/* In verifica la barra è piena: nessuna percentuale inventata, lo
+              stato lo dice l'etichetta. */}
+          <div className="progress">
+            <i style={{ width: m.stato === 'in_verifica' ? '100%' : `${percentualeScaricata}%` }} />
+          </div>
+          <div className="model__dlmeta">{separa(scaricamento)}</div>
         </div>
       )}
-      {/* La verifica è uno stato visibile, non un passaggio silenzioso: niente
-          percentuale finta, la barra piena più l'etichetta bastano a dirlo. */}
-      {m.stato === 'in_verifica' && (
-        <div className="model__bar">
-          <i style={{ width: '100%' }} />
-        </div>
-      )}
-
-      {m.stato === 'in_download' && (
-        <span className="model__meta">
-          {t('mod2.scaricati', {
-            fatti: dimensione(m.scaricati_bytes, locale),
-            totale: dimensione(m.size_bytes, locale),
-          })}
-          {m.velocita_bps != null ? ` · ${dimensione(m.velocita_bps, locale)}/s` : ''}
-          {m.secondi_rimanenti != null ? ` · ${tempoRimanente(m.secondi_rimanenti, t)}` : ''}
-        </span>
-      )}
-      {m.stato === 'in_pausa' && (
-        <span className="model__meta">
-          {t('mod2.scaricati', {
-            fatti: dimensione(m.scaricati_bytes, locale),
-            totale: dimensione(m.size_bytes, locale),
-          })}{' · '}
-          {etichettaValore(t, 'mod_stato', 'in_pausa')}
-        </span>
-      )}
-      {/* La nota del core ha la precedenza: non tutti i modelli si scaricano
-          allo stesso modo, e per quelli affidati a una libreria esterna qui
-          non si sta verificando un hash — si sta ancora scaricando. Il testo
-          fisso vale solo quando il core non ha niente di più preciso da dire. */}
-      {m.stato === 'in_verifica' && (
-        <span className="model__meta">{m.nota || t('mod2.integrita')}</span>
-      )}
-      {m.stato === 'installato' && m.installato_at != null && (
-        <span className="model__meta">{t('mod2.installato_il', { data: dataBreve(m.installato_at, locale, t('data.oggi')) })}</span>
-      )}
-      {m.stato === 'in_avvio' && (
-        <span className="model__meta">
-          {t('mod2.in_memoria')}
-          {m.ram_bytes != null ? ` · ${t('mod2.ram_finora', { ram: dimensione(m.ram_bytes, locale) })}` : ''}
-        </span>
-      )}
-      {m.stato === 'in_uso' && (
-        <span className="model__meta">
-          {t('mod2.avviato')}
-          {m.endpoint ? ` · ${m.endpoint}` : ''}
-          {m.ram_bytes != null ? ` · ${t('mod2.ram', { ram: dimensione(m.ram_bytes, locale) })}` : ''}
-        </span>
-      )}
-      {m.stato === 'non_installato' && m.nota && <span className="model__meta">{m.nota}</span>}
 
       {m.stato === 'spazio_insufficiente' && (
-        <>
-          <span className="model__meta">
-            {t('mod2.servono', {
-              servono: dimensione(m.size_bytes, locale),
-              restano: disco ? dimensione(disco.libero_bytes, locale) : '—',
-            })}
-          </span>
-          <p className="model__err">
-            {t('mod2.non_parte', {
-              mancano: mancano != null ? dimensione(mancano, locale) : t('mod2.alcuni_gb'),
-            })}
-          </p>
-        </>
+        <p className="model__err">
+          {t('mod2.non_parte', {
+            mancano: mancano != null ? dimensione(mancano, locale) : t('mod2.alcuni_gb'),
+          })}
+        </p>
       )}
       {m.stato === 'errore' && m.errore && <p className="model__err">{m.errore}</p>}
     </div>

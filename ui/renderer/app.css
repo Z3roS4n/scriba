@@ -632,6 +632,18 @@ a:hover { color:var(--red); border-bottom-color:var(--red); }
 .model__dl { margin-top:var(--sp-4); }
 .model__dlmeta { display:flex; align-items:center; gap:var(--sp-2); margin-top:var(--sp-2); font-size:var(--fs-xs); color:var(--fg-3); }
 .model__dlmeta .btn { margin-left:auto; }
+/* Il testo della riga prende lo spazio che avanza: lo stato e i comandi
+   restano a destra, allineati in alto come nel handoff. */
+.model__testo { flex:1; min-width:0; }
+.model__dlmeta .call__sep { color:var(--fg-3); }
+/* Lo spazio non basta: la frase la si legge quando il download NON parte,
+   quindi non può essere una nota fra le altre. Filo rosso a sinistra e basta
+   — nessun riquadro dentro il riquadro della scheda. */
+.model__err {
+  margin-top:var(--sp-3); padding-left:var(--sp-3);
+  border-left:2px solid var(--red);
+  font-size:var(--fs-sm); line-height:var(--lh-body); color:var(--fg-body);
+}
 
 /* ============================================================================
    OVERLAY — colori fissi, non i token: sotto la striscia può esserci
