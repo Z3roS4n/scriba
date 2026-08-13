@@ -307,10 +307,20 @@ export interface Analisi {
 /** Una delle quattro fasi mostrate mentre l'analisi gira. */
 export interface FaseAnalisi {
   chiave: 'riassunto' | 'salienti' | 'task' | 'unione'
+  /** Il titolo in italiano, come sta in `FASI_ANALISI`. **Non si mostra**:
+   *  serve da ripiego se un giorno arriva una fase che il catalogo non
+   *  conosce. A etichettare è l'interfaccia, che parte da `chiave`. */
   titolo: string
   stato: 'attesa' | 'in_corso' | 'fatta'
-  /** «38 s», «3 di 6 blocchi», «in attesa». */
+  /** «38 s»: quello che si legge uguale in tutte le lingue, un numero e
+   *  un'unità. Le note che sono frasi arrivano invece come `nota_chiave`. */
   nota: string | null
+  /** La frase da comporre — `blocchi`, `candidati`, `task_n`,
+   *  `nessun_candidato`, `attesa` — con i suoi valori. Le fasi nascono nel
+   *  thread dell'analisi e viaggiano sul websocket, dove `Accept-Language`
+   *  non c'è: la lingua ce l'ha solo chi guarda. */
+  nota_chiave?: string | null
+  nota_valori?: Record<string, string | number> | null
 }
 
 export interface StatoAnalisi {

@@ -1191,6 +1191,25 @@ const it = {
     'JSON',
   'formato.contesto':
     "Per l'IA",
+  // --- fasi dell'analisi ------------------
+  'fase.riassunto':
+    'Riassunto',
+  'fase.salienti':
+    'Punti salienti',
+  'fase.task':
+    'Estrazione task',
+  'fase.unione':
+    'Unione dei riferimenti',
+  'fase_nota.attesa':
+    'in attesa',
+  'fase_nota.blocchi':
+    '{i} di {n} blocchi',
+  'fase_nota.candidati':
+    '{n} candidati',
+  'fase_nota.task_n':
+    '{n} task',
+  'fase_nota.nessun_candidato':
+    'nessun candidato',
 } as const
 
 export type Chiave = keyof typeof it
@@ -2295,6 +2314,24 @@ const en: Record<Chiave, string> = {
     'JSON',
   'formato.contesto':
     'For AI',
+  'fase.riassunto':
+    'Summary',
+  'fase.salienti':
+    'Key points',
+  'fase.task':
+    'Extracting tasks',
+  'fase.unione':
+    'Merging references',
+  'fase_nota.attesa':
+    'waiting',
+  'fase_nota.blocchi':
+    '{i} of {n} blocks',
+  'fase_nota.candidati':
+    '{n} candidates',
+  'fase_nota.task_n':
+    '{n} tasks',
+  'fase_nota.nessun_candidato':
+    'no candidate',
 }
 
 const CATALOGHI = { it, en } as const
@@ -2374,6 +2411,27 @@ export function etichettaValore(t: Traduci, prefisso: string, valore: string): s
  *  Il core genera `Voce N` e lo rilegge con `SUBSTR(label, 6)`: quella
  *  stringa è un identificatore travestito da etichetta, e non va tradotta —
  *  va sostituita al momento di mostrarla. */
+/**
+ * Come `etichettaValore`, ma con un ripiego scritto da chi chiama e con i
+ * valori da sostituire.
+ *
+ * Serve dove il core manda un gettone **e** la frase italiana che quel gettone
+ * sostituisce: se il catalogo non conosce il gettone — una fase aggiunta e non
+ * ancora etichettata — si mostra la frase italiana invece del gettone nudo.
+ * Una parola in più in italiano si legge; `nessun_candidato` no.
+ */
+export function etichettaOppure(
+  t: Traduci,
+  prefisso: string,
+  valore: string | null | undefined,
+  ripiego: string,
+  valori?: Record<string, string | number>,
+): string {
+  if (!valore) return ripiego
+  const chiave = `${prefisso}.${valore}` as Chiave
+  return chiave in it ? t(chiave, valori) : ripiego
+}
+
 export function etichettaVoce(t: Traduci, numero: number | null, label: string): string {
   return numero == null ? label : t('voce.n', { n: numero })
 }

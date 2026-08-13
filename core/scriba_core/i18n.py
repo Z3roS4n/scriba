@@ -91,13 +91,6 @@ _MOTORI_EN: dict[str, dict[str, str]] = {
     },
 }
 
-_FASI_EN: dict[str, str] = {
-    "riassunto": "Summary",
-    "salienti": "Key points",
-    "task": "Extracting tasks",
-    "unione": "Merging references",
-}
-
 
 def motore(info: dict[str, Any], provider: str, lingua: str) -> dict[str, Any]:
     """`info` di un motore, con i suoi tre testi nella lingua chiesta.
@@ -111,11 +104,6 @@ def motore(info: dict[str, Any], provider: str, lingua: str) -> dict[str, Any]:
     fuori = dict(info)
     fuori.update(_MOTORI_EN.get(provider, {}))
     return fuori
-
-
-def fase(chiave: str, titolo_it: str, lingua: str) -> str:
-    """Il titolo di una fase dell'analisi."""
-    return titolo_it if lingua == "it" else _FASI_EN.get(chiave, titolo_it)
 
 
 #: La nota dei modelli locali: nel catalogo è la loro `descrizione`, ed è

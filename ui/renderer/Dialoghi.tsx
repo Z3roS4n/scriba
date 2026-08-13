@@ -204,14 +204,22 @@ export function Riquadro(props: {
     <div className="alert">
       <h3>{titolo}</h3>
       <p>{testo}</p>
+      {/* `.alert__actions` esiste nel foglio di stile e ha `flex-wrap`: qui
+          c'era una riga flex scritta a mano, senza, e i tre comandi
+          dell'analisi non riuscita uscivano dal pannello da 404px — il terzo
+          tagliato a metà (#92).
+
+          Via anche le misure in linea: erano del design vecchio, e la scala
+          dei controlli nel sistema è una sola. Tre pulsanti di tre altezze
+          diverse dentro lo stesso riquadro sono il difetto che la scala unica
+          esiste per non avere. */}
       {azioni && azioni.length > 0 && (
-        <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+        <div className="alert__actions">
           {azioni.map((a) => (
             <button
               key={a.etichetta}
               type="button"
-              className={a.primaria ? 'btn btn--primary btn--sm' : 'btn'}
-              style={a.primaria ? { padding: '6px 12px', fontSize: 'var(--fs-md)' } : { fontSize: 'var(--fs-md)' }}
+              className={`btn btn--sm${a.primaria ? ' btn--primary' : ''}`}
               onClick={a.onClick}
             >
               {a.etichetta}
