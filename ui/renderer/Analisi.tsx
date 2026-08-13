@@ -425,7 +425,15 @@ export function PannelloAnalisi({
 
   const carica = useCallback(async (id: number) => {
     const r = await window.scriba.get<Analisi>(`/sessions/${id}/analysis`)
-    if (r.ok) setAnalisi(r.body)
+    if (!r.ok) return
+    setAnalisi(r.body)
+    // Il motivo vero sta qui dentro, salvato dall'ultimo tentativo. Senza
+    // questo il pannello sapeva solo che la sessione è «failed» e diceva la
+    // frase generica — cioè non diceva niente, proprio quando serve sapere
+    // cos'è andato storto.
+    setErrore((prima) =>
+      r.body.errore ? { messaggio: r.body.errore, ora: prima?.ora ?? null } : prima,
+    )
   }, [])
 
   // I motori disponibili servono solo a "da analizzare" e alla variante
@@ -557,6 +565,7 @@ export function PannelloAnalisi({
         setErrore(null)
       } else {
         setInCorso(false)
+        if (ev.stato === 'fatto') setErrore(null)
         if (ev.stato === 'errore') {
           setErrore({ messaggio: ev.dettaglio ?? t('pan.fallita'), ora: oraCorrente(locale) })
         } else {
@@ -789,7 +798,17 @@ export function PannelloAnalisi({
     )
   }
 
-  if (errore) {
+  // `haContenuto` più sotto guarda le stesse cose: qui serve prima, perché
+  // decide se il riquadro rosso PRENDE il posto dell'analisi o le sta sopra.
+  const qualcosaDaMostrare =
+    !!analisi &&
+    (analisi.tasks.length > 0 ||
+      analisi.riassunto_gruppi.length > 0 ||
+      analisi.salienti.length > 0 ||
+      !!analisi.riassunto ||
+      !!analisi.punti_salienti)
+
+  if (errore && !qualcosaDaMostrare) {
     return (
       <section className="side">
         <div className="side__head">
@@ -997,6 +1016,19 @@ export function PannelloAnalisi({
             {t('pan.task')}<span className="tab__n num">{tasks.length}</span>
           </button>
       </div>
+
+      {/* Sopra il contenuto, non al posto suo. Un tentativo fallito o
+          interrotto non cancella l'analisi di prima — e nemmeno quella che
+          il tentativo stesso aveva già scritto prima di fermarsi (#97). */}
+      {errore && (
+        <div className="pad pad--stretto">
+          <Riquadro
+            titolo={t('pan.fallita_titolo')}
+            testo={`${errore.messaggio}${errore.ora ? ` · ${t('pan.ultimo_tentativo', { ora: errore.ora })}` : ''}`}
+            azioni={[{ etichetta: t('pan.riprova'), primaria: true, onClick: analizza }]}
+          />
+        </div>
+      )}
 
       <div className="side__body" hidden={scheda !== 'sum'}>
         <div className="sum">

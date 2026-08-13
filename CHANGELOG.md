@@ -7,6 +7,23 @@ Each entry is split into three sections, and the highest one present decides
 the version bump: **Breaking changes** (major), **New features** (minor),
 **Fixes** (patch). A section with nothing in it is left out.
 
+## 1.1.4 — 13 August 2026
+
+### Fixes
+
+- **A finished analysis was thrown away when «Stop» arrived at the last
+  moment.** The summary, the key points and the tasks were already written;
+  what was missing were the two lines that mark the call analysed. On a
+  two-hour call that meant ten minutes of work — and, on a metered engine,
+  money already spent — replaced by «Analysis failed». The last boundary no
+  longer aborts; every earlier one still does.
+- **The failure box took the place of the analysis instead of sitting above
+  it.** A failed or interrupted attempt now leaves visible whatever exists,
+  including what that same attempt had written before stopping.
+- The panel says what actually happened — «Stopped by you.» — instead of the
+  generic «The last analysis did not work.», which says nothing exactly when
+  you need to know.
+
 ## 1.1.3 — 13 August 2026
 
 ### Fixes
