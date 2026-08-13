@@ -7,6 +7,24 @@ Ogni voce è divisa in tre sezioni, ed è la più alta presente a decidere lo
 scatto di versione: **Cambiamenti che rompono** (maggiore), **Funzioni nuove**
 (minore), **Correzioni** (patch). Una sezione senza voci si lascia fuori.
 
+## 1.1.4 — 13 agosto 2026
+
+### Correzioni
+
+- **Un'analisi finita veniva buttata via se lo «Interrompi» arrivava
+  all'ultimo momento.** Riassunto, punti salienti e task erano già scritti: a
+  mancare erano le due righe che segnano la call come analizzata. Su una call
+  di due ore voleva dire dieci minuti di lavoro — e su un motore a consumo,
+  soldi già spesi — sostituiti da «Analisi non riuscita». L'ultimo confine non
+  interrompe più; tutti quelli prima sì.
+- **Il riquadro dell'errore prendeva il posto dell'analisi invece di starle
+  sopra.** Un tentativo fallito o interrotto adesso lascia visibile quello che
+  c'è, compreso quello che il tentativo stesso aveva scritto prima di
+  fermarsi.
+- Il pannello dice cos'è successo davvero — «Interrotta dall'utente.» —
+  invece del generico «L'ultima analisi non è riuscita.», che non dice niente
+  proprio quando serve saperlo.
+
 ## 1.1.3 — 13 agosto 2026
 
 ### Correzioni
