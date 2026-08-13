@@ -7,6 +7,22 @@ Each entry is split into three sections, and the highest one present decides
 the version bump: **Breaking changes** (major), **New features** (minor),
 **Fixes** (patch). A section with nothing in it is left out.
 
+## 1.1.3 — 13 August 2026
+
+### Fixes
+
+- **The interface was sluggish while recording.** The clock in the top bar
+  kept its state in the root component and ticked twice a second, so twice a
+  second the call list, the transcript and the analysis panel were all redrawn
+  — with one element per transcript line, and a long call has a couple of
+  thousand. The clock now redraws the clock.
+- **When the touch-up refused to realign the tracks**, the panel turned into a
+  wall of red saying the same thing twice, one paragraph per track, with the
+  «Redo» button stranded at the far end. The reason describes the call, not
+  the track: it is said once now, with the tracks named together, red as a
+  rule down the left instead of colouring eight lines, and the button beside
+  the outcome. It also came out in Italian in an English interface.
+
 ## 1.1.2 — 11 August 2026
 
 ### Fixes
