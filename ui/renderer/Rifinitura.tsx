@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import type { Sessione } from './tipi'
-import { etichettaValore, useT } from './lingua'
+import { etichettaOppure, etichettaValore, useT } from './lingua'
 
 export interface StatoRifinitura {
   in_corso: boolean
@@ -31,7 +31,16 @@ export interface StatoRifinitura {
     nomi_corretti: number
     tracce: Record<
       string,
-      { stato: string; esaminate: number; riscritte: number; somiglianza: number | null; motivo: string | null }
+      {
+        stato: string
+        esaminate: number
+        riscritte: number
+        somiglianza: number | null
+        /** La frase italiana: ripiego, se il gettone non si conosce. */
+        motivo: string | null
+        motivo_chiave?: string | null
+        motivo_valori?: Record<string, string | number> | null
+      }
     >
   } | null
 }
@@ -144,20 +153,44 @@ export function ControlloRifinitura({
   }
 
   if (esito) {
-    const rifiutate = Object.entries(esito.tracce).filter(([, x]) => x.stato === 'non_allineata')
+    // Il motivo viene dal core e descrive una situazione della CALL, non della
+    // traccia: con due tracce rifiutate era la stessa frase due volte, otto
+    // righe tutte rosse per dire una cosa sola (#95). Si raggruppa per motivo
+    // identico; se un giorno i motivi sono diversi, i gruppi diventano due.
+    const perMotivo = new Map<string, string[]>()
+    for (const [nome, tr] of Object.entries(esito.tracce)) {
+      if (tr.stato !== 'non_allineata') continue
+      // Il core manda un gettone e la frase italiana: la frase è il ripiego
+      // se il gettone non si conosce, e se non c'è nemmeno quella la traccia
+      // si dice lo stesso, senza inventare una spiegazione.
+      const motivo = etichettaOppure(
+        t,
+        'rif_motivo',
+        tr.motivo_chiave,
+        tr.motivo ?? '',
+        tr.motivo_valori ?? undefined,
+      )
+      perMotivo.set(motivo, [...(perMotivo.get(motivo) ?? []), nome])
+    }
+
     return (
       <div className="refine refine--esito">
-        <span className="chip chip--quiet">
-          {esito.riscritte === 0 ? t('rif2.nessuna_riga') : t('rif2.righe_rifatte', { n: esito.riscritte })}
-        </span>
-        {rifiutate.map(([nome, tr]) => (
-          <p key={nome} className="refine__n refine__n--rosso">
-            <b>{etichettaValore(t, 'traccia', nome)}</b>{t('rif2.non_rifatta')} {tr.motivo}
+        <div className="refine__riga">
+          <span className="chip chip--quiet">
+            {esito.riscritte === 0
+              ? t('rif2.nessuna_riga')
+              : t('rif2.righe_rifatte', { n: esito.riscritte })}
+          </span>
+          <button className="btn btn--sm" onClick={() => setConferma(true)}>
+            {t('rif.rifai')}
+          </button>
+        </div>
+        {[...perMotivo].map(([motivo, nomi]) => (
+          <p key={motivo} className="refine__perche">
+            <b>{nomi.map((n) => etichettaValore(t, 'traccia', n)).join(', ')}</b>
+            {t(nomi.length === 1 ? 'rif2.non_rifatta' : 'rif2.non_rifatte')} {motivo}
           </p>
         ))}
-        <button className="btn btn--sm" onClick={() => setConferma(true)}>
-          {t('rif.rifai')}
-        </button>
       </div>
     )
   }
@@ -194,7 +227,7 @@ export function ControlloRifinitura({
       <button className="btn btn--sm" onClick={() => setConferma(true)}>
         {t('rif.rifai_trascrizione')}
       </button>
-      {errore && <span className="refine__n refine__n--rosso">{errore}</span>}
+      {errore && <p className="refine__perche">{errore}</p>}
     </div>
   )
 }

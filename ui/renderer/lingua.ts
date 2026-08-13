@@ -1220,6 +1220,12 @@ const it = {
     'A registrazione finita ripassa ogni riga con un modello più preciso, a cui la lingua si può imporre davvero — è la correzione per le frasi che finiscono in un’altra lingua. Costa qualche minuto di calcolo e un modello da scaricare (Modelli locali → Canary). Il comando resta comunque su ogni singola call.',
   'rif2.serve_canary':
     'Rifare la trascrizione con più cura richiede il modello Canary, non ancora scaricato: Impostazioni → Modelli locali (circa 1 GB).',
+  'rif2.non_rifatte':
+    ': non rifatte.',
+  'rif_motivo.audio_assente':
+    'Audio non trovato sul disco.',
+  'rif_motivo.non_allineata':
+    'L\'audio salvato non corrisponde agli istanti della trascrizione (somiglianza {somiglianza} su {righe} righe di controllo). Succede sulla traccia degli altri quando durante la call ci sono stati lunghi tratti in cui nessuno riproduceva audio.',
 } as const
 
 export type Chiave = keyof typeof it
@@ -2351,6 +2357,12 @@ const en: Record<Chiave, string> = {
     'When the recording ends it goes over every line with a more accurate model, one you can really impose a language on — it is the fix for sentences that end up in another language. It costs a few minutes of computing and a model to download (Local models → Canary). The command stays on every single call anyway.',
   'rif2.serve_canary':
     'Redoing the transcript more carefully needs the Canary model, not downloaded yet: Settings → Local models (about 1 GB).',
+  'rif2.non_rifatte':
+    ': not redone.',
+  'rif_motivo.audio_assente':
+    'Audio not found on the disk.',
+  'rif_motivo.non_allineata':
+    'The saved audio does not line up with the moments in the transcript ({somiglianza} similarity over {righe} check lines). It happens on the others\' track when nobody was playing audio for long stretches of the call.',
 }
 
 const CATALOGHI = { it, en } as const

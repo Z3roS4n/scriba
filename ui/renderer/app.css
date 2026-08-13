@@ -1121,7 +1121,22 @@ select.arow__c:hover { border-color:var(--line); }
 
 /* Rifinitura: il handoff dà `.refine` e i suoi due testi, non gli stati. */
 .refine--esito, .refine--conferma { flex-wrap:wrap; }
-.refine__n--rosso { color:var(--red); }
+/* L'esito è una colonna: il conteggio e il comando sulla prima riga, il
+   perché sotto. In riga il pulsante finiva all'estremità di un paragrafo
+   lungo otto righe, lontano dal testo che lo riguarda. */
+.refine--esito { flex-direction:column; align-items:stretch; gap:var(--sp-3); }
+.refine--esito .refine__riga { display:flex; align-items:center; gap:var(--sp-3); }
+.refine--esito .refine__riga .btn { margin-left:auto; }
+/* Il rosso è il filo, non il testo. Il sistema lo tiene per cinque usi e
+   nessuno è «un paragrafo intero»: dove va detto che qualcosa non è riuscito
+   si usa il bordo e si lascia il testo leggibile, come in `.callout`,
+   `.alert--risk` e `.model__err`. */
+.refine__perche {
+  padding-left:var(--sp-3); border-left:2px solid var(--red);
+  font-size:var(--fs-xs); line-height:var(--lh-body); color:var(--fg-body);
+  text-wrap:pretty;
+}
+.refine__perche b { color:var(--fg); font-weight:var(--w-bold); }
 
 /* Coppie chiave/valore, per i riepiloghi delle impostazioni. */
 .kv { display:flex; flex-direction:column; gap:var(--sp-2); }

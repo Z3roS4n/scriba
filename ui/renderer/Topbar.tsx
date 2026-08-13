@@ -7,19 +7,62 @@
  * index.tsx, perche' non tocca nessuno stato che la finestra principale debba conoscere.
  */
 
+import { useEffect, useRef, useState } from 'react'
+
 import type { Schermo } from './scriba'
 import { useT } from './lingua'
 import { tempo } from './tipi'
-// gia importato
 
 /** Rispecchia lo stato dell'evento `modello` del core: non serve un tipo condiviso per due file. */
 export type StatoModello = 'in_attesa' | 'caricamento' | 'pronto' | 'errore'
+
+/**
+ * I minuti di registrazione, con il loro stato e il loro timer.
+ *
+ * Stava nel componente radice, e da lì due volte al secondo si ridisegnava
+ * tutta la finestra: elenco call, trascrizione, pannello analisi. Le righe
+ * della trascrizione sono `memo`, quindi il contenuto non si ricalcolava —
+ * ma React ricreava comunque un elemento per riga, e su questa macchina una
+ * call ne ha duemila (#94).
+ *
+ * Qui il ridisegno tocca due cifre.
+ *
+ * Il conteggio è locale e si riallinea al core ogni venti secondi: chiederlo a
+ * ogni tick sarebbe un giro IPC + HTTP al secondo per due cifre, e un
+ * contatore solo locale andrebbe avanti anche a registrazione sospesa — delle
+ * pause sa il core.
+ */
+function Cronometro() {
+  const [ms, setMs] = useState(0)
+  const inizio = useRef(Date.now())
+  const scarto = useRef(0)
+
+  useEffect(() => {
+    let vivo = true
+    const allinea = async () => {
+      const r = await window.scriba.get<{ now_ms: number }>('/session/state')
+      if (vivo && r.ok && r.body?.now_ms != null) {
+        scarto.current = r.body.now_ms - (Date.now() - inizio.current)
+        setMs(Date.now() - inizio.current + scarto.current)
+      }
+    }
+    allinea()
+    const tick = setInterval(() => setMs(Date.now() - inizio.current + scarto.current), 500)
+    const risincronizza = setInterval(allinea, 20_000)
+    return () => {
+      vivo = false
+      clearInterval(tick)
+      clearInterval(risincronizza)
+    }
+  }, [])
+
+  return <span className="timer">{tempo(ms)}</span>
+}
 
 export function Topbar(props: {
   corePronto: boolean
   modello: StatoModello
   registrando: boolean
-  trascorsi: number
   sessioneVista: number | null
   esportando: boolean
   /** Gli schermi collegati. Vuoto finche' il processo principale non risponde. */
@@ -35,7 +78,6 @@ export function Topbar(props: {
     corePronto,
     modello,
     registrando,
-    trascorsi,
     sessioneVista,
     esportando,
     schermi,
@@ -72,7 +114,9 @@ export function Topbar(props: {
         {testoStato}
       </div>
 
-      {registrando && <span className="timer">{tempo(trascorsi)}</span>}
+      {/* Montato solo mentre si registra: smontandosi azzera il conteggio,
+          che è esattamente quello che deve fare a call nuova. */}
+      {registrando && <Cronometro />}
 
       <div className="topbar__spacer" />
 
