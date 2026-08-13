@@ -1191,6 +1191,35 @@ const it = {
     'JSON',
   'formato.contesto':
     "Per l'IA",
+  // --- fasi dell'analisi ------------------
+  'fase.riassunto':
+    'Riassunto',
+  'fase.salienti':
+    'Punti salienti',
+  'fase.task':
+    'Estrazione task',
+  'fase.unione':
+    'Unione dei riferimenti',
+  'fase_nota.attesa':
+    'in attesa',
+  'fase_nota.blocchi':
+    '{i} di {n} blocchi',
+  'fase_nota.candidati':
+    '{n} candidati',
+  'fase_nota.task_n':
+    '{n} task',
+  'fase_nota.nessun_candidato':
+    'nessun candidato',
+
+  // --- nascoste dietro una parentesi --------
+  'dlg2.titolo_facoltativo':
+    'TITOLO (FACOLTATIVO)',
+  'cli2.csv_nota':
+    'Un file CSV con una colonna dei nomi (e, se c\'è, una delle note). Separatore virgola o punto e virgola. I clienti già presenti non vengono duplicati né sovrascritti.',
+  'tra2.rifai_nota':
+    'A registrazione finita ripassa ogni riga con un modello più preciso, a cui la lingua si può imporre davvero — è la correzione per le frasi che finiscono in un’altra lingua. Costa qualche minuto di calcolo e un modello da scaricare (Modelli locali → Canary). Il comando resta comunque su ogni singola call.',
+  'rif2.serve_canary':
+    'Rifare la trascrizione con più cura richiede il modello Canary, non ancora scaricato: Impostazioni → Modelli locali (circa 1 GB).',
 } as const
 
 export type Chiave = keyof typeof it
@@ -2295,6 +2324,33 @@ const en: Record<Chiave, string> = {
     'JSON',
   'formato.contesto':
     'For AI',
+  'fase.riassunto':
+    'Summary',
+  'fase.salienti':
+    'Key points',
+  'fase.task':
+    'Extracting tasks',
+  'fase.unione':
+    'Merging references',
+  'fase_nota.attesa':
+    'waiting',
+  'fase_nota.blocchi':
+    '{i} of {n} blocks',
+  'fase_nota.candidati':
+    '{n} candidates',
+  'fase_nota.task_n':
+    '{n} tasks',
+  'fase_nota.nessun_candidato':
+    'no candidate',
+
+  'dlg2.titolo_facoltativo':
+    'TITLE (OPTIONAL)',
+  'cli2.csv_nota':
+    'A CSV file with a column of names (and one of notes, if there is one). Comma or semicolon separated. Clients already there are neither duplicated nor overwritten.',
+  'tra2.rifai_nota':
+    'When the recording ends it goes over every line with a more accurate model, one you can really impose a language on — it is the fix for sentences that end up in another language. It costs a few minutes of computing and a model to download (Local models → Canary). The command stays on every single call anyway.',
+  'rif2.serve_canary':
+    'Redoing the transcript more carefully needs the Canary model, not downloaded yet: Settings → Local models (about 1 GB).',
 }
 
 const CATALOGHI = { it, en } as const
@@ -2374,6 +2430,27 @@ export function etichettaValore(t: Traduci, prefisso: string, valore: string): s
  *  Il core genera `Voce N` e lo rilegge con `SUBSTR(label, 6)`: quella
  *  stringa è un identificatore travestito da etichetta, e non va tradotta —
  *  va sostituita al momento di mostrarla. */
+/**
+ * Come `etichettaValore`, ma con un ripiego scritto da chi chiama e con i
+ * valori da sostituire.
+ *
+ * Serve dove il core manda un gettone **e** la frase italiana che quel gettone
+ * sostituisce: se il catalogo non conosce il gettone — una fase aggiunta e non
+ * ancora etichettata — si mostra la frase italiana invece del gettone nudo.
+ * Una parola in più in italiano si legge; `nessun_candidato` no.
+ */
+export function etichettaOppure(
+  t: Traduci,
+  prefisso: string,
+  valore: string | null | undefined,
+  ripiego: string,
+  valori?: Record<string, string | number>,
+): string {
+  if (!valore) return ripiego
+  const chiave = `${prefisso}.${valore}` as Chiave
+  return chiave in it ? t(chiave, valori) : ripiego
+}
+
 export function etichettaVoce(t: Traduci, numero: number | null, label: string): string {
   return numero == null ? label : t('voce.n', { n: numero })
 }

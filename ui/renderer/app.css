@@ -1018,7 +1018,11 @@ select.arow__c:hover { border-color:var(--line); }
 .stage.is-current { color:var(--fg); font-weight:var(--w-bold); }
 .stage.is-done { color:var(--fg-2); }
 .stage__mark { font-size:var(--fs-xs); color:var(--fg-2); }
-.stage__note { display:block; font-size:var(--fs-xs); color:var(--fg-3); font-weight:var(--w-body); }
+/* Titolo e nota stanno nella seconda colonna, uno sotto l'altro. La prima
+   versione li lasciava figli diretti della griglia: erano tre elementi in due
+   colonne, e la nota cadeva nella colonna da 14px della riga dopo (#91). */
+.stage__t { min-width:0; }
+.stage__note { display:block; margin-top:2px; font-size:var(--fs-xs); color:var(--fg-3); font-weight:var(--w-body); }
 
 /* striscia: gli scatti presi e le righe di trascrizione che scorrono sotto */
 .overlay__shot { display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) var(--sp-4); border-top:1px solid var(--ov-line); }

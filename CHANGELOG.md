@@ -7,6 +7,27 @@ Each entry is split into three sections, and the highest one present decides
 the version bump: **Breaking changes** (major), **New features** (minor),
 **Fixes** (patch). A section with nothing in it is left out.
 
+## 1.1.2 — 11 August 2026
+
+### Fixes
+
+- **While an analysis ran, the list of phases came out mangled**: each phase's
+  note wrapped one word per line — «67» / «s», «4» / «di» / «6» / «blocchi» —
+  and the titles drifted right. The phases and their notes were also Italian
+  in an English interface: the translation existed in the core and nothing
+  called it, and the notes travel over the websocket, where the language of
+  whoever is looking does not reach. They now go out as a token and the
+  interface writes the sentence.
+- **With a failed analysis the three buttons ran off the panel**, the third
+  cut in half, and they had three different heights. And «Tell the voices
+  apart» and «Redo the transcript» disappeared from that screen — they work on
+  the audio, not on the analysis result, and they vanished exactly when
+  redoing the transcript is the sensible thing to try.
+- Four sentences stayed Italian because the string meter threw away any text
+  containing a round bracket. One of them is the line that says the Canary
+  model has not been downloaded — the one you read when you go looking for
+  that very button.
+
 ## 1.1.1 — 11 August 2026
 
 ### Fixes

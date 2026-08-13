@@ -7,6 +7,27 @@ Ogni voce è divisa in tre sezioni, ed è la più alta presente a decidere lo
 scatto di versione: **Cambiamenti che rompono** (maggiore), **Funzioni nuove**
 (minore), **Correzioni** (patch). Una sezione senza voci si lascia fuori.
 
+## 1.1.2 — 11 agosto 2026
+
+### Correzioni
+
+- **Mentre l'analisi lavorava l'elenco delle fasi usciva sfasciato**: la nota
+  di ogni fase andava a capo una parola per riga — «67» / «s», «4» / «di» /
+  «6» / «blocchi» — e i titoli slittavano verso destra. Fasi e note erano
+  anche in italiano dentro un'interfaccia in inglese: la traduzione c'era nel
+  core e non la chiamava nessuno, e le note viaggiano sul websocket, dove la
+  lingua di chi guarda non arriva. Adesso escono come gettone e la frase la
+  scrive l'interfaccia.
+- **Con l'analisi non riuscita i tre pulsanti uscivano dal pannello**, il
+  terzo tagliato a metà, e avevano tre altezze diverse. E da quella schermata
+  sparivano «Distingui le voci» e «Rifai la trascrizione»: lavorano
+  sull'audio, non sul risultato dell'analisi, e non si vedevano proprio quando
+  rifare la trascrizione è la cosa più sensata da provare.
+- Quattro frasi restavano in italiano perché il metro delle stringhe scartava
+  qualunque testo con dentro una parentesi tonda. Una di quelle è la riga che
+  dice che il modello Canary non è scaricato — cioè quello che si legge
+  andando a cercare proprio quel pulsante.
+
 ## 1.1.1 — 11 agosto 2026
 
 ### Correzioni

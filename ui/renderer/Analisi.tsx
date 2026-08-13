@@ -10,12 +10,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Riquadro } from './Dialoghi'
-import { etichettaValore, useLocale, useT, type Traduci } from './lingua'
+import { etichettaOppure, etichettaValore, useLocale, useT, type Traduci } from './lingua'
 import { NotaDiLavoro } from './NotaDiLavoro'
 import { ControlloRifinitura, useRifinitura } from './Rifinitura'
 import type { Analisi, FaseAnalisi, Provider, Segmento, Sessione, StatoAnalisi, StatoTask, Task } from './tipi'
 import { tempo } from './tipi'
 import { Markdown } from './markdown'
+
+/** I nomi che il foglio di stile dà ai pezzi del riassunto. */
+const CLASSI_SOMMARIO = { gruppo: 'sum__g', paragrafo: 'sum__p', elenco: 'sum__l' }
 
 /**
  * Le quattro priorità che il design colora, scritte per esteso.
@@ -25,9 +28,6 @@ import { Markdown } from './markdown'
  * stile. Il chip uscirebbe senza colore, che è esattamente il modo in cui una
  * priorità critica smette di sembrare critica senza che nessuno se ne accorga.
  */
-/** I nomi che il foglio di stile dà ai pezzi del riassunto. */
-const CLASSI_SOMMARIO = { gruppo: 'sum__g', paragrafo: 'sum__p', elenco: 'sum__l' }
-
 const CHIP_PRIORITA: Record<string, string> = {
   bassa: 'chip chip--quiet',
   media: 'chip',
@@ -754,8 +754,23 @@ export function PannelloAnalisi({
                   className={`stage${f.stato === 'fatta' ? ' is-done' : f.stato === 'in_corso' ? ' is-current' : ''}`}
                 >
                   <span className="stage__mark">{f.stato === 'fatta' ? '✓' : ''}</span>
-                  {f.titolo}
-                  <span className="stage__note">{f.nota ?? 'in attesa'}</span>
+                  {/* Titolo e nota in una colonna sola. Erano tre figli in una
+                      griglia a due colonne — il titolo è un nodo di testo, che
+                      in una griglia diventa un elemento anonimo — quindi la
+                      nota finiva nella colonna da 14px della riga dopo e
+                      andava a capo a ogni parola (#91). */}
+                  <div className="stage__t">
+                    {etichettaOppure(t, 'fase', f.chiave, f.titolo)}
+                    <span className="stage__note">
+                      {etichettaOppure(
+                        t,
+                        'fase_nota',
+                        f.nota_chiave,
+                        f.nota ?? t('fase_nota.attesa'),
+                        f.nota_valori ?? undefined,
+                      )}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -808,6 +823,30 @@ export function PannelloAnalisi({
               ]}
             />
           </div>
+        </div>
+
+        {/* Sotto, come nel pannello analizzato: distinguere le voci e rifare
+            la trascrizione lavorano sull'audio, non sul risultato
+            dell'analisi. Sparivano proprio quando l'analisi non era riuscita
+            — cioè quando rifare la trascrizione è la cosa più sensata da
+            provare, perché le task escono da quel testo (#92). */}
+        <div className="side__foot">
+          <ControlloDiarizzazione
+            sessione={sessione}
+            disponibile={diarizDisponibile}
+            giaDiarizzata={giaDiarizzata}
+            stato={diarizStato}
+            errore={diarizErrore}
+            conferma={diarizConferma}
+            onChiediConferma={() => setDiarizConferma(true)}
+            onAnnullaConferma={() => setDiarizConferma(false)}
+            onAvvia={avviaDiarizzazione}
+          />
+          <ControlloRifinitura
+            sessione={sessione}
+            stato={statoRifinitura}
+            onFinita={onRicaricaSegmenti}
+          />
         </div>
       </section>
     )

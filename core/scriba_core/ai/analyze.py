@@ -15,6 +15,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any
 
 from ..db.store import Segment, Store
 from ..llm.base import Completion, LLMProvider
@@ -174,7 +175,8 @@ class Analizzatore:
         provider: LLMProvider,
         store: Store,
         *,
-        on_fase: Callable[[str, str, str | None], None] | None = None,
+        on_fase: Callable[[str, str, str | None, str | None, dict[str, Any] | None], None]
+        | None = None,
     ) -> None:
         self.provider = provider
         self.store = store
@@ -192,9 +194,25 @@ class Analizzatore:
             system=sistema, user=testo, schema=schema, max_tokens=max_tokens
         )
 
-    def _avvisa(self, chiave: str, stato: str, nota: str | None = None) -> None:
+    def _avvisa(
+        self,
+        chiave: str,
+        stato: str,
+        nota: str | None = None,
+        *,
+        nota_chiave: str | None = None,
+        nota_valori: dict[str, Any] | None = None,
+    ) -> None:
+        """Avvisa che una fase è cambiata.
+
+        `nota` è per quello che si legge uguale in tutte le lingue — «67 s»
+        è un numero e un'unità. Quando invece è una frase si manda
+        `nota_chiave` con i suoi valori, e a scriverla è l'interfaccia: qui
+        siamo dentro il thread dell'analisi, lontani da qualunque richiesta,
+        e la lingua di chi guarda non la sappiamo.
+        """
         if self.on_fase is not None:
-            self.on_fase(chiave, stato, nota)
+            self.on_fase(chiave, stato, nota, nota_chiave, nota_valori)
 
     # I due prompt di sistema portano dentro la lingua della call: senza,
     # dicevano al modello che la trascrizione era italiana anche quando non lo
@@ -260,7 +278,13 @@ class Analizzatore:
             # Il numero del blocco è l'unico modo per chi guarda di capire che
             # un'estrazione lunga sta avanzando e non è ferma: una finestra di
             # 5000 token su CPU può richiedere più di un minuto da sola.
-            self._avvisa("task", "in_corso", f"{i + 1} di {n_finestre} blocchi")
+            self._avvisa(
+                "task",
+                "in_corso",
+                f"{i + 1} di {n_finestre} blocchi",
+                nota_chiave="blocchi",
+                nota_valori={"i": i + 1, "n": n_finestre},
+            )
 
             # A ogni finestra vanno solo le schermate catturate nel suo arco di
             # tempo: una slide mostrata al minuto 40 non aiuta a capire cosa si
@@ -400,7 +424,13 @@ class Analizzatore:
         candidati, completions = self.candidati(segmenti, schermate, lingua=lingua)
         for c in completions:
             self._somma(analisi, c)
-        self._avvisa("task", "fatta", f"{len(candidati)} candidati")
+        self._avvisa(
+            "task",
+            "fatta",
+            f"{len(candidati)} candidati",
+            nota_chiave="candidati",
+            nota_valori={"n": len(candidati)},
+        )
 
         if candidati:
             self._avvisa("unione", "in_corso")
@@ -417,9 +447,17 @@ class Analizzatore:
             )
             tasks = self.completa_da_candidati(dati.get("tasks", []), candidati)
             analisi.tasks = self._salva_tasks(session_id, tasks, output_id)
-            self._avvisa("unione", "fatta", f"{len(analisi.tasks)} task")
+            self._avvisa(
+                "unione",
+                "fatta",
+                f"{len(analisi.tasks)} task",
+                nota_chiave="task_n",
+                nota_valori={"n": len(analisi.tasks)},
+            )
         else:
-            self._avvisa("unione", "fatta", "nessun candidato")
+            self._avvisa(
+                "unione", "fatta", "nessun candidato", nota_chiave="nessun_candidato"
+            )
 
         self.store.set_session_state(session_id, "analyzed")
         return analisi

@@ -38,7 +38,6 @@ from .api.diarizzazione import numero_voce
 from .i18n import (
     LinguaUI,
     errore as _errore,
-    fase as _fase,
     lingua_da_header,
     motore as _motore,
 )
@@ -745,7 +744,14 @@ def create_app(
         etichetta_provider = PROVIDERS_INFO.get(provider_id, {}).get("etichetta", provider_id)
 
         fasi = [
-            {"chiave": chiave, "titolo": titolo, "stato": "attesa", "nota": "in attesa"}
+            {
+                "chiave": chiave,
+                "titolo": titolo,
+                "stato": "attesa",
+                "nota": "in attesa",
+                "nota_chiave": "attesa",
+                "nota_valori": None,
+            }
             for chiave, titolo in FASI_ANALISI
         ]
         annulla = threading.Event()
@@ -754,7 +760,13 @@ def create_app(
         state["analisi_session_id"] = session_id
         state["analisi_annulla"] = annulla
 
-        def _fase_aggiornata(chiave: str, stato: str, nota: str | None) -> None:
+        def _fase_aggiornata(
+            chiave: str,
+            stato: str,
+            nota: str | None,
+            nota_chiave: str | None = None,
+            nota_valori: dict[str, Any] | None = None,
+        ) -> None:
             # Gira nel thread dell'analisi. È anche l'unico punto in cui si
             # controlla se è stato chiesto di interrompere: è il momento in cui
             # il lavoro passa da una fase all'altra, l'unico in cui fermarsi non
@@ -764,6 +776,7 @@ def create_app(
             for f in fasi:
                 if f["chiave"] == chiave:
                     f["stato"], f["nota"] = stato, nota
+                    f["nota_chiave"], f["nota_valori"] = nota_chiave, nota_valori
                     break
             broadcaster.publish(
                 {"type": "analisi", "stato": "in_corso", "session_id": session_id, "fasi": fasi}

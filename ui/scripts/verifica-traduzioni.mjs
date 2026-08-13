@@ -87,6 +87,13 @@ const ORIGINI = {
   'imp2.': 'ui/renderer/Impostazioni.tsx',
   'ras3.': 'ui/renderer/Rassegna.tsx',
   'tra3.': 'ui/renderer/Trascrizione.tsx',
+  // I titoli delle fasi vengono da `FASI_ANALISI` nel core; le note
+  // dall'analizzatore, che le mandava come frasi già fatte.
+  'fase.': 'core/scriba_core/server.py',
+  // «in attesa» è lo stato iniziale, e quello lo scrive server.py: la
+  // chiave più lunga viene prima, perché a decidere è la prima che combacia.
+  'fase_nota.attesa': 'core/scriba_core/server.py',
+  'fase_nota.': 'core/scriba_core/ai/analyze.py',
 }
 
 /**

@@ -15,8 +15,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scriba_core.i18n import errore, fase, lingua_da_header, motore  # noqa: E402
-from scriba_core.server import FASI_ANALISI, PROVIDERS_INFO  # noqa: E402
+from scriba_core.i18n import errore, lingua_da_header, motore  # noqa: E402
+from scriba_core.server import PROVIDERS_INFO  # noqa: E402
 
 
 class TestQualeLingua:
@@ -70,16 +70,6 @@ class TestMotori:
         for id_, info in PROVIDERS_INFO.items():
             en = motore(info, id_, "en")
             assert en["etichetta"] != info["etichetta"], id_
-
-
-class TestFasi:
-    @pytest.mark.parametrize("chiave,titolo", list(FASI_ANALISI))
-    def test_ogni_fase_ha_un_titolo_inglese(self, chiave: str, titolo: str) -> None:
-        assert fase(chiave, titolo, "en") != titolo
-
-    def test_una_fase_sconosciuta_non_sparisce(self, ) -> None:
-        # Meglio il titolo italiano che una casella vuota nell'avanzamento.
-        assert fase("inventata", "Inventata", "en") == "Inventata"
 
 
 class TestMessaggiDiErrore:
@@ -171,3 +161,54 @@ class TestNessunMessaggioDimenticato:
             f"{file}: {testo}" for file, testo in self._messaggi() if errore(testo, "en") == testo
         ]
         assert not dimenticati, "\n".join(dimenticati)
+
+class TestNoteDelleFasi:
+    """Una nota di fase che è una frase deve viaggiare come gettone.
+
+    Le fasi nascono nel thread dell'analisi e vanno sul websocket, dove
+    `Accept-Language` non c'è: la lingua ce l'ha solo chi guarda. Una nota
+    scritta come frase — «4 di 6 blocchi» — arriverebbe in italiano dentro
+    un'interfaccia inglese, ed è successo (#91).
+
+    Restano frasi le note che si leggono uguali in tutte le lingue: «67 s» è
+    un numero e un'unità.
+    """
+
+    @staticmethod
+    def _avvisi() -> list[tuple[int, bool, bool]]:
+        """(riga, ha una nota, ha una nota_chiave) per ogni `_avvisa`."""
+        import ast
+
+        sorgente = (Path(__file__).resolve().parents[1] / "scriba_core/ai/analyze.py").read_text(
+            encoding="utf-8"
+        )
+        fuori = []
+        for nodo in ast.walk(ast.parse(sorgente)):
+            if not isinstance(nodo, ast.Call):
+                continue
+            f = nodo.func
+            if not (isinstance(f, ast.Attribute) and f.attr == "_avvisa"):
+                continue
+            # `_avvisa(chiave, stato, nota)`: la nota è il terzo posizionale.
+            nota = nodo.args[2] if len(nodo.args) > 2 else None
+            # «67 s» è un numero e un'unità: si legge uguale in tutte le
+            # lingue. Si guarda l'ultimo pezzo costante della f-string, non il
+            # sorgente: `ast.unparse` sceglie da sé che apici usare.
+            coda = ""
+            if isinstance(nota, ast.JoinedStr) and nota.values:
+                ultimo = nota.values[-1]
+                coda = ultimo.value if isinstance(ultimo, ast.Constant) else ""
+            neutra = coda.strip() == "s"
+            ha_nota = nota is not None and not (
+                isinstance(nota, ast.Constant) and nota.value is None
+            )
+            chiave = any(k.arg == "nota_chiave" for k in nodo.keywords)
+            fuori.append((nodo.lineno, ha_nota and not neutra, chiave))
+        return fuori
+
+    def test_ce_ne_sono(self) -> None:
+        assert len(self._avvisi()) >= 6
+
+    def test_ogni_frase_ha_il_suo_gettone(self) -> None:
+        senza = [riga for riga, frase, chiave in self._avvisi() if frase and not chiave]
+        assert not senza, f"_avvisa con una frase e senza nota_chiave, righe: {senza}"

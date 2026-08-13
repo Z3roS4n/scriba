@@ -72,8 +72,26 @@ function daLeggere(s) {
   // uno per sempre, che è il modo migliore per smettere di guardarlo.
   if (/^[a-z][a-z0-9_-]*…?$/.test(p)) return false
   if (/^[a-z]+:\/\//.test(p)) return false // url
-  // Un nodo di testo JSX non contiene parentesi, uguali o punti e virgola.
-  if (/[(){}\[\];=]/.test(p)) return false
+  // Un nodo di testo JSX non contiene graffe, quadre, uguali o punti e virgola.
+  if (/[{}\[\];=]/.test(p)) return false
+  // Le tonde invece in una frase ci stanno — «(circa 1 GB)» — e scartarle ha
+  // tenuto nascosta per due rilasci la riga che dice che manca il modello
+  // Canary. Quello che va scartato è l'espressione, e si riconosce da tre
+  // segni che una frase non ha:
+  //
+  //   `get('/modelli')`   un identificatore attaccato alla parentesi
+  //   `('/settings'),`    una parentesi attaccata a un apice
+  //   `) : t.due_raw ? (` una chiusa prima di qualunque apertura: è un pezzo
+  //                       tagliato a metà, non una frase
+  if (/\w\(/.test(p)) return false
+  if (/\(['"]|['"]\)/.test(p)) return false
+  if (/^[^(]*\)/.test(p)) return false
+  // Parentesi che non si chiudono: `(e: TastoEvento` è mezza firma.
+  if ((p.match(/\(/g) ?? []).length !== (p.match(/\)/g) ?? []).length) return false
+  // Operatori che una frase non ha. Il ternario si riconosce dallo spazio
+  // intorno al punto interrogativo: in italiano il `?` chiude la domanda e non
+  // ha niente dopo, sulla stessa riga.
+  if (/\?\?|=>|\s\?\s/.test(p)) return false
   // Un percorso puntato senza spazi e' codice: `window.scriba.post`, non una
   // frase. Una frase italiana con un punto ha comunque degli spazi.
   if (!/\s/.test(p) && p.includes('.')) return false
