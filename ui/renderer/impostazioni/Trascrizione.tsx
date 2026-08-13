@@ -138,10 +138,7 @@ export function SezioneTrascrizione({
           <div className="row__t">
             <b>{t('tra2.rifai')}</b>
             <span>
-              A registrazione finita ripassa ogni riga con un modello più preciso, a cui la lingua si
-              può imporre davvero — è la correzione per le frasi che finiscono in un’altra lingua.
-              Costa qualche minuto di calcolo e un modello da scaricare (Modelli locali → Canary).
-              Il comando resta comunque su ogni singola call.
+              {t('tra2.rifai_nota')}
             </span>
           </div>
           <button

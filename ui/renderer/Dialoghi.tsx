@@ -70,7 +70,7 @@ export function ModaleConsenso(props: {
         </div>
 
         <div className="modal__field">
-          <span className="label">TITOLO (FACOLTATIVO)</span>
+          <span className="label">{t('dlg2.titolo_facoltativo')}</span>
           <div className="textfield">
             <input
               ref={campoTitolo}

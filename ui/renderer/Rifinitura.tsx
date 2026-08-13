@@ -113,8 +113,7 @@ export function ControlloRifinitura({
     // clic. Un comando che sparisce non si può cercare.
     return (
       <p className="refine__n">
-        Rifare la trascrizione con più cura richiede il modello Canary, non ancora scaricato:
-        Impostazioni → Modelli locali (circa 1 GB).
+        {t('rif2.serve_canary')}
       </p>
     )
   }

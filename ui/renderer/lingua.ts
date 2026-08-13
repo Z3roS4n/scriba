@@ -1210,6 +1210,16 @@ const it = {
     '{n} task',
   'fase_nota.nessun_candidato':
     'nessun candidato',
+
+  // --- nascoste dietro una parentesi --------
+  'dlg2.titolo_facoltativo':
+    'TITOLO (FACOLTATIVO)',
+  'cli2.csv_nota':
+    'Un file CSV con una colonna dei nomi (e, se c\'è, una delle note). Separatore virgola o punto e virgola. I clienti già presenti non vengono duplicati né sovrascritti.',
+  'tra2.rifai_nota':
+    'A registrazione finita ripassa ogni riga con un modello più preciso, a cui la lingua si può imporre davvero — è la correzione per le frasi che finiscono in un’altra lingua. Costa qualche minuto di calcolo e un modello da scaricare (Modelli locali → Canary). Il comando resta comunque su ogni singola call.',
+  'rif2.serve_canary':
+    'Rifare la trascrizione con più cura richiede il modello Canary, non ancora scaricato: Impostazioni → Modelli locali (circa 1 GB).',
 } as const
 
 export type Chiave = keyof typeof it
@@ -2332,6 +2342,15 @@ const en: Record<Chiave, string> = {
     '{n} tasks',
   'fase_nota.nessun_candidato':
     'no candidate',
+
+  'dlg2.titolo_facoltativo':
+    'TITLE (OPTIONAL)',
+  'cli2.csv_nota':
+    'A CSV file with a column of names (and one of notes, if there is one). Comma or semicolon separated. Clients already there are neither duplicated nor overwritten.',
+  'tra2.rifai_nota':
+    'When the recording ends it goes over every line with a more accurate model, one you can really impose a language on — it is the fix for sentences that end up in another language. It costs a few minutes of computing and a model to download (Local models → Canary). The command stays on every single call anyway.',
+  'rif2.serve_canary':
+    'Redoing the transcript more carefully needs the Canary model, not downloaded yet: Settings → Local models (about 1 GB).',
 }
 
 const CATALOGHI = { it, en } as const

@@ -144,8 +144,7 @@ export function SezioneClienti({
           <div className="row__t">
             <b>{t('cli.carica')}</b>
             <span>
-              Un file CSV con una colonna dei nomi (e, se c'è, una delle note). Separatore virgola o
-              punto e virgola. I clienti già presenti non vengono duplicati né sovrascritti.
+              {t('cli2.csv_nota')}
             </span>
           </div>
           <input
