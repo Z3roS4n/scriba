@@ -254,6 +254,7 @@ def colonna_sql(
 #: l'italiano: si vede, e nel frattempo l'utente legge una frase giusta invece
 #: di una chiave.
 _ERRORI_EN: dict[str, str] = {
+    "Interrotta dall'utente.": "Stopped by you.",
     "token non valido": "invalid token",
     "registrazione già in corso": "already recording",
     "nessuna registrazione in corso": "nothing is being recorded",
