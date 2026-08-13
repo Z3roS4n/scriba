@@ -39,7 +39,6 @@ function App() {
   const [sessioni, setSessioni] = useState<Sessione[]>([])
   const [segmenti, setSegmenti] = useState<Segmento[]>([])
   const [scatti, setScatti] = useState<Scatto[]>([])
-  const [trascorsi, setTrascorsi] = useState(0)
 
   const [dialogoConsenso, setDialogoConsenso] = useState(false)
   const [titoloProposto, setTitoloProposto] = useState('')
@@ -90,7 +89,6 @@ function App() {
   const [analisiForzata, setAnalisiForzata] = useState(false)
 
   const trascrizioneRef = useRef<TrascrizioneHandle>(null)
-  const inizioLocale = useRef(Date.now())
   // L'ascoltatore degli eventi qui sotto si registra una volta sola (dipendenze
   // stabili, come per gli altri eventi): per sapere se un evento diarizzazione
   // riguarda la call aperta ADESSO serve leggerla da un ref, non catturarla
@@ -142,12 +140,6 @@ function App() {
     if (r.body.session_id != null) {
       setSessioneCorrente(r.body.session_id)
       setSessioneVista((prec) => prec ?? r.body.session_id!)
-    }
-    // Il cronometro riparte da dove sta la call, non da zero: e' il core a
-    // sapere da quanto va, e a sapere delle pause.
-    if (r.body.now_ms != null) {
-      inizioLocale.current = Date.now()
-      setTrascorsi(r.body.now_ms)
     }
   }, [])
 
@@ -311,8 +303,6 @@ function App() {
           setSessioneVista(e.session_id)
           setSegmenti([])
           setScatti([])
-          setTrascorsi(0)
-          inizioLocale.current = Date.now()
           setTaskProve(null)
           setCitazioni([])
           // Entrata ottimistica nell'elenco: si mostra subito "in corso", la
@@ -419,34 +409,6 @@ function App() {
     caricaScatti(bersaglio.id)
   }, [sessioni, sessioneVista, caricaSegmenti, caricaScatti])
 
-  // Cronometro contato in locale, riallineato al core ogni 20 secondi.
-  //
-  // Chiederlo al core a ogni tick significava un giro IPC + HTTP al secondo
-  // per aggiornare due cifre. Il riallineamento periodico serve comunque,
-  // perche' e' il core a sapere delle pause: un contatore puramente locale
-  // andrebbe avanti anche a registrazione sospesa.
-  useEffect(() => {
-    if (!registrando) return
-
-    let offset = trascorsi - (Date.now() - inizioLocale.current)
-    const tick = setInterval(() => {
-      setTrascorsi(Date.now() - inizioLocale.current + offset)
-    }, 500)
-
-    const risincronizza = setInterval(async () => {
-      const r = await window.scriba.get<{ now_ms: number }>('/session/state')
-      if (r.ok && r.body?.now_ms != null) {
-        offset = r.body.now_ms - (Date.now() - inizioLocale.current)
-      }
-    }, 20_000)
-
-    return () => {
-      clearInterval(tick)
-      clearInterval(risincronizza)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [registrando])
-
   // Le scorciatoie si registrano una volta all'avvio: serve comunque sapere
   // com'e' andata, sia per il suggerimento a finestra vuota ("Alt+R per la
   // striscia") sia per segnalare — livello 1, non bloccante — quando quella
@@ -547,7 +509,6 @@ function App() {
         corePronto={corePronto}
         modello={modello}
         registrando={registrando}
-        trascorsi={trascorsi}
         sessioneVista={sessioneVista}
         esportando={esportando}
         schermi={schermi}

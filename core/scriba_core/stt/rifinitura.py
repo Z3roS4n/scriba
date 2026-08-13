@@ -39,6 +39,7 @@ import statistics
 import threading
 import wave
 from dataclasses import dataclass, field
+from typing import Any
 from pathlib import Path
 
 import numpy as np
@@ -70,7 +71,12 @@ class EsitoTraccia:
     esaminate: int = 0
     riscritte: int = 0
     somiglianza: float | None = None
+    #: La frase italiana, come ripiego se il gettone non si conosce.
     motivo: str | None = None
+    #: Il gettone da cui l'interfaccia scrive la frase, e i suoi valori.
+    #: L'esito va sul websocket: qui la lingua di chi guarda non c'è.
+    motivo_chiave: str | None = None
+    motivo_valori: dict[str, Any] | None = None
 
 
 @dataclass
@@ -222,7 +228,11 @@ def rifinisci(
             if s.source == traccia and s.t_end_ms - s.t_start_ms >= DURATA_MINIMA_MS
         ]
         if not percorso or not Path(percorso).exists():
-            esito.tracce[traccia] = EsitoTraccia("assente", motivo="Audio non trovato sul disco.")
+            esito.tracce[traccia] = EsitoTraccia(
+                "assente",
+                motivo="Audio non trovato sul disco.",
+                motivo_chiave="audio_assente",
+            )
             continue
         if not suoi:
             esito.tracce[traccia] = EsitoTraccia("vuota")
@@ -250,6 +260,8 @@ def rifinisci(
                     "Succede sulla traccia degli altri quando durante la call ci sono "
                     "stati lunghi tratti in cui nessuno riproduceva audio."
                 ),
+                motivo_chiave="non_allineata",
+                motivo_valori={"somiglianza": f"{media:.0%}", "righe": provate},
             )
             log.warning(
                 "Rifinitura saltata su %s della sessione %d: somiglianza %.2f",

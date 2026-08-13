@@ -94,6 +94,7 @@ const ORIGINI = {
   // chiave più lunga viene prima, perché a decidere è la prima che combacia.
   'fase_nota.attesa': 'core/scriba_core/server.py',
   'fase_nota.': 'core/scriba_core/ai/analyze.py',
+  'rif_motivo.': 'core/scriba_core/stt/rifinitura.py',
 }
 
 /**
@@ -116,6 +117,9 @@ const COMPOSTE = new Set([
   // dentro l'espressione, il complemento fuori.
   'tra3.ripresa',
   'tra3.riprese',
+  // Il plurale di «: non rifatta.», che serve da quando le tracce con lo
+  // stesso motivo si dicono insieme. Il singolare c'era, questo no.
+  'rif2.non_rifatte',
 ])
 
 /**

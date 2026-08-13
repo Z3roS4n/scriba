@@ -7,6 +7,23 @@ Ogni voce è divisa in tre sezioni, ed è la più alta presente a decidere lo
 scatto di versione: **Cambiamenti che rompono** (maggiore), **Funzioni nuove**
 (minore), **Correzioni** (patch). Una sezione senza voci si lascia fuori.
 
+## 1.1.3 — 13 agosto 2026
+
+### Correzioni
+
+- **L'interfaccia rispondeva male durante la registrazione.** Il cronometro
+  della barra teneva il suo stato nel componente radice e batteva due volte al
+  secondo, quindi due volte al secondo si ridisegnavano elenco call,
+  trascrizione e pannello analisi — con un elemento per riga di trascrizione, e
+  una call lunga ne ha un paio di migliaia. Adesso il cronometro ridisegna il
+  cronometro.
+- **Quando la rifinitura si rifiutava di riallineare le tracce**, il pannello
+  diventava un muro rosso che diceva due volte la stessa cosa, un paragrafo per
+  traccia, con il pulsante «Rifai» appeso in fondo. Il motivo descrive la call,
+  non la traccia: adesso si dice una volta, con le tracce nominate insieme, il
+  rosso come filo a sinistra invece che su otto righe, e il comando accanto
+  all'esito. Usciva anche in italiano dentro un'interfaccia in inglese.
+
 ## 1.1.2 — 11 agosto 2026
 
 ### Correzioni

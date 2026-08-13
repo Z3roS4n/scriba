@@ -223,6 +223,8 @@ def _serializza(esito: rifinitura.Esito) -> dict[str, Any]:
                 "riscritte": t.riscritte,
                 "somiglianza": t.somiglianza,
                 "motivo": t.motivo,
+                "motivo_chiave": t.motivo_chiave,
+                "motivo_valori": t.motivo_valori,
             }
             for nome, t in esito.tracce.items()
         },
