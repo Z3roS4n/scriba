@@ -7,6 +7,41 @@ Each entry is split into three sections, and the highest one present decides
 the version bump: **Breaking changes** (major), **New features** (minor),
 **Fixes** (patch). A section with nothing in it is left out.
 
+## 1.2.0 — 24 August 2026
+
+### New features
+
+- **You can read the database address back.** The field stays covered — it is
+  an address that carries the password — but next to it there is an eye that
+  uncovers it for as long as you need. Seventy characters pasted from another
+  window, and the first thing to do when the connection fails is look at them.
+  Leaving the connection step covers it again on its own: showing it is a
+  choice for a moment, not a state to remember.
+- **The schema can be created from here, instead of only picked.** The list
+  used to be the only possible answer, and anyone who wanted to keep Scriba in
+  a schema of its own had to leave, open a SQL client and write `CREATE SCHEMA`
+  by hand. Now the schema step offers «one that exists» or «create one»: you
+  write the name, it goes into the DDL you read before running it, and it is
+  created along with the tables.
+
+### Fixes
+
+- **Mapping the columns of an existing table did not work at all.** Choosing
+  which remote table matched one of Scriba's, the screen answered «Did not
+  work» and went no further: half of the connection — the half for people who
+  already have their own schema — had been unusable for two releases. While
+  translating, that call had been written as though it received the language,
+  which never reached it. In Python a name that does not exist only surfaces
+  when the line runs, and the one test that ran it skips itself when there is
+  no PostgreSQL: now there is one that runs it without a server, and a check
+  that rereads the whole core looking for names that do not exist.
+- **`CREATE SCHEMA` ran even on a schema chosen from the existing ones.** The
+  preview said it was about to create something that was already there, and
+  that statement asks the database for a privilege (`CREATE`) that writing
+  into an existing schema does not need — so it could fail the whole creation
+  over a permission nobody required. It is now emitted only when the schema is
+  genuinely new.
+
 ## 1.1.4 — 13 August 2026
 
 ### Fixes
