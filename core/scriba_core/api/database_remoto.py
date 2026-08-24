@@ -39,12 +39,17 @@ class TabellaRequest(SchemaRequest):
 class CreaRequest(SchemaRequest):
     prefisso: str = sql.PREFISSO_PREDEFINITO
     tabelle: list[str] = []
+    # Lo schema non è nell'elenco che il server ha risposto: va creato. Chi
+    # decide è l'interfaccia, perché è lei ad avere quell'elenco sotto gli
+    # occhi. Predefinito `True`: com'era prima che questa scelta esistesse.
+    crea_schema: bool = True
 
 
 class AnteprimaRequest(BaseModel):
     schema_remoto: str
     prefisso: str = sql.PREFISSO_PREDEFINITO
     tabelle: list[str] = []
+    crea_schema: bool = True
 
 
 class CollegaRequest(Connessione):
@@ -93,7 +98,9 @@ def crea_router(ctx: Contesto) -> APIRouter:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @router.post("/database-remoto/colonne")
-    async def colonne(req: TabellaRequest) -> dict[str, Any]:
+    async def colonne(req: TabellaRequest, lingua: LinguaUI) -> dict[str, Any]:
+        # La lingua serve come a `/database-remoto/modello`: di qui escono i
+        # nomi dei campi di Scriba, che sono da leggere.
         try:
             return await _in_thread(
                 sql.colonne_di,
@@ -103,6 +110,7 @@ def crea_router(ctx: Contesto) -> APIRouter:
                 schema=req.schema_remoto,
                 tabella=req.tabella,
                 per=req.per,
+                lingua=lingua,
             )
         except ErroreSql as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -111,7 +119,10 @@ def crea_router(ctx: Contesto) -> APIRouter:
     async def anteprima(req: AnteprimaRequest) -> list[dict[str, str]]:
         """Il DDL che verrebbe eseguito. Nessuna connessione: è solo testo."""
         return sql.anteprima_ddl(
-            schema=req.schema_remoto, prefisso=req.prefisso, tabelle=req.tabelle
+            schema=req.schema_remoto,
+            prefisso=req.prefisso,
+            tabelle=req.tabelle,
+            crea_schema=req.crea_schema,
         )
 
     @router.post("/database-remoto/crea")
@@ -125,6 +136,7 @@ def crea_router(ctx: Contesto) -> APIRouter:
                 schema=req.schema_remoto,
                 prefisso=req.prefisso,
                 tabelle=req.tabelle,
+                crea_schema=req.crea_schema,
             )
         except ErroreSql as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
