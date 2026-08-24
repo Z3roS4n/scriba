@@ -23,6 +23,15 @@ the version bump: **Breaking changes** (major), **New features** (minor),
 - The panel says what actually happened — «Stopped by you.» — instead of the
   generic «The last analysis did not work.», which says nothing exactly when
   you need to know.
+- **The touch-up refused to redo the transcript on audio that was fine.**
+  Before rewriting, five lines are transcribed again and compared with what is
+  saved — and they were picked at a constant step over the index. In a real
+  conversation half the lines are «Okay.», and on a one-word line an edit
+  distance over words can only be 1 or 0. Three zeros out of five made the
+  median zero, whatever the long lines said. Check lines now come from those
+  with at least eight words; when there are none, the answer is «could not
+  tell» rather than a refusal, and the message no longer states a cause
+  nobody measured.
 
 ## 1.1.3 — 13 August 2026
 

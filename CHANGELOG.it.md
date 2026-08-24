@@ -24,6 +24,16 @@ scatto di versione: **Cambiamenti che rompono** (maggiore), **Funzioni nuove**
 - Il pannello dice cos'è successo davvero — «Interrotta dall'utente.» —
   invece del generico «L'ultima analisi non è riuscita.», che non dice niente
   proprio quando serve saperlo.
+- **La rifinitura si rifiutava di ripassare la trascrizione su un audio che
+  era a posto.** Prima di riscrivere, cinque righe vengono ritrascritte e
+  confrontate con quelle salvate — e venivano prese a passo costante
+  sull'indice. In una conversazione vera metà delle righe sono «Okay.», e su
+  una riga di una parola una distanza di edit sulle parole può valere solo 1 o
+  0. Tre zeri su cinque facevano la mediana zero, qualunque cosa dicessero le
+  righe lunghe. Adesso le righe di controllo si prendono fra quelle da almeno
+  otto parole; quando non ce ne sono, la risposta è «non si è potuto capire»
+  invece di un rifiuto, e il messaggio non afferma più una causa che nessuno
+  ha misurato.
 
 ## 1.1.3 — 13 agosto 2026
 
