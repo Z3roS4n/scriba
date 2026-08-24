@@ -1165,6 +1165,9 @@ select.arow__c:hover { border-color:var(--line); }
    riuscita». Il handoff disegna il pannello pieno, non i suoi stati vuoti:
    questo è il loro margine, e basta. */
 .pad { padding:var(--sp-5) var(--sp-6) var(--sp-8); display:flex; flex-direction:column; gap:var(--sp-4); }
+/* Il riquadro sopra il contenuto: stessa spaziatura ai lati, meno sotto —
+   non chiude una schermata, ne apre una. */
+.pad--stretto { padding-top:var(--sp-5); padding-bottom:0; }
 
 /* Il grilletto di un menù aperto cambia il bordo, non il peso: il peso è già
    il segno di «sta filtrando», e due stati diversi non possono accendersi

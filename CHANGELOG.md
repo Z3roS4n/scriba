@@ -7,6 +7,32 @@ Each entry is split into three sections, and the highest one present decides
 the version bump: **Breaking changes** (major), **New features** (minor),
 **Fixes** (patch). A section with nothing in it is left out.
 
+## 1.1.4 — 13 August 2026
+
+### Fixes
+
+- **A finished analysis was thrown away when «Stop» arrived at the last
+  moment.** The summary, the key points and the tasks were already written;
+  what was missing were the two lines that mark the call analysed. On a
+  two-hour call that meant ten minutes of work — and, on a metered engine,
+  money already spent — replaced by «Analysis failed». The last boundary no
+  longer aborts; every earlier one still does.
+- **The failure box took the place of the analysis instead of sitting above
+  it.** A failed or interrupted attempt now leaves visible whatever exists,
+  including what that same attempt had written before stopping.
+- The panel says what actually happened — «Stopped by you.» — instead of the
+  generic «The last analysis did not work.», which says nothing exactly when
+  you need to know.
+- **The touch-up refused to redo the transcript on audio that was fine.**
+  Before rewriting, five lines are transcribed again and compared with what is
+  saved — and they were picked at a constant step over the index. In a real
+  conversation half the lines are «Okay.», and on a one-word line an edit
+  distance over words can only be 1 or 0. Three zeros out of five made the
+  median zero, whatever the long lines said. Check lines now come from those
+  with at least eight words; when there are none, the answer is «could not
+  tell» rather than a refusal, and the message no longer states a cause
+  nobody measured.
+
 ## 1.1.3 — 13 August 2026
 
 ### Fixes

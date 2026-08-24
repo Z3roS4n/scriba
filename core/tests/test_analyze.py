@@ -16,7 +16,12 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scriba_core.ai.analyze import Analizzatore, finestre, formatta_segmenti  # noqa: E402
+from scriba_core.ai.analyze import (  # noqa: E402
+    AnalisiInterrotta,
+    Analizzatore,
+    finestre,
+    formatta_segmenti,
+)
 from scriba_core.db.store import Store  # noqa: E402
 from scriba_core.llm.base import Completion  # noqa: E402
 from scriba_core.llm.providers import _estrai_json  # noqa: E402
@@ -378,3 +383,31 @@ class TestTroncamento:
 
         _controlla_troncamento("stop")
         _controlla_troncamento(None)
+
+class TestStopInRitardo:
+    """Lo stop che arriva all'ultimo confine non butta via il lavoro.
+
+    L'interruzione si controlla fra una fase e l'altra. L'ultimo confine è
+    l'annuncio che l'unione è **finita**, e a quel punto riassunto, punti
+    salienti e task sono già scritti nel database: fermarsi lì non risparmia
+    niente, cancella dieci minuti di lavoro già fatto e pagato.
+
+    È successo su una call di due ore (#97): quindici task salvate, e la
+    sessione segnata «non riuscita».
+    """
+
+    @staticmethod
+    def _analizzatore() -> Analizzatore:
+        def annulla_sempre(chiave, stato, nota=None, nota_chiave=None, nota_valori=None):
+            raise AnalisiInterrotta("interrotta dall'utente")
+
+        return Analizzatore(FakeProvider([]), None, on_fase=annulla_sempre)  # type: ignore[arg-type]
+
+    def test_l_ultimo_annuncio_non_ferma(self) -> None:
+        # Non solleva: il lavoro è già scritto.
+        self._analizzatore()._fine_unione("3 task", "task_n", {"n": 3})
+
+    def test_i_confini_prima_fermano_ancora(self) -> None:
+        # Dove c'è ancora qualcosa da risparmiare, lo stop vale.
+        with pytest.raises(AnalisiInterrotta):
+            self._analizzatore()._avvisa("riassunto", "in_corso")

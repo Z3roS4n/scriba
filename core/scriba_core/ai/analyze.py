@@ -194,6 +194,25 @@ class Analizzatore:
             system=sistema, user=testo, schema=schema, max_tokens=max_tokens
         )
 
+    def _fine_unione(
+        self, nota: str, chiave: str, valori: dict[str, Any] | None
+    ) -> None:
+        """L'ultimo annuncio, che non si lascia interrompere.
+
+        Lo stop si controlla ai confini di fase, e questo è l'ultimo: qui le
+        task sono **già scritte**. Fermarsi adesso non risparmia lavoro, lo
+        butta — ed è successo su una call di due ore, con riassunto, punti
+        salienti e quindici task nel database e la sessione segnata «non
+        riuscita» (#97).
+
+        Interrompere resta possibile fino al confine precedente, che è dove
+        c'è ancora qualcosa da risparmiare.
+        """
+        try:
+            self._avvisa("unione", "fatta", nota, nota_chiave=chiave, nota_valori=valori)
+        except AnalisiInterrotta:
+            pass
+
     def _avvisa(
         self,
         chiave: str,
@@ -447,17 +466,9 @@ class Analizzatore:
             )
             tasks = self.completa_da_candidati(dati.get("tasks", []), candidati)
             analisi.tasks = self._salva_tasks(session_id, tasks, output_id)
-            self._avvisa(
-                "unione",
-                "fatta",
-                f"{len(analisi.tasks)} task",
-                nota_chiave="task_n",
-                nota_valori={"n": len(analisi.tasks)},
-            )
+            self._fine_unione(f"{len(analisi.tasks)} task", "task_n", {"n": len(analisi.tasks)})
         else:
-            self._avvisa(
-                "unione", "fatta", "nessun candidato", nota_chiave="nessun_candidato"
-            )
+            self._fine_unione("nessun candidato", "nessun_candidato", None)
 
         self.store.set_session_state(session_id, "analyzed")
         return analisi

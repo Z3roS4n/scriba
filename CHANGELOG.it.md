@@ -7,6 +7,34 @@ Ogni voce è divisa in tre sezioni, ed è la più alta presente a decidere lo
 scatto di versione: **Cambiamenti che rompono** (maggiore), **Funzioni nuove**
 (minore), **Correzioni** (patch). Una sezione senza voci si lascia fuori.
 
+## 1.1.4 — 13 agosto 2026
+
+### Correzioni
+
+- **Un'analisi finita veniva buttata via se lo «Interrompi» arrivava
+  all'ultimo momento.** Riassunto, punti salienti e task erano già scritti: a
+  mancare erano le due righe che segnano la call come analizzata. Su una call
+  di due ore voleva dire dieci minuti di lavoro — e su un motore a consumo,
+  soldi già spesi — sostituiti da «Analisi non riuscita». L'ultimo confine non
+  interrompe più; tutti quelli prima sì.
+- **Il riquadro dell'errore prendeva il posto dell'analisi invece di starle
+  sopra.** Un tentativo fallito o interrotto adesso lascia visibile quello che
+  c'è, compreso quello che il tentativo stesso aveva scritto prima di
+  fermarsi.
+- Il pannello dice cos'è successo davvero — «Interrotta dall'utente.» —
+  invece del generico «L'ultima analisi non è riuscita.», che non dice niente
+  proprio quando serve saperlo.
+- **La rifinitura si rifiutava di ripassare la trascrizione su un audio che
+  era a posto.** Prima di riscrivere, cinque righe vengono ritrascritte e
+  confrontate con quelle salvate — e venivano prese a passo costante
+  sull'indice. In una conversazione vera metà delle righe sono «Okay.», e su
+  una riga di una parola una distanza di edit sulle parole può valere solo 1 o
+  0. Tre zeri su cinque facevano la mediana zero, qualunque cosa dicessero le
+  righe lunghe. Adesso le righe di controllo si prendono fra quelle da almeno
+  otto parole; quando non ce ne sono, la risposta è «non si è potuto capire»
+  invece di un rifiuto, e il messaggio non afferma più una causa che nessuno
+  ha misurato.
+
 ## 1.1.3 — 13 agosto 2026
 
 ### Correzioni
