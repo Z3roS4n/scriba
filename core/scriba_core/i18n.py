@@ -299,6 +299,7 @@ _ERRORI_EN: dict[str, str] = {
     "Nome di tabella o colonna non valido.": "Invalid table or column name.",
     "Nessun database remoto collegato.": "No remote database connected.",
     "Non è stata scelta nessuna tabella da creare.": "No table was chosen to create.",
+    "Manca il nome dello schema.": "The schema name is missing.",
 }
 
 #: Quelli montati con un valore dentro. L'ordine conta: si prende il primo che

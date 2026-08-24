@@ -1161,6 +1161,20 @@ select.arow__c:hover { border-color:var(--line); }
 .textfield--sm { height:var(--h-sm); font-size:var(--fs-sm); padding:0 var(--sp-2); }
 .textfield--md { height:var(--h-md); font-size:var(--fs-sm); }
 
+/* Un campo coperto e il suo occhio. Nasce dall'indirizzo del database (#100):
+   settanta caratteri incollati da un'altra finestra, e nessun modo di
+   rileggerli quando la connessione non riesce.
+
+   Il pulsante prende `--h-xl` perché è l'altezza del campo che sta accanto: la
+   scala dei controlli è una sola, e due cose affiancate stanno sullo stesso
+   gradino. `min-width:0` sul campo perché senza, dentro un flex, un valore
+   lungo lo fa crescere oltre la riga invece di scorrere. */
+.secret { display:flex; align-items:center; gap:var(--sp-2); }
+.secret .textfield { flex:1; min-width:0; }
+.secret .btn--icon { flex:none; width:var(--h-xl); height:var(--h-xl); color:var(--fg-2); }
+.secret .btn--icon:hover { color:var(--fg); }
+.secret .btn--icon[aria-pressed='true'] { color:var(--fg); border-color:var(--line-strong); }
+
 /* Il riempimento degli stati del pannello — «carico», «nessuna call», «non
    riuscita». Il handoff disegna il pannello pieno, non i suoi stati vuoti:
    questo è il loro margine, e basta. */

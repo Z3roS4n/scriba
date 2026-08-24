@@ -1228,6 +1228,18 @@ const it = {
     'Il testo ritrascritto non corrisponde a quello salvato (somiglianza {somiglianza} su {righe} righe di controllo): audio e trascrizione sembrano scorrere su tempi diversi. Di solito succede sulla traccia degli altri, quando durante la call ci sono stati lunghi tratti senza audio in riproduzione.',
   'rif_motivo.poche_righe_lunghe':
     'Non ci sono righe abbastanza lunghe per capire se l\'audio corrisponde alla trascrizione ({righe} righe di controllo, troppo corte perche\' il confronto significhi qualcosa).',
+  // L'occhio sul campo dell'indirizzo, e la scelta dello schema.
+  'db3.mostra_indirizzo': 'Mostra l\'indirizzo',
+  'db3.nascondi_indirizzo': 'Nascondi l\'indirizzo',
+  'db3.schema_esiste': 'Uno che c\'è già',
+  'db3.schema_nuovo': 'Creane uno',
+  'db3.schema_nuovo_nota':
+    'Lo crea Scriba insieme alle tabelle. Il nome lo scegli tu.',
+  'db3.nome_schema': 'Nome dello schema',
+  'db3.schema_vuoto':
+    'Uno schema appena creato è vuoto, quindi le tabelle le fa Scriba.',
+  'db3.schema_esiste_gia':
+    'Uno schema con questo nome c\'è già: si userà quello, senza ricrearlo.',
 } as const
 
 export type Chiave = keyof typeof it
@@ -2367,6 +2379,15 @@ const en: Record<Chiave, string> = {
     'The text transcribed again does not match the one saved ({somiglianza} similarity over {righe} check lines): audio and transcript seem to run on different clocks. It usually happens on the others\' track, when nothing was playing audio for long stretches of the call.',
   'rif_motivo.poche_righe_lunghe':
     'There are no lines long enough to tell whether the audio matches the transcript ({righe} check lines, too short for the comparison to mean anything).',
+  'db3.mostra_indirizzo': 'Show the address',
+  'db3.nascondi_indirizzo': 'Hide the address',
+  'db3.schema_esiste': 'One that exists',
+  'db3.schema_nuovo': 'Create one',
+  'db3.schema_nuovo_nota': 'Scriba creates it along with the tables. You choose the name.',
+  'db3.nome_schema': 'Schema name',
+  'db3.schema_vuoto': 'A schema that has just been created is empty, so Scriba makes the tables.',
+  'db3.schema_esiste_gia':
+    'A schema with this name already exists: that one will be used, not created again.',
 }
 
 const CATALOGHI = { it, en } as const
