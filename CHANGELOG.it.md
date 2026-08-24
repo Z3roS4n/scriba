@@ -7,6 +7,41 @@ Ogni voce è divisa in tre sezioni, ed è la più alta presente a decidere lo
 scatto di versione: **Cambiamenti che rompono** (maggiore), **Funzioni nuove**
 (minore), **Correzioni** (patch). Una sezione senza voci si lascia fuori.
 
+## 1.2.0 — 24 agosto 2026
+
+### Funzioni nuove
+
+- **L'indirizzo del database si può rileggere.** Il campo resta coperto — è un
+  indirizzo che contiene la password — ma accanto c'è un occhio che lo scopre
+  finché serve. Settanta caratteri incollati da un'altra finestra, e la prima
+  cosa da fare quando la connessione non riesce è guardarli. Uscendo dal passo
+  della connessione torna coperto da solo: mostrare è una scelta per un
+  momento, non uno stato da ricordare.
+- **Lo schema si può creare da qui, invece di sceglierlo e basta.** Prima
+  l'elenco era l'unica risposta possibile, e chi voleva tenere Scriba in uno
+  schema suo doveva uscire, aprire un client SQL e scrivere `CREATE SCHEMA` a
+  mano. Adesso al passo dello schema si sceglie fra «uno che c'è già» e
+  «creane uno»: il nome lo scrivi tu, entra nel DDL che si legge prima di
+  eseguirlo, e viene creato insieme alle tabelle.
+
+### Correzioni
+
+- **Mappare le colonne di una tabella esistente non funzionava affatto.**
+  Scegliendo quale tabella remota corrisponde a una di Scriba, la schermata
+  rispondeva «Non riuscito» e non si andava oltre: metà del collegamento — la
+  metà per chi il suo schema ce l'ha già — era inutilizzabile da due rilasci.
+  Traducendo, quella chiamata era stata scritta come se ricevesse la lingua,
+  che invece non le arrivava mai. Un nome che non esiste, in Python, salta
+  fuori solo eseguendo la riga, e l'unico test che la eseguiva si salta da
+  solo quando manca un PostgreSQL: adesso c'è chi la esegue senza server, e un
+  controllo che rilegge tutto il core cercando nomi che non esistono.
+- **`CREATE SCHEMA` veniva eseguito anche sullo schema che si era scelto fra
+  quelli esistenti.** L'anteprima diceva di creare una cosa che c'era già, e
+  quello statement chiede sul database un permesso (`CREATE`) che per
+  scrivere in uno schema esistente non serve — quindi poteva far fallire
+  l'intera creazione per un permesso di cui non c'era bisogno. Ora esce solo
+  quando lo schema è davvero nuovo.
+
 ## 1.1.4 — 13 agosto 2026
 
 ### Correzioni

@@ -322,11 +322,113 @@ def test_cambiare_server_dimentica_cosa_era_gia_stato_mandato(store: Store) -> N
 # --------------------------------------------------------------- anteprima
 
 
+# ------------------------------------------------- colonne di una tabella esistente
+#
+# Il percorso «ce le ho già» era rotto del tutto (#102) e nessuno se n'era
+# accorto: l'unico test che chiama `colonne_di` sta in
+# `test_database_remoto_vero.py`, e quello si salta da solo quando non c'è un
+# PostgreSQL. Un percorso coperto solo da un test che di solito non gira è un
+# percorso scoperto.
+#
+# Qui il server non serve: si sostituisce la connessione. Quello che si vuole
+# provare — che i campi di Scriba escano detti bene, e nella lingua chiesta —
+# non è mai stato lavoro del database.
+
+
+class _ConnessioneFinta:
+    def close(self) -> None:
+        pass
+
+
+@pytest.fixture()
+def senza_server(monkeypatch: pytest.MonkeyPatch) -> list[dict]:
+    """Una tabella remota con due colonne di testo e una data."""
+    colonne = [
+        {"nome": "id", "tipo": "text", "obbligatoria": True},
+        {"nome": "oggetto", "tipo": "text", "obbligatoria": False},
+        {"nome": "quando", "tipo": "date", "obbligatoria": False},
+    ]
+    monkeypatch.setattr(sql, "_connessione", lambda *a, **k: _ConnessioneFinta())
+    monkeypatch.setattr(postgres, "colonne", lambda conn, schema, tabella: colonne)
+    return colonne
+
+
+def test_i_campi_escono_detti_in_italiano(store: Store, senza_server: list[dict]) -> None:
+    esito = sql.colonne_di(
+        store, schema="public", tabella="attivita", per="task", lingua="it"
+    )
+    per_chiave = {c["chiave"]: c for c in esito["campi"]}
+    assert per_chiave["titolo"]["etichetta"] == "Titolo"
+    assert per_chiave["assegnatario"]["etichetta"] == "Assegnatario"
+
+
+def test_i_campi_escono_detti_in_inglese(store: Store, senza_server: list[dict]) -> None:
+    """La riga che rompeva tutto era proprio questa traduzione."""
+    esito = sql.colonne_di(
+        store, schema="public", tabella="attivita", per="task", lingua="en"
+    )
+    per_chiave = {c["chiave"]: c for c in esito["campi"]}
+    assert per_chiave["titolo"]["etichetta"] == "Title"
+    assert per_chiave["assegnatario"]["etichetta"] == "Assignee"
+    assert per_chiave["scadenza"]["descrizione"] == "Resolved into a real date"
+
+
+def test_si_propongono_solo_le_colonne_che_possono_riceverlo(
+    store: Store, senza_server: list[dict]
+) -> None:
+    """Una scadenza non si offre di scrivere in una colonna di testo."""
+    esito = sql.colonne_di(store, schema="public", tabella="attivita", per="task")
+    per_chiave = {c["chiave"]: c for c in esito["campi"]}
+    assert per_chiave["scadenza"]["ammesse"] == ["quando"]
+    assert "quando" not in per_chiave["titolo"]["ammesse"]
+
+
+def test_una_tabella_di_scriba_che_non_esiste_lo_dice(store: Store, senza_server: list[dict]) -> None:
+    with pytest.raises(ErroreSql, match="sconosciuta"):
+        sql.colonne_di(store, schema="public", tabella="attivita", per="inventata")
+
+
 def test_l_anteprima_mostra_il_ddl_prima_di_eseguirlo() -> None:
     pezzi = sql.anteprima_ddl(schema="pubblico", prefisso="scriba_", tabelle=["call", "task"])
     nomi = [p["tabella"] for p in pezzi]
     assert nomi == ["(schema)", "scriba_call", "scriba_task"]
     assert all("CREATE" in p["sql"] for p in pezzi)
+
+
+def test_uno_schema_nuovo_si_crea() -> None:
+    pezzi = sql.anteprima_ddl(
+        schema="scriba", prefisso="", tabelle=["call"], crea_schema=True
+    )
+    assert pezzi[0]["tabella"] == "(schema)"
+    assert 'CREATE SCHEMA IF NOT EXISTS "scriba"' in pezzi[0]["sql"]
+
+
+def test_su_uno_schema_che_c_e_gia_non_si_scrive_create_schema() -> None:
+    """Diceva di creare `public`, e chiedeva un permesso che non serviva."""
+    pezzi = sql.anteprima_ddl(
+        schema="public", prefisso="scriba_", tabelle=["call"], crea_schema=False
+    )
+    assert [p["tabella"] for p in pezzi] == ["scriba_call"]
+    assert not any("CREATE SCHEMA" in p["sql"] for p in pezzi)
+
+
+def test_il_nome_dello_schema_finisce_citato() -> None:
+    """Il nome lo scrive l'utente: passa da `cita` come tutto il resto."""
+    pezzi = sql.anteprima_ddl(
+        schema='cattivo" DROP', prefisso="", tabelle=["call"], crea_schema=True
+    )
+    assert 'CREATE SCHEMA IF NOT EXISTS "cattivo"" DROP"' == pezzi[0]["sql"]
+
+
+def test_senza_nome_dello_schema_non_si_crea_niente(store: Store) -> None:
+    with pytest.raises(ErroreSql, match="[Mm]anca"):
+        sql.crea(store, url=URL, schema="   ", tabelle=["call"])
+
+
+def test_il_nome_dello_schema_si_salva_ripulito(store: Store) -> None:
+    """Uno spazio in coda darebbe uno schema che si chiama davvero «public »."""
+    sql.collega(store, url=URL, schema=" public ", tabelle=_mappa_valida())
+    assert sql.leggi_config(store)["schema"] == "public"
 
 
 # ------------------------------------------------------------- estrazione

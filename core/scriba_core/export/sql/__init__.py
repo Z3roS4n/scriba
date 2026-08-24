@@ -173,13 +173,23 @@ def tabelle_esistenti(store: Store, *, url: str = "", modalita: str = "", schema
 
 
 def colonne_di(
-    store: Store, *, url: str = "", modalita: str = "", schema: str, tabella: str, per: str
+    store: Store,
+    *,
+    url: str = "",
+    modalita: str = "",
+    schema: str,
+    tabella: str,
+    per: str,
+    lingua: str = "it",
 ) -> dict[str, Any]:
     """Le colonne di una tabella esistente, dette in termini di campi di Scriba.
 
     Per ogni campo si elencano **solo** le colonne che possono davvero
     riceverlo: proporre un `text` per una scadenza significa lasciar scegliere
     un errore che si vedrà solo al primo invio.
+
+    `lingua` arriva dalla rotta come per `/database-remoto/modello`: quello che
+    esce di qui sono etichette da leggere, non chiavi.
     """
     t = modello.tabella(per)
     if t is None:
@@ -196,13 +206,16 @@ def colonne_di(
         "campi": [
             {
                 "chiave": c.chiave,
-                "etichetta": colonna_sql(t.chiave, c.chiave, c.etichetta, c.descrizione, lingua)[0],
+                "etichetta": detto[0],
                 "tipo": c.tipo,
-                "descrizione": colonna_sql(t.chiave, c.chiave, c.etichetta, c.descrizione, lingua)[1],
+                "descrizione": detto[1],
                 "chiave_naturale": c.chiave_naturale,
                 "ammesse": [x["nome"] for x in colonne if DIALETTO.accetta(c.tipo, x["tipo"])],
             }
-            for c in t.campi
+            for c, detto in (
+                (c, colonna_sql(t.chiave, c.chiave, c.etichetta, c.descrizione, lingua))
+                for c in t.campi
+            )
         ],
     }
 
@@ -214,13 +227,22 @@ def _nome_tabella(prefisso: str, chiave: str) -> str:
     return f"{prefisso or ''}{chiave}"
 
 
-def anteprima_ddl(*, schema: str, prefisso: str, tabelle: list[str]) -> list[dict[str, str]]:
+def anteprima_ddl(
+    *, schema: str, prefisso: str, tabelle: list[str], crea_schema: bool = True
+) -> list[dict[str, str]]:
     """Il DDL che verrebbe eseguito, per mostrarlo prima di eseguirlo.
 
     Non è cortesia: sta per scrivere nel database di qualcuno, e leggerlo prima
     è l'unico modo per sapere cosa sta per succedere.
+
+    `crea_schema` esiste perché il `CREATE SCHEMA` usciva **sempre**, anche
+    scegliendo `public`. Due difetti in uno: l'anteprima diceva di creare una
+    cosa che c'era già, e quello statement chiede il permesso `CREATE` sul
+    database, che per scrivere in uno schema esistente non serve — quindi
+    poteva far fallire l'intera creazione per un permesso di cui non c'era
+    bisogno.
     """
-    fuori = [{"tabella": "(schema)", "sql": DIALETTO.ddl_schema(schema)}]
+    fuori = [{"tabella": "(schema)", "sql": DIALETTO.ddl_schema(schema)}] if crea_schema else []
     for chiave in tabelle:
         t = modello.tabella(chiave)
         if t is None:
@@ -243,19 +265,33 @@ def crea(
     schema: str,
     prefisso: str = PREFISSO_PREDEFINITO,
     tabelle: list[str],
+    crea_schema: bool = True,
 ) -> dict[str, Any]:
     """Crea le tabelle scelte e salva il collegamento.
 
     `CREATE ... IF NOT EXISTS`, mai un `DROP`: su un database che è di qualcun
     altro si aggiunge, non si sistema d'ufficio.
+
+    Esegue esattamente il DDL che l'utente ha letto, `crea_schema` compreso:
+    se l'anteprima e l'esecuzione potessero divergere, leggerla prima non
+    servirebbe a niente.
     """
     if not tabelle:
         raise ErroreSql("Non è stata scelta nessuna tabella da creare.")
+    # Il nome dello schema lo scrive l'utente da quando se ne può creare uno.
+    # Si ripulisce qui e non solo nell'interfaccia: uno spazio in coda salvato
+    # com'è diventa uno schema che si chiama davvero «public », e a scoprirlo
+    # sarebbe la prima sincronizzazione.
+    schema = (schema or "").strip()
+    if not schema:
+        raise ErroreSql("Manca il nome dello schema.")
 
     conn = _connessione(store, url, modalita)
     try:
         with conn.cursor() as cur:
-            for pezzo in anteprima_ddl(schema=schema, prefisso=prefisso, tabelle=tabelle):
+            for pezzo in anteprima_ddl(
+                schema=schema, prefisso=prefisso, tabelle=tabelle, crea_schema=crea_schema
+            ):
                 cur.execute(pezzo["sql"])
         conn.commit()
     except Exception as exc:
@@ -308,8 +344,8 @@ def collega(
         if modalita not in DIALETTO.MODALITA:
             raise ErroreSql(f"Modalità di connessione sconosciuta: {modalita}")
         dati["modalita"] = modalita
-    if schema:
-        dati["schema"] = schema
+    if schema.strip():
+        dati["schema"] = schema.strip()
     if prefisso:
         dati["prefisso"] = prefisso
     if tabelle is not None:

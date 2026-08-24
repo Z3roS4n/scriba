@@ -226,6 +226,95 @@
 
   const notionStato = { collegato: false, database_id: null, database_titolo: null, mappa: {} }
 
+  // ---------------------------------------------------- database remoto
+  //
+  // Lo schermo del database remoto non era raggiungibile dall'anteprima: senza
+  // queste risposte `risolvi` tornava `null`, e la schermata restava sul primo
+  // passo senza mai mostrare schema, tabelle e DDL — cioe' tre quarti di
+  // quello che c'e' da guardare.
+  //
+  // I nomi sono quelli che si trovano davvero su un Supabase appena fatto:
+  // `public` c'e' sempre, `auth` e `storage` pure, e nessuno dei tre e' il
+  // posto dove uno vuole mettere le proprie tabelle. E' esattamente il caso
+  // che fa venire voglia di crearne uno nuovo.
+  const SCHEMI_FINTI = ['auth', 'public', 'storage']
+  const TABELLE_FINTE = ['clienti', 'note_riunioni', 'progetti']
+
+  const MODELLO_FINTO = [
+    { chiave: 'call', etichetta: 'Le call', descrizione: 'Una riga per riunione: titolo, cliente, durata, stato.', predefinita: true, voluminosa: false },
+    { chiave: 'task', etichetta: 'Le task', descrizione: 'Quelle estratte dall\'analisi, con assegnatario e scadenza.', predefinita: true, voluminosa: false },
+    { chiave: 'analisi', etichetta: 'Le analisi', descrizione: 'Riassunto, punti salienti, nota di lavoro.', predefinita: true, voluminosa: false },
+    { chiave: 'trascrizione', etichetta: 'La trascrizione', descrizione: 'Riga per riga, con i minuti.', predefinita: false, voluminosa: true },
+    { chiave: 'partecipante', etichetta: 'I partecipanti', descrizione: 'Le voci distinte, con il nome se gliel\'hai dato.', predefinita: false, voluminosa: false },
+    { chiave: 'screenshot', etichetta: 'Gli screenshot', descrizione: 'Percorso e testo letto a schermo.', predefinita: false, voluminosa: false },
+  ]
+
+  const CAMPI_FINTI = {
+    call: ['uuid', 'titolo', 'cliente', 'inizio', 'durata_ms'],
+    task: ['uuid', 'call_uuid', 'titolo', 'assegnatario', 'scadenza'],
+  }
+
+  function databaseRemoto(path, body) {
+    const dati = body ?? {}
+    if (path === '/database-remoto/prova') {
+      if (!(dati.url || '').startsWith('postgres')) {
+        return { ok: false, status: 400, body: { detail: 'L\'indirizzo deve cominciare con postgresql:// (o postgres://).' } }
+      }
+      return {
+        ok: true,
+        status: 200,
+        body: {
+          ok: true,
+          versione: 'PostgreSQL 17.2 on x86_64-pc-linux-gnu, compiled by gcc',
+          schemi: SCHEMI_FINTI,
+          modalita: dati.modalita || 'diretta',
+        },
+      }
+    }
+    if (path === '/database-remoto/tabelle') {
+      // Solo negli schemi che esistono: uno appena nominato e' vuoto, ed e'
+      // proprio la cosa che la schermata deve saper dire.
+      const dentro = SCHEMI_FINTI.includes(dati.schema_remoto) ? TABELLE_FINTE : []
+      return { ok: true, status: 200, body: dentro }
+    }
+    if (path === '/database-remoto/anteprima') {
+      const schema = dati.schema_remoto || 'public'
+      const pezzi = dati.crea_schema
+        ? [{ tabella: '(schema)', sql: `CREATE SCHEMA IF NOT EXISTS "${schema}"` }]
+        : []
+      for (const chiave of dati.tabelle ?? []) {
+        const nome = `${dati.prefisso ?? ''}${chiave}`
+        const campi = CAMPI_FINTI[chiave] ?? ['uuid', 'call_uuid', 'contenuto']
+        pezzi.push({
+          tabella: nome,
+          sql:
+            `CREATE TABLE IF NOT EXISTS "${schema}"."${nome}" (\n` +
+            campi.map((c) => `  "${c}" text`).join(',\n') +
+            ',\n  "sincronizzato_at" timestamptz NOT NULL DEFAULT now(),\n' +
+            `  PRIMARY KEY ("${campi[0]}")\n)`,
+        })
+      }
+      return { ok: true, status: 200, body: pezzi }
+    }
+    if (path === '/database-remoto/colonne') {
+      const colonne = [
+        { nome: 'id', tipo: 'text', obbligatoria: true },
+        { nome: 'oggetto', tipo: 'text', obbligatoria: false },
+        { nome: 'creato_il', tipo: 'timestamp with time zone', obbligatoria: false },
+      ]
+      const campi = (CAMPI_FINTI[dati.per] ?? ['uuid', 'titolo']).map((c, i) => ({
+        chiave: c,
+        etichetta: c === 'uuid' ? 'Identificatore' : c === 'titolo' ? 'Titolo' : c,
+        tipo: 'testo',
+        descrizione: i === 0 ? 'Stabile: non cambia mai' : '',
+        chiave_naturale: i === 0,
+        ammesse: colonne.filter((x) => x.tipo === 'text').map((x) => x.nome),
+      }))
+      return { ok: true, status: 200, body: { colonne, campi } }
+    }
+    return null
+  }
+
   function notion(path, body) {
     const dati = body ?? {}
     if (path === '/export/notion/destinazioni') {
@@ -284,6 +373,17 @@
   }
 
   const RISPOSTE = {
+    '/database-remoto/stato': {
+      collegato: false,
+      modalita: 'diretta',
+      schema: '',
+      prefisso: 'scriba_',
+      automatico: true,
+      tabelle: {},
+      segreto_in_chiaro: false,
+      server: null,
+    },
+    '/database-remoto/modello': MODELLO_FINTO,
     '/export/notion/stato': notionStato,
     '/export/notion/campi': notionCampi,
     '/sessions': sessioni,
@@ -370,7 +470,10 @@
     endpoint: () => Promise.resolve({ port: 1234 }),
     paths: () => Promise.resolve({ dataDir: 'C:\\finto', screenshotDir: 'C:\\finto\\shots' }),
     get: (p) => ok(risolvi(p)),
-    post: (p, body) => Promise.resolve(notion(p, body) ?? { ok: true, status: 200, body: risolvi(p) ?? {} }),
+    post: (p, body) =>
+      Promise.resolve(
+        notion(p, body) ?? databaseRemoto(p, body) ?? { ok: true, status: 200, body: risolvi(p) ?? {} },
+      ),
     patch: (p, body) => Promise.resolve(rinomina(p, body)),
     screenshot: () => Promise.resolve(),
     // Due schermi: uno solo farebbe sparire il selettore dalla topbar, che e'

@@ -5,6 +5,11 @@
 -r requirements.txt
 
 pytest==9.0.1
+# Trova i nomi che non esistono senza eseguire il codice: lo usa
+# `tests/test_nomi_inesistenti.py`, nato da una chiamata scritta con un
+# parametro che la funzione non aveva (#102). Solo quella famiglia di
+# segnalazioni, non lo stile.
+pyflakes==3.4.0
 # Impacchetta il core in un eseguibile: lo usa scripts/build-core.ps1, quindi
 # senza questo `npm run dist` si ferma a metà.
 pyinstaller==6.21.0

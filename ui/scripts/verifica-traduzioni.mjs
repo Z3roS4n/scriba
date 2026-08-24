@@ -138,6 +138,28 @@ const COMPOSTE = new Set([
  */
 const BASE = '955af93'
 
+/**
+ * L'ultimo commit della traduzione: da qui in poi l'interfaccia è nata
+ * bilingue.
+ *
+ * Il cancello ha giurisdizione solo sulle chiavi che il catalogo aveva
+ * allora. Per una stringa scritta dopo, la domanda — «questa frase italiana
+ * c'era, prima che cominciassimo?» — non ha una risposta giusta: nel sorgente
+ * italiano non c'è mai stata, e non ci sarà mai. Confrontarla darebbe un rosso
+ * perpetuo.
+ *
+ * Finora quel rosso è stato evitato caso per caso — un segnaposto che salva la
+ * riga, una voce in COMPOSTE, un prefisso nuovo che nessuno dichiara in
+ * ORIGINI — e l'ultima di queste tre è la peggiore: **non dichiarare la
+ * provenienza fa saltare il controllo**. Una scappatoia che si imbocca per
+ * distrazione è una scappatoia che si imbocca.
+ *
+ * Detto qui una volta, la scappatoia non serve più e il conto torna onesto.
+ * Una riscrittura vera resta presa: riscrivere significa cambiare il valore di
+ * una chiave che c'era, e quelle sono tutte qui dentro.
+ */
+const FINE = '5b2c12f'
+
 const catalogo = readFileSync('renderer/lingua.ts', 'utf8')
 // Solo il blocco italiano: l'inglese non deve ritrovarsi da nessuna parte.
 const italiano = catalogo.slice(0, catalogo.indexOf('const en:'))
@@ -169,10 +191,38 @@ for (const [prefisso, file] of Object.entries(ORIGINI)) {
   }
 }
 
+// Le chiavi che il catalogo aveva quando la traduzione è finita: la
+// giurisdizione del cancello. Si legge dallo stesso file a `FINE`, non da un
+// elenco scritto a mano che qualcuno dovrebbe ricordarsi di aggiornare.
+let allora
+try {
+  allora = new Set(
+    [...execSync(`git show ${FINE}:ui/renderer/lingua.ts`, { encoding: 'utf8' }).matchAll(
+      /'([a-z][a-z_0-9]*\.[a-z_0-9]+)':/g,
+    )].map((m) => m[1]),
+  )
+} catch {
+  console.error(`Non riesco a leggere il catalogo a ${FINE}.`)
+  process.exit(1)
+}
+if (allora.size < 400) {
+  // Stessa ragione del controllo su `controllate`: un insieme vuoto qui
+  // metterebbe fuori giurisdizione tutto, e il cancello direbbe verde
+  // avendo guardato niente.
+  console.error(`Solo ${allora.size} chiavi lette a ${FINE}: il catalogo non è stato letto.`)
+  process.exit(1)
+}
+
 let controllate = 0
 let scoperte = 0
+let dopo = 0
 const perse = []
 for (const [chiave, valore] of voci) {
+  // Nata a interfaccia già bilingue: non viene da nessun sorgente italiano.
+  if (!allora.has(chiave)) {
+    dopo++
+    continue
+  }
   const prefisso = Object.keys(ORIGINI).find((p) => chiave.startsWith(p))
   if (!prefisso) {
     scoperte++
@@ -199,6 +249,7 @@ console.log(`${controllate} voci italiane confrontate con il sorgente da cui ven
 // nel sorgente non sono mai esistiti. Un cancello che non dice cosa NON
 // guarda si legge come se guardasse tutto.
 console.log(`${scoperte} senza origine dichiarata: etichette di valori salvati e testo composto.`)
+console.log(`${dopo} nate dopo la traduzione: fuori giurisdizione, l'italiano non viene da un sorgente.`)
 if (perse.length) {
   console.error(`\n${perse.length} NON si ritrovano — riscritte, o accoppiate alla chiave sbagliata:`)
   for (const p of perse) console.error('   ' + p)
