@@ -210,7 +210,7 @@ export function SezioneDatabaseRemoto() {
         window.scriba.post<ColonneRemote>('/database-remoto/colonne', {
           url,
           modalita,
-          schema_remoto: schema,
+          schema_remoto: nomeSchema,
           tabella,
           per: chiave,
         }),
@@ -231,7 +231,7 @@ export function SezioneDatabaseRemoto() {
         },
       }))
     },
-    [con, url, modalita, schema],
+    [con, url, modalita, nomeSchema],
   )
 
   const collegaMappa = useCallback(async () => {
@@ -242,7 +242,10 @@ export function SezioneDatabaseRemoto() {
       window.scriba.post<StatoDatabaseRemoto>('/database-remoto/collega', {
         url,
         modalita,
-        schema_remoto: schema,
+        // Il nome ripulito, come per l'altra strada. Uno spazio in coda
+        // salvato qui diventa uno schema che si chiama davvero «public », e
+        // se ne accorgerebbe solo la prima sincronizzazione.
+        schema_remoto: nomeSchema,
         tabelle: soloScelte,
       }),
     )
@@ -251,7 +254,7 @@ export function SezioneDatabaseRemoto() {
     setMostraUrl(false)
     await ricarica()
     setPasso('collegato')
-  }, [con, mappa, scelte, url, modalita, schema, ricarica])
+  }, [con, mappa, scelte, url, modalita, nomeSchema, ricarica])
 
   const sincronizzaTutto = useCallback(async () => {
     setEsitoSync(null)

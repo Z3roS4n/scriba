@@ -425,6 +425,12 @@ def test_senza_nome_dello_schema_non_si_crea_niente(store: Store) -> None:
         sql.crea(store, url=URL, schema="   ", tabelle=["call"])
 
 
+def test_il_nome_dello_schema_si_salva_ripulito(store: Store) -> None:
+    """Uno spazio in coda darebbe uno schema che si chiama davvero «public »."""
+    sql.collega(store, url=URL, schema=" public ", tabelle=_mappa_valida())
+    assert sql.leggi_config(store)["schema"] == "public"
+
+
 # ------------------------------------------------------------- estrazione
 
 

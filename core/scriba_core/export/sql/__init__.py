@@ -278,7 +278,12 @@ def crea(
     """
     if not tabelle:
         raise ErroreSql("Non è stata scelta nessuna tabella da creare.")
-    if not (schema or "").strip():
+    # Il nome dello schema lo scrive l'utente da quando se ne può creare uno.
+    # Si ripulisce qui e non solo nell'interfaccia: uno spazio in coda salvato
+    # com'è diventa uno schema che si chiama davvero «public », e a scoprirlo
+    # sarebbe la prima sincronizzazione.
+    schema = (schema or "").strip()
+    if not schema:
         raise ErroreSql("Manca il nome dello schema.")
 
     conn = _connessione(store, url, modalita)
@@ -339,8 +344,8 @@ def collega(
         if modalita not in DIALETTO.MODALITA:
             raise ErroreSql(f"Modalità di connessione sconosciuta: {modalita}")
         dati["modalita"] = modalita
-    if schema:
-        dati["schema"] = schema
+    if schema.strip():
+        dati["schema"] = schema.strip()
     if prefisso:
         dati["prefisso"] = prefisso
     if tabelle is not None:
