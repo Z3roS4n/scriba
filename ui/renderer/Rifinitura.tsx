@@ -159,7 +159,10 @@ export function ControlloRifinitura({
     // identico; se un giorno i motivi sono diversi, i gruppi diventano due.
     const perMotivo = new Map<string, string[]>()
     for (const [nome, tr] of Object.entries(esito.tracce)) {
-      if (tr.stato !== 'non_allineata') continue
+      // `non_verificabile` è l'esito nuovo: non «l'audio non corrisponde», ma
+      // «da queste righe non si poteva capire». Si dice come gli altri — una
+      // traccia che non è stata ripassata va detta, qualunque sia il perché.
+      if (tr.stato !== 'non_allineata' && tr.stato !== 'non_verificabile') continue
       // Il core manda un gettone e la frase italiana: la frase è il ripiego
       // se il gettone non si conosce, e se non c'è nemmeno quella la traccia
       // si dice lo stesso, senza inventare una spiegazione.

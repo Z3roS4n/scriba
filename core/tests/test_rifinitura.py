@@ -34,12 +34,15 @@ from scriba_core.stt.rifinitura import (  # noqa: E402
     somiglianza,
 )
 
+# Frasi da almeno `PAROLE_MINIME_CONTROLLO` parole: sotto quella soglia una
+# riga non vale come controllo, e il caso in cui non ce ne sono abbastanza ha
+# il suo test in `TestNonVerificabile`.
 FRASI = [
-    "il preventivo lo mando domani",
-    "la scadenza resta venerdi",
-    "manca il collaudo sul secondo ambiente",
-    "ci sentiamo la settimana prossima",
-    "chiudo io con l'amministrazione",
+    "il preventivo lo mando domani mattina appena arriva il visto",
+    "la scadenza resta venerdi come avevamo detto la settimana scorsa",
+    "manca il collaudo sul secondo ambiente e nessuno lo ha pianificato",
+    "ci sentiamo la settimana prossima per chiudere il punto sui costi",
+    "chiudo io con l'amministrazione e vi mando una nota coi numeri",
 ]
 
 # Come le aveva sentite la trascrizione dal vivo: quasi giuste, una parola per
@@ -49,11 +52,11 @@ FRASI = [
 # Con un testo di partenza senza nessuna parola in comune il controllo
 # rifiuterebbe anche l'audio allineato, e avrebbe ragione.
 DAL_VIVO = [
-    "il preventivo lo mandò domani",
-    "la scadenza resta venerdì",
-    "manca il collaudo sul secondo ambiante",
-    "ci sentiamo la settimana prossimo",
-    "chiudo io con l'amministrazioni",
+    "il preventivo lo mandò domani mattina appena arriva il visto",
+    "la scadenza resta venerdì come avevamo detto la settimana scorsa",
+    "manca il collaudo sul secondo ambiante e nessuno lo ha pianificato",
+    "ci sentiamo la settimana prossimo per chiudere il punto sui costi",
+    "chiudo io con l'amministrazioni e vi mando una nota coi numeri",
 ]
 
 
@@ -300,3 +303,49 @@ class TestCasiScomodi:
         store, _, _ = sessione
         with pytest.raises(ValueError):
             rifinisci(store, 9999, MotoreFinto(), lingua="it")
+
+class TestNonVerificabile:
+    """Righe troppo corte: non si e' potuto chiedere, e non e' un no.
+
+    `somiglianza()` e' una distanza di edit sulle parole: su «Okay.» il
+    risultato puo' essere solo 1 o 0. Prendendo le righe di controllo a passo
+    costante sull'indice si finiva a misurare la lunghezza delle frasi invece
+    dell'allineamento, e su una call vera — meta' delle righe sono interiezioni
+    — la mediana cadeva a zero su un audio lungo esattamente quanto doveva
+    (#99). Il rifiuto arrivava con una spiegazione sull'audio che i dati
+    smentivano.
+    """
+
+    def test_solo_interiezioni_non_permettono_di_decidere(self, sessione) -> None:
+        store, sid, tmp = sessione
+        loop = tmp / "audio" / "loopback.wav"
+        # L'audio e' allineato: stessa durata, stessi istanti. A non poter
+        # rispondere sono le righe, non il file.
+        scrivi_traccia(loop, [(a, b, k) for k, (a, b) in enumerate(QUANDO)], 200.0)
+        for k, (a, b) in enumerate(QUANDO):
+            store.add_segment(
+                sid, "loopback", int(a * 1000), int(b * 1000), "Okay.", is_final=True
+            )
+        collega(store, sid, None, loop)
+
+        prima = righe_testo(store, sid)
+        esito = rifinisci(store, sid, MotoreFinto(), lingua="it")
+
+        t = esito.tracce["loopback"]
+        assert t.stato == "non_verificabile"
+        assert t.riscritte == 0
+        assert t.motivo_chiave == "poche_righe_lunghe"
+        # Non si accusa l'audio di una cosa che non e' stata misurata.
+        assert "non corrisponde" not in (t.motivo or "")
+        assert righe_testo(store, sid) == prima, "non deve essere cambiato niente"
+
+    def test_le_righe_di_controllo_sono_le_lunghe(self) -> None:
+        class Riga:
+            def __init__(self, testo: str) -> None:
+                self.testo = testo
+
+        corte = [Riga("Okay.") for _ in range(40)]
+        lunghe = [Riga("una riga con parole a sufficienza per poter dire qualcosa")]
+        scelte = rifinitura._campioni_sparsi(corte[:20] + lunghe + corte[20:], 5)
+        assert [r.testo for r in scelte] == [lunghe[0].testo]
+

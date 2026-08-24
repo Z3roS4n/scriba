@@ -1225,7 +1225,9 @@ const it = {
   'rif_motivo.audio_assente':
     'Audio non trovato sul disco.',
   'rif_motivo.non_allineata':
-    'L\'audio salvato non corrisponde agli istanti della trascrizione (somiglianza {somiglianza} su {righe} righe di controllo). Succede sulla traccia degli altri quando durante la call ci sono stati lunghi tratti in cui nessuno riproduceva audio.',
+    'Il testo ritrascritto non corrisponde a quello salvato (somiglianza {somiglianza} su {righe} righe di controllo): audio e trascrizione sembrano scorrere su tempi diversi. Di solito succede sulla traccia degli altri, quando durante la call ci sono stati lunghi tratti senza audio in riproduzione.',
+  'rif_motivo.poche_righe_lunghe':
+    'Non ci sono righe abbastanza lunghe per capire se l\'audio corrisponde alla trascrizione ({righe} righe di controllo, troppo corte perche\' il confronto significhi qualcosa).',
 } as const
 
 export type Chiave = keyof typeof it
@@ -2362,7 +2364,9 @@ const en: Record<Chiave, string> = {
   'rif_motivo.audio_assente':
     'Audio not found on the disk.',
   'rif_motivo.non_allineata':
-    'The saved audio does not line up with the moments in the transcript ({somiglianza} similarity over {righe} check lines). It happens on the others\' track when nobody was playing audio for long stretches of the call.',
+    'The text transcribed again does not match the one saved ({somiglianza} similarity over {righe} check lines): audio and transcript seem to run on different clocks. It usually happens on the others\' track, when nothing was playing audio for long stretches of the call.',
+  'rif_motivo.poche_righe_lunghe':
+    'There are no lines long enough to tell whether the audio matches the transcript ({righe} check lines, too short for the comparison to mean anything).',
 }
 
 const CATALOGHI = { it, en } as const

@@ -60,6 +60,16 @@ SOMIGLIANZA_MINIMA = 0.45
 # Quante righe si provano prima di decidere. Sparse lungo la call: un
 # disallineamento che cresce nel tempo non si vede guardando solo l'inizio.
 CAMPIONI_CONTROLLO = 5
+# Quante parole deve avere una riga per valere come controllo.
+#
+# `somiglianza()` e' una distanza di edit **sulle parole**: su una riga da una
+# parola il risultato puo' essere solo 1 o 0, e «Okay.» ritrascritto da un
+# altro modello come «Ok» vale zero. In una conversazione vera meta' delle
+# righe sono interiezioni, quindi prendendole a passo costante sull'indice si
+# finiva a misurare la lunghezza delle frasi invece dell'allineamento: su una
+# call di due ore, tre righe da una parola su cinque, mediana zero, e la
+# rifinitura rifiutata su un audio lungo quanto doveva (#99).
+PAROLE_MINIME_CONTROLLO = 8
 # Sotto questa durata non si ripassa: non c'è abbastanza segnale perché il
 # confronto voglia dire qualcosa, e non c'è niente da guadagnare.
 DURATA_MINIMA_MS = 400
@@ -67,7 +77,8 @@ DURATA_MINIMA_MS = 400
 
 @dataclass
 class EsitoTraccia:
-    stato: str  # 'rifinita' | 'non_allineata' | 'assente' | 'vuota'
+    #: 'rifinita' | 'non_allineata' | 'non_verificabile' | 'assente' | 'vuota'
+    stato: str
     esaminate: int = 0
     riscritte: int = 0
     somiglianza: float | None = None
@@ -164,18 +175,39 @@ class _Righello:
 # ------------------------------------------------------------------ passata
 
 
+def _abbastanza_lunga(s) -> bool:
+    return len(_parole(s.testo)) >= PAROLE_MINIME_CONTROLLO
+
+
 def _campioni_sparsi(segmenti: list, quanti: int) -> list:
-    """Righe distribuite lungo la call, non le prime che capitano."""
-    if len(segmenti) <= quanti:
-        return list(segmenti)
-    passo = len(segmenti) / quanti
-    return [segmenti[int(i * passo)] for i in range(quanti)]
+    """Righe distribuite lungo la call, e abbastanza lunghe da dire qualcosa.
+
+    Distribuite perche' un disallineamento che cresce nel tempo non si vede
+    guardando solo l'inizio; lunghe perche' su poche parole il confronto non
+    ha sfumature. Se righe lunghe non ce ne sono si ripiega su tutte, e chi
+    chiama lo scopre da `_controlla`: e' una risposta che non si puo' dare,
+    non un no.
+    """
+    fra = [s for s in segmenti if _abbastanza_lunga(s)] or segmenti
+    if len(fra) <= quanti:
+        return list(fra)
+    passo = len(fra) / quanti
+    return [fra[int(i * passo)] for i in range(quanti)]
 
 
-def _controlla(motore, audio, righello, segmenti, lingua, annulla=None) -> tuple[float, int]:
-    """Ritrascrive qualche riga e dice quanto somiglia a ciò che c'è già."""
+def _controlla(
+    motore, audio, righello, segmenti, lingua, annulla=None
+) -> tuple[float, int, bool]:
+    """Ritrascrive qualche riga e dice quanto somiglia a ciò che c'è già.
+
+    Il terzo valore dice se le righe provate potevano rispondere: sotto le
+    `PAROLE_MINIME_CONTROLLO` la somiglianza e' un lancio di moneta, e una
+    mediana di lanci di moneta non e' un giudizio.
+    """
+    scelti = _campioni_sparsi(segmenti, CAMPIONI_CONTROLLO)
+    attendibile = len(scelti) >= 2 and all(_abbastanza_lunga(s) for s in scelti)
     punti = []
-    for s in _campioni_sparsi(segmenti, CAMPIONI_CONTROLLO):
+    for s in scelti:
         if annulla is not None and annulla.is_set():
             raise Interrotta("interrotta dall'utente")
         pezzo = righello.taglia(audio, s.t_start_ms, s.t_end_ms)
@@ -184,7 +216,7 @@ def _controlla(motore, audio, righello, segmenti, lingua, annulla=None) -> tuple
             continue
         nuovo = motore.transcribe(pezzo, language=lingua)
         punti.append(somiglianza(s.testo, nuovo))
-    return (statistics.median(punti) if punti else 0.0), len(punti)
+    return (statistics.median(punti) if punti else 0.0), len(punti), attendibile
 
 
 def rifinisci(
@@ -246,19 +278,46 @@ def rifinisci(
             continue
 
         righello = _Righello(len(audio), durata_ms)
-        media, provate = _controlla(motore, audio, righello, suoi, lingua, annulla)
+        media, provate, attendibile = _controlla(motore, audio, righello, suoi, lingua, annulla)
+        if media < SOMIGLIANZA_MINIMA and not attendibile:
+            # Non e' un no: e' che non si e' potuto chiedere. Le righe provate
+            # sono troppo corte perche' il confronto voglia dire qualcosa, e
+            # dare la colpa all'audio sarebbe affermare una cosa non misurata.
+            esito.tracce[traccia] = EsitoTraccia(
+                "non_verificabile",
+                esaminate=provate,
+                somiglianza=media,
+                motivo=(
+                    "Non ci sono righe abbastanza lunghe per capire se l'audio "
+                    f"corrisponde alla trascrizione ({provate} righe di controllo, "
+                    "troppo corte perche' il confronto significhi qualcosa)."
+                ),
+                motivo_chiave="poche_righe_lunghe",
+                motivo_valori={"righe": provate},
+            )
+            log.warning(
+                "Rifinitura non verificabile su %s della sessione %d: righe troppo corte",
+                traccia,
+                session_id,
+            )
+            continue
         if media < SOMIGLIANZA_MINIMA:
             # Il caso del loopback con i silenzi mancanti. Riscrivere qui
             # significherebbe mettere sotto ogni riga il testo di un'altra.
+            #
+            # La causa si da' come probabile, non come accertata: qui si e'
+            # misurata una somiglianza bassa su righe che potevano dire la
+            # loro, e questa e' la spiegazione che di solito la produce.
             esito.tracce[traccia] = EsitoTraccia(
                 "non_allineata",
                 esaminate=provate,
                 somiglianza=media,
                 motivo=(
-                    "L'audio salvato non corrisponde agli istanti della trascrizione "
-                    f"(somiglianza {media:.0%} su {provate} righe di controllo). "
-                    "Succede sulla traccia degli altri quando durante la call ci sono "
-                    "stati lunghi tratti in cui nessuno riproduceva audio."
+                    "Il testo ritrascritto non corrisponde a quello salvato "
+                    f"(somiglianza {media:.0%} su {provate} righe di controllo): "
+                    "audio e trascrizione sembrano scorrere su tempi diversi. "
+                    "Di solito succede sulla traccia degli altri, quando durante "
+                    "la call ci sono stati lunghi tratti senza audio in riproduzione."
                 ),
                 motivo_chiave="non_allineata",
                 motivo_valori={"somiglianza": f"{media:.0%}", "righe": provate},
