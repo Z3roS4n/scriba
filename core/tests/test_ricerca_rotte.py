@@ -230,7 +230,12 @@ class TestRicercaContestuale:
         fuori = client.post(
             auth("/ricerca/contestuale"), json={"domanda": "consegna prezzo"}
         ).json()
-        assert fuori["catene"] == [{"session_ids": [prima, dopo], "titoli": ["Marzo", "Aprile"]}]
+        # Coppie id/titolo e non due elenchi affiancati: affiancati si
+        # disallineano al primo elemento che manca da uno dei due, e una
+        # catena con i titoli sfalsati non si distingue da una giusta.
+        assert fuori["catene"] == [
+            {"call": [{"id": prima, "titolo": "Marzo"}, {"id": dopo, "titolo": "Aprile"}]}
+        ]
 
     def test_si_puo_chiedere_di_non_unirle(
         self, client: TestClient, finto: ModelloFinto

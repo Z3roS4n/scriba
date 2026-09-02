@@ -325,12 +325,17 @@ def crea_router(ctx: Contesto) -> APIRouter:
                 for c in risposta.call
                 if c.session_id in per_id
             ],
+            # Una lista di coppie e non due liste parallele: `session_ids` e
+            # `titoli` affiancati si disallineano al primo filtro che tolga di
+            # mezzo un elemento dell'una e non dell'altra, e il risultato — una
+            # catena mostrata con i titoli sfalsati — è indistinguibile da una
+            # catena vera.
             "catene": [
                 {
-                    "session_ids": c.session_ids,
-                    "titoli": [
-                        per_id[s]["titolo"] for s in c.session_ids if s in per_id
-                    ],
+                    "call": [
+                        {"id": s, "titolo": per_id[s]["titolo"] if s in per_id else None}
+                        for s in c.session_ids
+                    ]
                 }
                 for c in risposta.catene
             ],

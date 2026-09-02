@@ -372,7 +372,91 @@
     return null
   }
 
+  // Le tre ricerche dell'archivio. Lo stato dell'indice e' una variabile e non
+  // una costante di proposito: i tre casi che questa schermata deve saper
+  // mostrare — modello assente, call da leggere, lettura in corso — sono stati
+  // diversi della stessa barra, e l'unico modo di guardarli tutti e' poterli
+  // cambiare da qui.
+  const statoIndice = {
+    modello_installato: true,
+    call_con_parlato: 12,
+    call_indicizzate: 9,
+    passaggi: 486,
+    in_corso: false,
+    fatte: 0,
+    totale: 0,
+    errore: null,
+  }
+
+  function ricerca(path, body) {
+    const p = path.split('?')[0]
+    if (p === '/ricerca/indicizza') {
+      statoIndice.call_indicizzate = statoIndice.call_con_parlato
+      return { ok: true, status: 200, body: { stato: 'avviata' } }
+    }
+    if (p === '/ricerca/indicizza/ferma') return { ok: true, status: 200, body: { stato: 'fermata' } }
+    if (p === '/ricerca/semantica') {
+      // Le stesse call dell'archivio, con un passaggio al posto del titolo:
+      // quello che si verifica qui e' come sono messe in pagina.
+      return {
+        ok: true,
+        status: 200,
+        body: {
+          call: sessioni.slice(0, 3).map((s, i) => ({
+            ...s,
+            frammento: [
+              'la tariffa oraria va rivista, cosi’ com’e’ non ci sta dentro',
+              'sul prezzo siamo lontani: loro partono da quarantamila',
+              'lo sconto lo teniamo per il rinnovo, non per il primo anno',
+            ][i],
+            quando_ms: 362_000 + i * 120_000,
+          })),
+          indicizzate: 9,
+          da_indicizzare: 3,
+        },
+      }
+    }
+    if (p === '/ricerca/contestuale') {
+      if (!body || !String(body.domanda || '').trim()) {
+        return { ok: false, status: 400, body: { detail: 'La domanda è vuota.' } }
+      }
+      const unite = body.unisci_catene !== false
+      return {
+        ok: true,
+        status: 200,
+        body: {
+          risposta:
+            'La consegna è stata spostata a inizio maggio. Nella call del 3 marzo era '
+            + 'ancora fissata per il 15 aprile: è stata cambiata il 18 marzo, quando il '
+            + 'fornitore ha comunicato tre settimane di ritardo.',
+          call: sessioni.slice(0, 2).map((s, i) => ({
+            ...s,
+            perche: [
+              'Qui la data viene spostata, ed è la versione valida.',
+              'Qui era ancora il 15 aprile: è la versione superata.',
+            ][i],
+            passaggi: [
+              [{ testo: 'il fornitore ci ha spostato tutto di tre settimane', quando_ms: 421_000 }],
+              [{ testo: 'la consegna è prevista per il quindici di aprile', quando_ms: 118_000 }],
+            ][i],
+          })),
+          // La seconda call e' senza titolo di proposito: e' il caso in cui
+          // la riga della catena, scritta male, lascia una freccia sospesa.
+          catene: unite
+            ? [{ call: sessioni.slice(0, 2).map((s) => ({ id: s.id, titolo: s.titolo })) }]
+            : [],
+          passaggi_letti: 18,
+          modello: 'gemma-4-12b',
+          provider: 'local',
+          costo_usd: null,
+        },
+      }
+    }
+    return null
+  }
+
   const RISPOSTE = {
+    '/ricerca/stato': statoIndice,
     '/database-remoto/stato': {
       collegato: false,
       modalita: 'diretta',
@@ -472,7 +556,7 @@
     get: (p) => ok(risolvi(p)),
     post: (p, body) =>
       Promise.resolve(
-        notion(p, body) ?? databaseRemoto(p, body) ?? { ok: true, status: 200, body: risolvi(p) ?? {} },
+        notion(p, body) ?? databaseRemoto(p, body) ?? ricerca(p, body) ?? { ok: true, status: 200, body: risolvi(p) ?? {} },
       ),
     patch: (p, body) => Promise.resolve(rinomina(p, body)),
     screenshot: () => Promise.resolve(),

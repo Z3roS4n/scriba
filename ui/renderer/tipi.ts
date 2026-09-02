@@ -574,6 +574,19 @@ export type EventoCore =
       speaker_id?: number
       nome_reale?: string
     }
+  | {
+      type: 'indice_semantico'
+      stato: 'in_corso' | 'finita' | 'interrotta' | 'errore'
+      /** Solo con stato 'in_corso'. */
+      fatte?: number
+      totale?: number
+      /** Solo a lavoro finito: quante call e quanti passaggi, e quanto è durato. */
+      call?: number
+      passaggi?: number
+      secondi?: number
+      /** Solo con stato 'errore'. */
+      dettaglio?: string
+    }
   | { type: string; [k: string]: unknown }
 
 // ----------------------------------------------------------------- formattazione
