@@ -119,10 +119,27 @@ class TestStatoDellIndice:
         )
         assert client.get(auth("/ricerca/stato")).json()["call_indicizzate"] == 0
 
-    def test_eliminare_il_modello_butta_via_anche_l_indice(self, client: TestClient) -> None:
+    def test_eliminare_il_modello_butta_via_anche_l_indice(
+        self, client: TestClient, tmp_path: Path, monkeypatch
+    ) -> None:
         # I vettori senza il modello che li ha prodotti non servono a niente:
         # restare sarebbero megabyte nel database e un conteggio di call «già
         # lette» che non corrisponde più a niente di utilizzabile.
+        #
+        # La cache di Hugging Face si sposta su una cartella che non esiste,
+        # invece di lasciare quella vera: su una macchina di sviluppo esiste da
+        # sempre — c'è dentro il modello di trascrizione — e il caso in cui non
+        # c'è resterebbe non provato proprio dove capita davvero, cioè su una
+        # macchina pulita. È così che questo è passato in locale ed è fallito
+        # in CI.
+        #
+        # Si sposta la **costante della libreria**, non la nostra funzione che
+        # la legge: `scan_cache_dir()` va a leggere quella, e sostituire solo la
+        # nostra lascerebbe la libreria a guardare la cache vera — cioè un test
+        # che finge di provare il caso senza provarlo.
+        from huggingface_hub import constants
+
+        monkeypatch.setattr(constants, "HF_HUB_CACHE", str(tmp_path / "mai-esistita"))
         call_con(client, "Una", ["prezzo tariffa"])
         indicizza(client)
         assert client.get(auth("/ricerca/stato")).json()["call_indicizzate"] == 1

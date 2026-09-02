@@ -1076,8 +1076,16 @@ class ModelsManager:
         pesi di un altro modello che condivide un blob.
 
         Torna i byte liberati. Se il modello nella cache non c'è, non è un
-        errore: eliminare qualcosa che non c'è è già il risultato voluto.
+        errore: eliminare qualcosa che non c'è è già il risultato voluto. Vale
+        anche per la cache intera — su una macchina che non ha mai scaricato
+        niente quella cartella non esiste, e `scan_cache_dir` in quel caso
+        solleva. È il caso di ogni runner di CI appena avviato, ed è il motivo
+        per cui questo controllo sta prima: senza, eliminare un modello mai
+        installato falliva con un errore che parlava di cache invece che dire
+        semplicemente che non c'era niente da togliere.
         """
+        if not _cartella_cache_hf().exists():
+            return 0
         try:
             from huggingface_hub import scan_cache_dir
 
