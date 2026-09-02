@@ -468,6 +468,121 @@
 
 - **Data:** 2026-08-07
 
+### D-022 — Tre ricerche distinte, non una che diventa brava
+- **Contesto:** l'archivio trovava le parole esatte e nient'altro. Chi non ricorda *come*
+  è stata detta una cosa — il caso normale dopo qualche mese — non trovava niente (#104).
+- **Scelta:** tre modalità dichiarate, scelte a mano: **Normale** (FTS5, le parole),
+  **Semantica** (vettori, il significato), **Contestuale** (il modello legge e risponde).
+  Non una ricerca sola che decide da sé quale usare.
+- **Perché non una sola.** Sono tre domande diverse e hanno tre costi diversi: la prima è
+  istantanea, la seconda dura un decimo di secondo, la terza chiama un modello e con
+  un'API si paga. Una ricerca che scegliesse da sé chiederebbe a chi cerca di indovinare
+  perché stavolta ci ha messo dieci secondi — e, con un abbonamento a consumo, perché
+  scrivere nella casella costa. Il costo dev'essere una scelta, non una sorpresa.
+- **Cosa condividono:** i filtri. Cliente, periodo e stato si applicano prima, e le due
+  nuove guardano soltanto dentro le call che quei filtri hanno lasciato passare. Una call
+  esclusa non rientra nemmeno attraverso la risposta di un modello: l'elenco che torna si
+  interseca con quello filtrato prima di essere mostrato.
+- **Cosa condivide la schermata:** un risultato semantico è una riga d'archivio con
+  dentro il passaggio, campo per campo la stessa che manda `/archivio` — il test lo
+  confronta con una risposta vera, non con una scritta a mano. Cambiare modalità non deve
+  voler dire imparare una pagina nuova.
+
+### D-023 — `multilingual-e5-small` a piena precisione, e il taglio è relativo
+- **Contesto:** servivano due numeri che nessuna scheda tecnica dà: quanto trova davvero
+  su parlato di lavoro in italiano, e dove si può tagliare.
+- **Misura** (`spikes/bench_semantica.py`, 20 passaggi e 18 domande scritte apposta con
+  parole diverse da quelle dette):
+
+  | | prima giusta | fra le prime tre | MRR | ms/passaggio | MB |
+  |---|---|---|---|---|---|
+  | parole in comune (la base, cioè la FTS di oggi) | 33% | 67% | 0,502 | — | 0 |
+  | **e5-small fp32** | 78% | **94%** | 0,847 | 9 | 470 |
+  | e5-small int8 | 78% | 83% | 0,835 | 5 | 118 |
+  | e5-base fp32 | 89% | 89% | 0,914 | 44 | 1110 |
+
+- **Scelta: e5-small a fp32.** Il numero che conta è «fra le prime tre», perché chi cerca
+  guarda tre righe, non una: lì il piccolo a piena precisione batte sia la versione
+  compressa (−11 punti per 350 MB risparmiati) sia il modello grande, che costa cinque
+  volte il tempo e due volte e mezza lo spazio per fare peggio.
+- **La base serve a dire se ne vale la pena:** 0,50 di MRR contro 0,85. Senza quel
+  confronto, «la ricerca semantica funziona» non vorrebbe dire niente.
+- **La soglia è relativa al migliore, e non poteva essere altrimenti.** I punteggi di E5
+  stanno tutti fra 0,80 e 0,90 anche fra frasi che non c'entrano niente: due passaggi
+  scelti a caso danno 0,878, più di certe coppie domanda/risposta giuste. «Mostra sopra
+  0,75» mostrerebbe tutto, «sopra 0,90» niente. A −0,02 dal migliore restano 2,9 passaggi
+  su 20 e la risposta giusta c'è 18 volte su 18; si tiene −0,03 per lasciare margine a
+  domande più vaghe di quelle della prova.
+- **Il punteggio non si mostra mai.** «0,87» accanto a un risultato si legge come «87%
+  pertinente», e non significa niente del genere.
+- **La soglia non si applica al materiale per il modello.** Serve a decidere cosa mostrare
+  a una persona. Applicata prima, toglierebbe di mano proprio la call le cui parole sono
+  più lontane da quelle della domanda — cioè quella che serviva vedere (#106). Lì il
+  limite è un tetto di passaggi, e a scartare è il modello, che li legge.
+
+### D-024 — Passaggi e non segmenti, con una firma che dice quando sono vecchi
+- **Contesto:** un segmento di trascrizione è spesso lungo tre parole. Il vettore di «sì»
+  somiglia a ogni altro «sì» dell'archivio e a nient'altro.
+- **Scelta:** si raggruppano i segmenti consecutivi fino a ~700 caratteri, con un
+  segmento di sovrapposizione perché le frasi a cavallo del confine appartengano a tutti
+  e due i passaggi.
+- **Niente indice approssimato.** Duecento ore di call fanno ~12.000 passaggi, cioè 18 MB
+  di float: una moltiplicazione di matrici. Una struttura approssimata costerebbe una
+  dipendenza binaria, un indice da tenere allineato al database e risultati leggermente
+  diversi da quelli veri, in cambio di niente a queste dimensioni.
+- **`passages_state.firma`** — quante righe finali, fin dove arrivano, a che revisione,
+  quante marcate come eco — è come si riconosce un indice vecchio senza rileggere il
+  parlato. Rifinitura, filtro eco e cambio di modello lo invalidano tutti, e ognuna di
+  queste tre condizioni è dimostrata da un test che fallisce se la si toglie dalla firma.
+
+### D-025 — Una catena è stesso cliente e poco tempo; il resto lo giudica il modello
+- **Contesto:** una decisione presa a marzo e cambiata ad aprile. Chi chiede «quando
+  consegniamo?» rischia la risposta superata, presentata con la stessa fiducia di quella
+  giusta (#106).
+- **Scelta:** le call dello stesso cliente a meno di trenta giorni l'una dall'altra
+  arrivano al modello come un discorso solo, in ordine di tempo, con scritto che
+  l'ultima corregge le precedenti.
+- **Non si misura se parlano della stessa cosa.** Servirebbe una soglia di somiglianza, e
+  i punteggi con cui tararla stanno tutti fra 0,80 e 0,90 (vedi D-023): sarebbe un numero
+  con l'aria di significare qualcosa. Se il discorso continui davvero lo giudica il
+  modello, che i passaggi li legge.
+- **I trenta giorni non sono misurati** e non c'è modo di misurarli senza un archivio
+  vero da guardare. Sono un parametro, e la scelta si vede: l'interfaccia dichiara quali
+  call ha unito, sopra la risposta e non sotto, così un accostamento sbagliato si nota
+  invece di restare dentro una frase.
+- **Le call senza cliente restano fuori:** è l'unico caso in cui non esiste nemmeno la
+  parentela certa, e unirle per vicinanza di data metterebbe insieme due riunioni con due
+  persone diverse capitate lo stesso giorno.
+
+### D-026 — Il modello non scrive le citazioni, e le call che nomina si verificano
+- **Contesto:** è la stessa regola dell'estrazione delle task, applicata alla ricerca.
+- **Scelta:** al modello si danno passaggi numerati con numeri locali alla domanda, e lui
+  cita i numeri. Il testo lo rilegge il codice dall'archivio. Le call che nomina si
+  incrociano con quelle che gli sono state date: una che non ha ricevuto viene scartata,
+  e un passaggio si attacca soltanto alla call da cui viene davvero.
+- **Perché:** un modello parafrasa le citazioni credendo di aiutare, e un numero inventato
+  manderebbe qualcuno ad aprire una conversazione che non c'entra. Tutte e tre le guardie
+  sono dimostrate togliendole e guardando fallire il test.
+- **Senza indice non risponde.** Sceglierebbe il materiale con la ricerca per parole, e
+  una domanda intera per FTS5 è quasi sempre nessun risultato: il modello riceverebbe
+  niente e risponderebbe lo stesso. Si dice che l'indice manca.
+
+### D-027 — L'indice si costruisce quando lo si chiede, poi si mantiene da solo
+- **Contesto:** l'archivio esistente va letto una volta; le call nuove arrivano una alla
+  volta.
+- **Scelta:** il primo giro è un gesto esplicito, con la barra che dice quante call non
+  sono ancora state lette. Dopo, ogni call nuova entra da sola a fine registrazione.
+- **La condizione è che l'indice esista già.** Senza, la prima riunione dopo
+  l'aggiornamento caricherebbe mezzo gigabyte di pesi per una funzione che nessuno ha
+  chiesto. Indicizzare una volta è il gesto con cui la si chiede.
+- **Non durante una registrazione:** il primo giro prende metà dei core per qualche
+  minuto, e rischiare la trascrizione dal vivo per un lavoro che può aspettare la fine
+  della call non è uno scambio conveniente. Una call sola invece costa meno di un secondo
+  e non ha bisogno di aspettare niente.
+- **Si può fermare e riprendere**, e quello che è fatto resta fatto: su un archivio grande
+  ricominciare da capo a ogni interruzione vorrebbe dire non finire mai.
+- **Data:** 2026-09-02
+
 ## Decisioni aperte
 
 - **OA-1** — Passare a Qwen3.5-9B come LLM di default? Ha IFEval più alto e KV cache più

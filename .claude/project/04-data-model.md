@@ -105,6 +105,38 @@ permette un UPSERT senza cercare prima. `errore` si aggiorna indipendentemente
 dal resto: una call già analizzata con successo deve continuare a mostrare quel
 risultato anche se un «Rianalizza» successivo fallisce.
 
+### `passages` — il significato del parlato
+Un vettore per pezzo di discorso, non per segmento: un segmento di trascrizione
+è spesso lungo tre parole, e il vettore di «sì» somiglia a ogni altro «sì»
+dell'archivio e a nient'altro. I segmenti consecutivi si raggruppano fino a
+~700 caratteri, con uno di sovrapposizione perché le frasi a cavallo del
+confine appartengano a entrambi i passaggi (`semantica/spezza.py`).
+
+`vettore` è float32 little-endian **già normalizzato a lunghezza 1**: così la
+somiglianza coseno è un prodotto scalare e la ricerca è una moltiplicazione di
+matrici, senza divisioni. Niente indice approssimato — duecento ore di call
+fanno ~12.000 passaggi, cioè 18 MB, e una struttura approssimata costerebbe una
+dipendenza binaria e risultati leggermente diversi da quelli veri in cambio di
+niente (D-023, D-024).
+
+`testo` è duplicato da `transcript_segments` di proposito: un risultato mostra
+quello che è stato indicizzato, non quello che nel frattempo la rifinitura ha
+riscritto.
+
+### `passages_state` — cosa è stato indicizzato, e com'era
+Una riga per call, non per passaggio: modello e dimensione valgono per tutta la
+call insieme, e tenerli su ogni riga permetterebbe di averli diversi fra due
+passaggi della stessa conversazione — uno stato senza significato utile che
+qualcuno dovrebbe comunque gestire.
+
+`firma` è come si riconosce un indice vecchio senza rileggere il parlato:
+quante righe finali ci sono, fin dove arrivano, a che revisione le ha portate la
+rifinitura, quante ne ha marcate l'eco. Rifinitura, filtro eco e cambio di
+modello la cambiano tutti, e una firma diversa vuol dire reindicizzare quella
+call. **Modelli diversi non si mescolano:** i loro vettori non sono
+confrontabili, e confrontarli darebbe punteggi plausibili e senza significato —
+il caso peggiore, perché non si vede.
+
 ## Macchine a stati
 
 ### Sessione — `sessions.stato`

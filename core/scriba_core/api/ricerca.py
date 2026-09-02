@@ -216,6 +216,41 @@ def crea_router(ctx: Contesto) -> APIRouter:
         asyncio.get_running_loop().create_task(lavora())
         return {"stato": "avviata"}
 
+    async def _indicizza_una(session_id: int) -> None:
+        """Mette in indice una call appena finita, se ha senso farlo.
+
+        Ogni condizione mancante fa uscire in silenzio, come per la rifinitura
+        automatica: è un di più, e non deve poter far sembrare rotta una call
+        registrata bene.
+
+        Le condizioni sono due, e la seconda è la più importante. Il modello
+        dev'essere già scaricato, e **l'archivio dev'essere già indicizzato**:
+        senza la seconda, la prima riunione dopo l'aggiornamento farebbe
+        caricare mezzo giga di pesi per una funzione che chi usa Scriba non ha
+        mai chiesto. Indicizzare una volta è il gesto con cui la si chiede.
+
+        Una call sola costa meno di un secondo — sono le prime, tutte insieme,
+        a durare minuti — quindi qui non c'è niente da rimandare o da spezzare.
+        """
+        # «Già caricato» conta quanto «installato»: se il modello è in memoria
+        # è utilizzabile, e chiedere al disco se c'è sarebbe una domanda a cui
+        # si è già risposto.
+        if ctx.state.get("embedder") is None and not installato():
+            return
+        if ctx.state.get("indice_semantico", {}).get("in_corso"):
+            return
+        if not await asyncio.to_thread(lambda: ctx.store.stato_indice()):
+            return
+        try:
+            indice = await _indice()
+            await asyncio.to_thread(lambda: indice.aggiorna([session_id]))
+        except Exception:
+            log.exception("Indicizzazione automatica non riuscita per la sessione %s", session_id)
+
+    # Come `avvia_rifinitura`: il server chiama questa a fine call senza dover
+    # sapere né dove sta il modello né come si costruisce un indice.
+    ctx.state["indicizza_call"] = _indicizza_una
+
     @router.post("/ricerca/indicizza/ferma")
     async def ferma() -> dict[str, Any]:
         lavoro = ctx.state.get("indice_semantico", _fermo())

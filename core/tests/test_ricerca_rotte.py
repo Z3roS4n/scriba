@@ -115,6 +115,43 @@ class TestStatoDellIndice:
         client.app.state.stato_server["recorder"] = None
 
 
+class TestIndiceAutomatico:
+    """Una call nuova entra nell'indice da sola, ma solo se l'indice c'è già.
+
+    La condizione non è pignoleria: senza, la prima riunione dopo
+    l'aggiornamento caricherebbe mezzo gigabyte di pesi per una funzione che
+    nessuno ha chiesto. Indicizzare una volta è il gesto con cui la si chiede.
+    """
+
+    @staticmethod
+    async def _fine_call(client: TestClient, session_id: int) -> None:
+        await client.app.state.stato_server["indicizza_call"](session_id)
+
+    def test_una_call_nuova_entra_da_sola(self, client: TestClient) -> None:
+        call_con(client, "Vecchia", ["prezzo tariffa"])
+        indicizza(client)
+
+        nuova = call_con(client, "Appena finita", ["si parla di consegne"])
+        assert client.get(auth("/ricerca/stato")).json()["call_indicizzate"] == 1
+        _esegui(self._fine_call(client, nuova))
+        assert client.get(auth("/ricerca/stato")).json()["call_indicizzate"] == 2
+
+    def test_senza_indice_non_si_carica_niente(self, client: TestClient) -> None:
+        # Nessuno ha mai indicizzato: la call resta fuori, e la barra
+        # dell'archivio lo dirà. È l'unico modo perché mezzo giga di modello
+        # non si carichi alle spalle di chi non lo ha chiesto.
+        nuova = call_con(client, "Appena finita", ["si parla di consegne"])
+        _esegui(self._fine_call(client, nuova))
+        assert client.get(auth("/ricerca/stato")).json()["call_indicizzate"] == 0
+
+
+def _esegui(coroutine) -> None:
+    """Esegue una coroutine del server da un test sincrono."""
+    import asyncio
+
+    asyncio.run(coroutine)
+
+
 class TestRicercaSemantica:
     def test_trova_la_call_che_parla_dell_argomento(self, client: TestClient) -> None:
         prezzi = call_con(client, "Prezzi", ["la tariffa oraria va rivista in aumento"])

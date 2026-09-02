@@ -696,6 +696,7 @@ def create_app(
             # Nessuno l'ha chiesta esplicitamente: parte in disparte e non deve
             # allungare l'attesa di chi ha appena premuto "stop".
             asyncio.create_task(_prova_analisi_automatica(session_id))
+            asyncio.create_task(_prova_indice_automatico(session_id))
         return {"session_id": session_id}
 
     @app.post("/session/pause", dependencies=[Depends(check_token)])
@@ -888,6 +889,27 @@ def create_app(
                 await task
         except Exception:
             log.exception("Rifinitura automatica non riuscita per la sessione %s", session_id)
+
+    async def _prova_indice_automatico(session_id: int) -> None:
+        """Mette la call appena finita nell'indice della ricerca per significato.
+
+        Il lavoro vero sta in `api/ricerca.py`, che sa dove tiene il modello:
+        qui c'è solo la chiamata, come per la rifinitura. Se il router non è
+        montato — o se le sue condizioni non sono soddisfatte — non succede
+        niente e non se ne accorge nessuno, che è come deve essere per una call
+        che è comunque stata registrata bene.
+
+        Senza questo, ogni riunione nuova farebbe ricomparire nell'archivio
+        l'avviso «ci sono call non ancora lette», e chi cerca dovrebbe premere
+        un pulsante dopo ogni call per una cosa che il programma sa fare da sé.
+        """
+        indicizza = state.get("indicizza_call")
+        if indicizza is None:
+            return
+        try:
+            await indicizza(session_id)
+        except Exception:  # pragma: no cover - già registrato più in basso
+            log.exception("Indicizzazione automatica non riuscita per la sessione %s", session_id)
 
     async def _prova_analisi_automatica(session_id: int) -> None:
         """Fa partire l'analisi da sola a fine registrazione, se si può.
