@@ -404,10 +404,13 @@
         body: {
           call: sessioni.slice(0, 3).map((s, i) => ({
             ...s,
+            // Lunghi quanto lo sono davvero: un passaggio indicizzato sta
+            // intorno ai 700 caratteri, e con frammenti corti non si vedrebbe
+            // che una riga dell'elenco diventa alta quanto lo schermo.
             frammento: [
-              'la tariffa oraria va rivista, cosi’ com’e’ non ci sta dentro',
-              'sul prezzo siamo lontani: loro partono da quarantamila',
-              'lo sconto lo teniamo per il rinnovo, non per il primo anno',
+              'Allora sul preventivo: la cifra che abbiamo messo giu’ non ci sta dentro. Se dobbiamo aggiungere anche la parte di formazione bisogna rivedere la tariffa oraria, altrimenti ci rimettiamo su tutto il progetto. Poi c’e’ da capire se la manutenzione la contiamo a parte o dentro il canone, perche’ sono due conti molto diversi e finora ne abbiamo fatto uno solo. Io direi di rifare il foglio insieme prima di mandarglielo, cosi’ non ci troviamo a rincorrere.',
+              'Sul prezzo siamo ancora lontani: loro partono da quarantamila e noi da sessanta. Non credo si chiuda a meta’ strada, perche’ la differenza non e’ una trattativa, e’ che stiamo contando cose diverse. Bisogna mettere per iscritto cosa c’e’ dentro e cosa no, e poi confrontare le due cifre su quello.',
+              'Lo sconto lo teniamo per il rinnovo, non per il primo anno. Se lo diamo subito diventa il prezzo, e l’anno dopo aumentare sarebbe una discussione che non vogliamo fare. Sul primo anno possiamo semmai allungare i tempi di pagamento, che a loro serve e a noi costa meno.',
             ][i],
             quando_ms: 362_000 + i * 120_000,
           })),

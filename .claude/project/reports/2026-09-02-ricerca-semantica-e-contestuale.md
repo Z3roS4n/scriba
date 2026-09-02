@@ -94,15 +94,36 @@ entrambi, e riprovati rompendo di nuovo.
   primo elemento che manca da uno dei due, e una catena con i titoli sfalsati
   non si distingue da una giusta. Adesso sono coppie.
 
+## Il giro con il modello vero
+
+Fatto una volta, fuori dai test, con `EmbedderE5` che punta ai pesi veri e tutto
+il resto del codice vero — `Store`, `Indice`, la divisione in passaggi. Tre call
+finte ma scritte come si parla in riunione, sei domande poste con altre parole:
+
+```
+carica 2,8s · indicizza 3 call in 0,12s (3 passaggi)
+prima call giusta: 6/6
+secondo giro: 0 call     dopo una rifinitura: 1 call da rifare
+```
+
+Da qui è venuto fuori l'unico difetto che né i test né il finto potevano
+mostrare: **un passaggio vero è lungo circa 700 caratteri**, e nell'elenco
+diventava un muro di testo alto quanto lo schermo. Il frammento della ricerca
+normale è corto — la FTS ne dà una dozzina di parole — quindi la riga non aveva
+mai avuto un limite. Adesso si taglia a tre righe, misurato in pagina: 455
+caratteri in 61 pixel.
+
 ## Cosa non è stato verificato
 
-- **La qualità su un archivio vero.** I numeri vengono da venti passaggi scritti
-  per la prova. Sono onesti — le domande usano parole diverse da quelle dei
-  passaggi, apposta — ma non sono un archivio di call vere.
-- **Il modello vero dentro l'applicazione.** L'embedder è stato eseguito qui,
-  fuori da Scriba, per misurare; dentro l'applicazione il percorso è coperto da
-  un modello finto. Il primo giro vero — scaricare i 470 MB, indicizzare
-  l'archivio, cercare — non l'ha ancora fatto nessuno.
+- **La qualità su un archivio vero.** I numeri vengono da passaggi scritti per
+  la prova. Sono onesti — le domande usano parole diverse da quelle dei passaggi,
+  apposta — ma non sono un archivio di call vere.
+- **Lo scaricamento dei pesi.** `scarica()` e `installato()` passano da
+  `huggingface_hub`, e la cache non è stata popolata: i pesi usati per le prove
+  stanno altrove, indicati a mano. È l'unico pezzo del percorso che nessuno ha
+  ancora eseguito.
+- **Il giro dentro l'applicazione in esecuzione.** Il codice è lo stesso, ma
+  premere «Leggile» in Scriba e aspettare che finisca non l'ha fatto nessuno.
 - **Le risposte della ricerca contestuale con un modello vero.** Tutti i test
   usano un modello finto: verificano cosa il codice fa della risposta, non
   quanto la risposta sia buona.

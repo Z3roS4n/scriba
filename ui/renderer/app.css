@@ -768,7 +768,15 @@ a:hover { color:var(--red); border-bottom-color:var(--red); }
 }
 .arow:hover { background:var(--bg-panel); }
 .arow__t { font-size:var(--fs-ui); color:var(--fg); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.arow__hit { display:block; font-size:var(--fs-sm); color:var(--fg-2); margin-top:5px; line-height:var(--lh-body); }
+/* Tre righe e poi si taglia. Il frammento della ricerca normale è corto — la
+   FTS ne restituisce una dozzina di parole — ma quello della semantica è il
+   passaggio intero, circa 700 caratteri: senza limite una riga dell'elenco
+   diventerebbe alta quanto lo schermo, e tre call di seguito non starebbero
+   più in pagina. Il testo resta tutto lì, solo non si vede tutto in un elenco. */
+.arow__hit {
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden;
+  font-size:var(--fs-sm); color:var(--fg-2); margin-top:5px; line-height:var(--lh-body);
+}
 .arow__hit mark { background:var(--ms-ink); color:var(--ms-paper); padding:0 2px; }
 .arow__c { font-size:var(--fs-sm); color:var(--fg-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .arow__c.is-none { color:var(--fg-3); }
