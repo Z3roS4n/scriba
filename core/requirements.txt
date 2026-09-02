@@ -24,6 +24,12 @@ uvicorn[standard]==0.51.0
 # Chiamate ai motori di analisi via API e ai connettori di export.
 httpx==0.28.1
 
+# --- ricerca per significato nell'archivio
+# I pesi girano con l'onnxruntime che `onnx-asr` si porta già dietro: qui manca
+# solo il tokenizzatore, che è una libreria e non un modello — tre megabyte, e
+# l'unica dipendenza che si tira dietro (huggingface-hub) c'è già.
+tokenizers==0.23.1
+
 # --- database remoto (opzionale a runtime: serve solo se lo colleghi)
 # `binary` porta con sé libpq: nessun compilatore e nessun PostgreSQL da
 # installare sulla macchina, che è il punto — chi usa Scriba vuole collegarsi a

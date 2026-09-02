@@ -265,6 +265,14 @@ _ERRORI_EN: dict[str, str] = {
     "are using the local one, start llama-server; if you are using the Claude subscription, "
     "sign in again with `claude auth login`; if you are using an API, check the key in "
     "Settings.",
+    "Il modello per la ricerca semantica non è ancora installato. Si scarica dalle "
+    "impostazioni, alla voce Modelli.": "The model for meaning-based search is not "
+    "installed yet. You can download it from Settings, under Models.",
+    "C'è una registrazione in corso: l'indice si aggiorna dopo.": "A recording is in "
+    "progress: the index will be updated afterwards.",
+    "La ricerca contestuale ha bisogno dell'indice semantico, che non è ancora stato "
+    "costruito.": "Contextual search needs the meaning index, which has not been built yet.",
+    "La domanda è vuota.": "The question is empty.",
     "nessun campo modificabile": "no editable field",
     "task inesistente": "no such task",
     "Il nome del cliente non può essere vuoto.": "The client name cannot be empty.",

@@ -166,6 +166,18 @@ def _scarica_canary() -> None:
     scarica_modello()
 
 
+def _scarica_embedder() -> None:
+    """Come sopra, per il modello della ricerca semantica.
+
+    Anche questo passa da `huggingface_hub`: sono due file (i pesi e il
+    tokenizzatore), e la logica di `_scarica` — un percorso solo, un hash, la
+    ripresa byte a byte — è scritta per un file singolo.
+    """
+    from .semantica.modello import scarica
+
+    scarica()
+
+
 # Quanto si sta ad aspettare che il server di analisi cominci a rispondere.
 # Generoso: un modello da 17 GB su disco lento ci mette minuti, e rinunciare
 # prima significherebbe dire «non è partito» di uno che sta ancora caricando.
@@ -250,6 +262,22 @@ CATALOGO: list[ModelloDisponibile] = [
         size_bytes=1_029_328_659,
         uso="trascrizione",
         scaricatore=_scarica_canary,
+    ),
+    ModelloDisponibile(
+        id="multilingual-e5-small",
+        repo="intfloat/multilingual-e5-small",
+        commit="614241f622f53c4eeff9890bdc4f31cfecc418b3",
+        file="",
+        etichetta="E5 small multilingue",
+        descrizione="Serve alla ricerca per significato nell'archivio: senza, restano la "
+        "ricerca per parole esatte e nient'altro. Gira su CPU e indicizza un'ora di call "
+        "in pochi secondi. La versione compressa pesa un quarto ma trova la risposta fra "
+        "i primi tre risultati l'83% delle volte invece del 94% "
+        "(misurato con spikes/bench_semantica.py): la differenza vale i megabyte.",
+        # Pesi (470 MB) più il tokenizzatore (17 MB), byte reali del repo.
+        size_bytes=487_351_240,
+        uso="ricerca",
+        scaricatore=_scarica_embedder,
     ),
 ]
 

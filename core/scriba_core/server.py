@@ -1332,6 +1332,7 @@ def create_app(
     from .api import export as api_export
     from .api import modelli as api_modelli
     from .api import note as api_note
+    from .api import ricerca as api_ricerca
     from .api import rifinitura as api_rifinitura
     from .api import sistema as api_sistema
 
@@ -1348,6 +1349,7 @@ def create_app(
         api_export.crea_router,
         api_modelli.crea_router,
         api_note.crea_router,
+        api_ricerca.crea_router,
         api_rifinitura.crea_router,
         api_sistema.crea_router,
     ]
