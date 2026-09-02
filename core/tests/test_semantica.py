@@ -43,7 +43,7 @@ class EmbedderLessicale:
     """
 
     id = "lessicale-di-prova"
-    dim = 64
+    dim = 512
 
     def vettori(self, testi: list[str], *, come: str) -> np.ndarray:
         assert come in ("passaggio", "domanda")

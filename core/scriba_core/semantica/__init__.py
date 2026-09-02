@@ -7,13 +7,12 @@ risposta.
 """
 
 from .catene import Catena, catene
-from .indice import MARGINE, MARGINE_LARGO, Indice, IndiceVuoto, Riepilogo, Trovato
+from .indice import MARGINE, Indice, IndiceVuoto, Riepilogo, Trovato
 from .modello import Embedder, ErroreSemantica, EmbedderE5, carica, installato
 from .spezza import Passaggio, in_passaggi
 
 __all__ = [
     "MARGINE",
-    "MARGINE_LARGO",
     "Catena",
     "Embedder",
     "EmbedderE5",

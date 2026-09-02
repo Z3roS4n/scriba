@@ -34,10 +34,11 @@ from .spezza import in_passaggi
 # per lasciare un margine a domande più vaghe di quelle della prova.
 MARGINE = 0.03
 
-# Per la ricerca contestuale la rete è più larga: lì a scegliere è il modello di
-# linguaggio, che legge i passaggi e scarta da sé quelli che non c'entrano.
-# Stringere prima vorrebbe dire togliergli materiale su cui ragionare.
-MARGINE_LARGO = 0.06
+# Questa soglia serve a decidere **cosa mostrare a una persona**, e solo a
+# quello. Chi porta i passaggi a un modello di linguaggio passa `margine=None`
+# e prende i primi N: lì a scartare è il modello, che li legge, e tagliare
+# prima gli toglierebbe di mano proprio la call più lontana dalle parole della
+# domanda — cioè quella che serviva vedere (#106).
 
 
 @dataclass(frozen=True)
@@ -149,7 +150,7 @@ class Indice:
         *,
         session_ids: list[int] | None = None,
         limite: int = 40,
-        margine: float = MARGINE,
+        margine: float | None = MARGINE,
     ) -> list[Trovato]:
         """I passaggi più vicini alla domanda, dal più vicino.
 
@@ -157,6 +158,10 @@ class Indice:
         lasciato passare: la ricerca semantica deve rispettare cliente,
         periodo e stato come quella normale, e il modo di farlo è non
         guardare affatto dentro le altre.
+
+        `margine=None` toglie del tutto il taglio e lascia solo `limite`: è
+        quello che serve a chi raccoglie materiale per un modello invece che
+        risultati per una persona.
         """
         domanda = domanda.strip()
         if not domanda:
@@ -175,7 +180,7 @@ class Indice:
 
         punteggi = (matrice @ self.embedder.vettori([domanda], come="domanda")[0]).astype(float)
         ordine = np.argsort(-punteggi)[:limite]
-        soglia = float(punteggi[ordine[0]]) - margine
+        soglia = -float("inf") if margine is None else float(punteggi[ordine[0]]) - margine
         return [
             Trovato(
                 session_id=righe[i]["session_id"],

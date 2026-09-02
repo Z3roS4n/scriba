@@ -292,3 +292,63 @@ Nuova parte della trascrizione:
 Produci una nota aggiornata di massimo 200 parole che tenga insieme quanto già annotato e
 quanto è emerso adesso. Punti sintetici, non prosa. Se qualcosa di annotato prima è stato
 smentito, correggilo."""
+
+
+SYSTEM_ARCHIVIO = """Rispondi in {lingua} a domande su un archivio di riunioni di lavoro già svolte.
+Hai davanti solo alcuni passaggi, scelti da una ricerca: non hai le riunioni intere e non hai altro.
+Rispondi soltanto con quello che c'è scritto nei passaggi. Se la risposta non c'è, si dice che non c'è.
+Non completare con quello che sai del mondo: qui una cosa plausibile ma non detta è un errore, non un aiuto.
+Rispondi esclusivamente con JSON conforme allo schema richiesto."""
+
+
+ARCHIVIO = ("archive_answer", "v1")
+ARCHIVIO_PROMPT = """Domanda: {domanda}
+
+Questi sono i passaggi che la ricerca ha selezionato. Ogni passaggio ha la forma:
+
+[id] call {{session_id}} — «titolo», GG/MM/AAAA, cliente (mm:ss)
+testo di quello che è stato detto
+
+{catene_spiegazione}
+Passaggi:
+{passaggi}
+
+Istruzioni:
+- "risposta": la risposta alla domanda, in {lingua}, al massimo 120 parole. Asciutta, senza formule di apertura.
+- "call": le call che rispondono, dalla più utile. Per ognuna, "session_id" preso dai passaggi
+  (non inventarne altri), "perche" in una frase, e in "passaggi" gli id dei passaggi che lo
+  giustificano. NON riportare il testo dei passaggi: quello viene riletto dall'archivio.
+- Se i passaggi non contengono la risposta, scrivilo in "risposta" e lascia "call" vuoto.
+  Una risposta inventata è peggio di nessuna risposta: chi legge non ha modo di accorgersene.
+- Se una call più recente cambia quello che si diceva in una più vecchia, la risposta dice
+  qual è la versione valida **e** che prima era diversa. Rispondere con quella superata,
+  senza dirlo, è l'errore che questa ricerca esiste per evitare."""
+
+CATENE_SPIEGAZIONE = """Alcune call sono la stessa conversazione ripresa più volte: sono raccolte
+sotto la stessa "catena", in ordine di tempo, dalla più vecchia alla più recente. Quello che si
+dice nell'ultima corregge quello che si diceva nelle precedenti.
+
+"""
+
+SCHEMA_ARCHIVIO = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["risposta", "call"],
+    "properties": {
+        "risposta": {"type": "string", "maxLength": 1200},
+        "call": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["session_id", "perche", "passaggi"],
+                "properties": {
+                    "session_id": {"type": "integer"},
+                    "perche": {"type": "string", "maxLength": 300},
+                    "passaggi": {"type": "array", "items": {"type": "integer"}},
+                },
+            },
+        },
+    },
+}
