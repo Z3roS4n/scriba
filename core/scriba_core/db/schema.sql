@@ -247,6 +247,63 @@ CREATE TABLE IF NOT EXISTS task_evidence (
 CREATE INDEX IF NOT EXISTS ix_ev_task ON task_evidence(task_id, t_ms);
 CREATE INDEX IF NOT EXISTS ix_ev_segment ON task_evidence(segment_id);
 
+-- ------------------------------------------------------------- semantica --
+
+-- Il significato del parlato, in una forma confrontabile.
+--
+-- L'indice FTS5 qui sopra sa dire dove compare una parola. Non sa dire dove si
+-- è parlato di una cosa: «costa troppo» e «rivediamo la tariffa» per lui non
+-- si somigliano affatto, mentre per chi cerca sono la stessa conversazione
+-- (#104). Questa tabella tiene l'altra metà: un vettore per ogni passaggio,
+-- con cui la somiglianza si misura invece di indovinarla.
+--
+-- **Passaggi, non segmenti.** Un segmento di trascrizione è spesso lungo tre
+-- parole — «sì», «esatto», «aspetta un attimo» — e il vettore di «sì» non
+-- significa niente: somiglia a ogni altro «sì» dell'archivio e a nient'altro.
+-- Si raggruppano quindi i segmenti consecutivi fino a formare un pezzo di
+-- discorso che abbia un senso da solo (vedi semantica/spezza.py).
+--
+-- Il testo è duplicato da `transcript_segments` di proposito: un risultato di
+-- ricerca deve poter mostrare quello che è stato indicizzato, non quello che
+-- nel frattempo la rifinitura ha riscritto. Quando il testo cambia davvero,
+-- l'indice si accorge di essere vecchio da `passages_state.firma` e si rifà.
+CREATE TABLE IF NOT EXISTS passages (
+  id          INTEGER PRIMARY KEY,
+  session_id  INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  ord         INTEGER NOT NULL,      -- posizione nella call, da 0
+  t_start_ms  INTEGER NOT NULL,
+  t_end_ms    INTEGER NOT NULL,
+  testo       TEXT    NOT NULL,
+  -- float32 little-endian, già normalizzato a lunghezza 1: così la somiglianza
+  -- coseno è un prodotto scalare e basta, senza divisioni a ogni ricerca.
+  vettore     BLOB    NOT NULL,
+  UNIQUE (session_id, ord),
+  CHECK (t_end_ms >= t_start_ms)
+);
+
+CREATE INDEX IF NOT EXISTS ix_pass_sessione ON passages(session_id, ord);
+
+-- Cosa è stato indicizzato, e com'era quando lo si è fatto.
+--
+-- Una riga per call, non per passaggio: il modello e la dimensione valgono per
+-- tutta la call insieme, e tenerli su ogni riga vorrebbe dire poterli avere
+-- diversi fra due passaggi della stessa conversazione — uno stato che non ha
+-- nessun significato utile e che qualcuno dovrebbe comunque gestire.
+--
+-- `firma` è come si riconosce un indice vecchio senza rileggere il parlato:
+-- quante righe finali c'erano, fin dove arrivavano, a che revisione, quante
+-- marcate come eco. La rifinitura riscrive il testo e alza `revision`, la
+-- diarizzazione e il filtro eco spostano le righe: qualunque di queste cose
+-- cambia la firma, e una firma diversa vuol dire reindicizzare quella call.
+CREATE TABLE IF NOT EXISTS passages_state (
+  session_id     INTEGER PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
+  modello        TEXT    NOT NULL,
+  dim            INTEGER NOT NULL,
+  firma          TEXT    NOT NULL,
+  n_passaggi     INTEGER NOT NULL,
+  indicizzato_at INTEGER NOT NULL
+);
+
 -- --------------------------------------------------------------- versione --
 
 CREATE TABLE IF NOT EXISTS schema_version (

@@ -121,7 +121,23 @@ sessioni e modelli, ed è l'unica che il ponte del renderer sa mandare
 | GET | `/rilevamento/diagnostica` | cosa vede il rilevamento adesso |
 | POST | `/rilevamento/ignora/{pid}` | dimentica *questa* proposta, non la funzione |
 | GET | `/search` | full-text su tutte le call |
+| GET | `/ricerca/stato` | quanto dell'archivio è indicizzato, e se il modello c'è |
+| POST | `/ricerca/indicizza` · `/indicizza/ferma` · `/dimentica` | costruire, fermare, buttare via l'indice |
+| POST | `/ricerca/semantica` | i filtri dell'archivio più `testo`: call per significato |
+| POST | `/ricerca/contestuale` | i filtri più `domanda` e `unisci_catene`: una risposta con le fonti |
 | WS | `/ws` | trascrizione, avanzamento, eventi |
+
+Le tre rotte di ricerca **accettano gli stessi filtri di `/archivio`** — cliente,
+periodo, stato — e li applicano prima: le due modalità nuove guardano soltanto
+dentro le call che quei filtri hanno lasciato passare, e una call esclusa non
+rientra nemmeno attraverso la risposta di un modello. `POST /ricerca/semantica`
+restituisce le call **nella stessa forma di `/archivio`**, con in più `frammento`
+e `quando_ms`: chi cambia modalità deve ritrovare la stessa schermata.
+
+`POST /ricerca/indicizza` risponde subito e lavora dopo: su un archivio vero il
+primo giro dura minuti. Rifiuta con **409** durante una registrazione, e con
+**412** se il modello non è ancora scaricato — dicendo dove si scarica, perché
+mezzo gigabyte non deve partire da sé in mezzo a una ricerca.
 
 `GET /health` è l'unica rotta **senza token** — serve al processo padre per
 sapere quando il core è su — e riporta anche `versione` e `commit` della build
@@ -148,7 +164,8 @@ IPv6, usa il pooler». Un messaggio generico manda a cercare nel posto sbagliato
 `transcript` · `session_started` · `session_stopped` · `screenshot` · `analisi`
 (`in_corso` | `fatto` | `errore`) · `rifinitura` (`in_corso` | `finita` |
 `interrotta` | `errore`) · `modello_locale` · `call_rilevata` · `diarizzazione` ·
-`database_remoto`.
+`database_remoto` · `indice_semantico` (`in_corso` | `finita` | `interrotta` |
+`errore`).
 
 `rifinitura`/`in_corso` non esce a ogni riga ma ogni dieci: su una call lunga
 sarebbero centinaia di eventi che dicono la stessa cosa.

@@ -7,6 +7,56 @@ Ogni voce è divisa in tre sezioni, ed è la più alta presente a decidere lo
 scatto di versione: **Cambiamenti che rompono** (maggiore), **Funzioni nuove**
 (minore), **Correzioni** (patch). Una sezione senza voci si lascia fuori.
 
+## 1.3.0 — 2 settembre 2026
+
+### Funzioni nuove
+
+- **L'archivio si cerca in tre modi invece che in uno.** Sopra la casella ora si
+  sceglie fra **Normale**, **Semantica** e **Contestuale**. Normale è quella di
+  prima, ed è ancora la migliore quando la parola esatta la si ricorda.
+  Semantica trova dove si è parlato di una cosa anche se nessuno ha usato le
+  parole che hai scritto: «aumento di prezzo» riporta la call in cui qualcuno ha
+  detto «costa troppo» e quella in cui si è riaperta la tariffa oraria.
+  Contestuale permette di fare una domanda vera — «cosa abbiamo promesso sulle
+  consegne?» — e risponde con le call da cui viene la risposta, perché ognuna, e
+  il passaggio che lo dice.
+- **Le call che si riprendono si possono leggere come un discorso solo.** Un
+  cliente seguito per mesi non è una call, sono otto, e ognuna riprende dove si
+  era rimasti. Con l'interruttore accanto a Contestuale, le call dello stesso
+  cliente a meno di trenta giorni l'una dall'altra arrivano al modello in ordine
+  di tempo, con scritto che l'ultima corregge le precedenti: una consegna
+  concordata a marzo, spostata ad aprile e confermata a maggio adesso risponde
+  maggio, e dice che a marzo era diverso. Quali call sono state unite è scritto
+  sopra la risposta, così un accostamento sbagliato si vede invece di restare
+  dentro una frase.
+- **L'archivio dice quello che non riesce a vedere.** Una call non indicizzata è
+  invisibile alle due ricerche nuove, e la barra in alto dice quante sono e si
+  offre di leggerle — un'ora di parlato richiede pochi secondi. Senza,
+  «nessun risultato» e «quella call non l'ho ancora letta» sarebbero identici,
+  che è la cosa peggiore che una ricerca possa dire. Letto l'archivio la prima
+  volta, ogni call nuova entra nell'indice da sola.
+
+### Cosa sapere prima di installare
+
+- Semantica e Contestuale hanno bisogno di un modello loro,
+  `multilingual-e5-small`, 470 MB, che si scarica dalle impostazioni alla voce
+  Modelli. Gira sul processore, su questo computer: indicizzare vuol dire
+  mandare fuori l'archivio intero, e non c'è motivo che esca. Contestuale usa in
+  più il motore di analisi che già usi — in locale, oppure con la tua chiave API
+  e a spese di quella chiave.
+- La scelta di quel modello è misurata, non supposta
+  (`spikes/bench_semantica.py`): su 18 domande scritte con parole diverse da
+  quelle dette, il passaggio giusto è fra i primi tre il 94% delle volte, contro
+  il 67% di una ricerca per parole in comune. La versione compressa dello stesso
+  modello risparmia 350 MB e perde undici punti: per questo non è quella che
+  viene spedita.
+- **Cosa non è stato verificato:** niente di tutto questo contro un archivio
+  vero di call tue. I numeri qui sopra vengono da venti passaggi scritti apposta,
+  in italiano, sulle cose che si dicono in una call di lavoro — una prova
+  onesta, ma non il tuo archivio.
+- L'installer continua a non essere firmato (#57): Windows mostra l'avviso di
+  SmartScreen la prima volta che lo si apre.
+
 ## 1.2.0 — 24 agosto 2026
 
 ### Funzioni nuove

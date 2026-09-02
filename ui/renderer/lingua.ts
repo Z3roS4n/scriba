@@ -1162,6 +1162,8 @@ const it = {
     'trascrizione',
   'uso.analisi':
     'analisi',
+  'uso.ricerca':
+    'ricerca',
   // --- rimasti indietro ----------------
   'not2.fino_a':
     'fino a {t}',
@@ -1240,6 +1242,36 @@ const it = {
     'Uno schema appena creato è vuoto, quindi le tabelle le fa Scriba.',
   'db3.schema_esiste_gia':
     'Uno schema con questo nome c\'è già: si userà quello, senza ricrearlo.',
+  // Le tre ricerche dell'archivio.
+  'ric.modo.normale': 'Normale',
+  'ric.modo.semantica': 'Semantica',
+  'ric.modo.contestuale': 'Contestuale',
+  'ric.cerca_semantica': 'Di cosa avete parlato…',
+  'ric.cerca_contestuale': 'Fai una domanda all\'archivio…',
+  'ric.chiedi': 'Chiedi',
+  'ric.chiedendo': 'Sto leggendo l\'archivio…',
+  'ric.unisci': 'Unisci le call consecutive',
+  'ric.invito':
+    'Scrivi una domanda e premi Chiedi. Le risposte arrivano dalle call, con scritto da quale.',
+  'ric.invito_semantica':
+    'Scrivi di cosa avete parlato, anche con parole diverse da quelle dette.',
+  'ric.manca_modello':
+    'La ricerca per significato ha bisogno di un modello che non è ancora installato.',
+  'ric.manca_modello_dove':
+    'Si scarica dalle impostazioni, alla voce Modelli. Sono 470 MB, e resta sul computer.',
+  'ric.da_indicizzare':
+    '{n} call non sono ancora state lette: queste ricerche non le vedono.',
+  'ric.da_indicizzare_nota':
+    'Si fa una volta sola, e poi solo per le call nuove. Un\'ora di parlato richiede pochi secondi.',
+  'ric.indicizza': 'Leggile',
+  'ric.indicizzo': 'Sto leggendo l\'archivio: {n} call su {tot}.',
+  'ric.indicizzo_nota':
+    'Si può fermare e riprendere: quello che è già stato letto resta letto.',
+  'ric.ferma': 'Ferma',
+  'ric.lette_insieme': 'Lette come un discorso solo: {call}',
+  'ric.nessuna_risposta':
+    'Nelle call che ho letto la risposta non c\'è. Meglio dirlo che inventarla.',
+  'ric.passaggi_letti': '{n} passaggi letti',
 } as const
 
 export type Chiave = keyof typeof it
@@ -2317,6 +2349,8 @@ const en: Record<Chiave, string> = {
     'transcription',
   'uso.analisi':
     'analysis',
+  'uso.ricerca':
+    'search',
   'not2.fino_a':
     'up to {t}',
   'pan.motore_esce':
@@ -2388,6 +2422,31 @@ const en: Record<Chiave, string> = {
   'db3.schema_vuoto': 'A schema that has just been created is empty, so Scriba makes the tables.',
   'db3.schema_esiste_gia':
     'A schema with this name already exists: that one will be used, not created again.',
+  'ric.modo.normale': 'Words',
+  'ric.modo.semantica': 'Meaning',
+  'ric.modo.contestuale': 'Question',
+  'ric.cerca_semantica': 'What you talked about…',
+  'ric.cerca_contestuale': 'Ask the archive a question…',
+  'ric.chiedi': 'Ask',
+  'ric.chiedendo': 'Reading the archive…',
+  'ric.unisci': 'Join calls that continue each other',
+  'ric.invito':
+    'Write a question and press Ask. Answers come from the calls, and say which ones.',
+  'ric.invito_semantica': 'Write what was talked about, even in words nobody used.',
+  'ric.manca_modello': 'Searching by meaning needs a model that is not installed yet.',
+  'ric.manca_modello_dove':
+    'You can download it from Settings, under Models. It is 470 MB, and it stays on this computer.',
+  'ric.da_indicizzare': '{n} calls have not been read yet: these searches cannot see them.',
+  'ric.da_indicizzare_nota':
+    'Done once, then only for new calls. An hour of speech takes a few seconds.',
+  'ric.indicizza': 'Read them',
+  'ric.indicizzo': 'Reading the archive: {n} calls out of {tot}.',
+  'ric.indicizzo_nota': 'You can stop and resume: what has been read stays read.',
+  'ric.ferma': 'Stop',
+  'ric.lette_insieme': 'Read as one conversation: {call}',
+  'ric.nessuna_risposta':
+    'The answer is not in the calls I read. Better to say so than to invent it.',
+  'ric.passaggi_letti': '{n} passages read',
 }
 
 const CATALOGHI = { it, en } as const

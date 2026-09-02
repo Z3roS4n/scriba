@@ -1,6 +1,6 @@
 {
   "name": "scriba-ui",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Interfaccia di Scriba",
   "main": "dist/main/index.js",
   "license": "MIT",

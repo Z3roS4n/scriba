@@ -835,6 +835,171 @@ class Store:
             )
         )
 
+    # --------------------------------------------------------------- semantica
+
+    def firme_trascrizioni(self, session_ids: list[int] | None = None) -> dict[int, str]:
+        """Com'è fatta oggi la trascrizione di ogni call, in una stringa.
+
+        Non serve a leggerla, serve a confrontarla: se questa stringa è diversa
+        da quella salvata in `passages_state.firma`, l'indice semantico di
+        quella call è vecchio e va rifatto. Ci finisce dentro tutto ciò che
+        cambierebbe i passaggi — quante righe finali ci sono, fin dove
+        arrivano, a che revisione le ha portate la rifinitura, quante ne ha
+        marcate l'eco.
+
+        Le call senza nemmeno una riga utile non compaiono affatto: non c'è
+        niente da indicizzare, e comparire con una firma vuota vorrebbe dire
+        proporle in eterno a chi chiede cosa manca.
+        """
+        dove, valori = "", []
+        if session_ids is not None:
+            if not session_ids:
+                return {}
+            dove = f"AND session_id IN ({', '.join('?' * len(session_ids))})"
+            valori = list(session_ids)
+        righe = self.conn.execute(
+            f"""
+            SELECT session_id,
+                   COUNT(*)                                  AS n,
+                   MAX(id)                                   AS ultimo,
+                   MAX(revision)                             AS revisione,
+                   SUM(eco)                                  AS echi,
+                   SUM(CASE WHEN eco = 0 THEN 1 ELSE 0 END)  AS utili
+              FROM transcript_segments
+             WHERE is_final = 1 {dove}
+             GROUP BY session_id
+            """,
+            valori,
+        ).fetchall()
+        return {
+            r["session_id"]: f"{r['n']}:{r['ultimo']}:{r['revisione']}:{r['echi']}"
+            for r in righe
+            if r["utili"] > 0
+        }
+
+    def stato_indice(self, session_ids: list[int] | None = None) -> dict[int, sqlite3.Row]:
+        """Cosa risulta indicizzato, per call."""
+        dove, valori = "", []
+        if session_ids is not None:
+            if not session_ids:
+                return {}
+            dove = f"WHERE session_id IN ({', '.join('?' * len(session_ids))})"
+            valori = list(session_ids)
+        return {
+            r["session_id"]: r
+            for r in self.conn.execute(f"SELECT * FROM passages_state {dove}", valori)
+        }
+
+    def da_indicizzare(self, modello: str, session_ids: list[int] | None = None) -> list[int]:
+        """Le call il cui indice semantico manca, è vecchio o è di un altro modello.
+
+        Il modello fa parte del confronto: due modelli producono vettori che
+        non si possono confrontare fra loro, e mescolarli darebbe risultati
+        plausibili e sbagliati — il caso peggiore, perché non si vede. Cambiare
+        modello vuol dire rifare tutto, ed è giusto che si veda da qui.
+        """
+        firme = self.firme_trascrizioni(session_ids)
+        stato = self.stato_indice(list(firme) or None)
+        return [
+            sid
+            for sid, firma in firme.items()
+            if sid not in stato
+            or stato[sid]["firma"] != firma
+            or stato[sid]["modello"] != modello
+        ]
+
+    def salva_passaggi(
+        self,
+        session_id: int,
+        passaggi: list[tuple[int, int, int, str, bytes]],
+        *,
+        modello: str,
+        dim: int,
+        firma: str,
+    ) -> int:
+        """Sostituisce l'indice di una call con quello appena calcolato.
+
+        Sostituisce, non aggiunge: i passaggi nascono da una divisione del
+        parlato che può essere cambiata sotto (una rifinitura ne sposta i
+        confini), quindi tenere i vecchi accanto ai nuovi vorrebbe dire cercare
+        due volte nello stesso discorso. Cancellare e riscrivere nella stessa
+        transazione è anche l'unico modo perché nessuna ricerca veda l'indice a
+        metà.
+
+        Ogni passaggio è `(ord, t_start_ms, t_end_ms, testo, vettore)`.
+        """
+        with self.tx() as conn:
+            conn.execute("DELETE FROM passages WHERE session_id = ?", (session_id,))
+            conn.executemany(
+                """
+                INSERT INTO passages (session_id, ord, t_start_ms, t_end_ms, testo, vettore)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                [(session_id, *p) for p in passaggi],
+            )
+            conn.execute(
+                """
+                INSERT INTO passages_state
+                       (session_id, modello, dim, firma, n_passaggi, indicizzato_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(session_id) DO UPDATE SET
+                       modello = excluded.modello,
+                       dim = excluded.dim,
+                       firma = excluded.firma,
+                       n_passaggi = excluded.n_passaggi,
+                       indicizzato_at = excluded.indicizzato_at
+                """,
+                (session_id, modello, dim, firma, len(passaggi), int(time.time() * 1000)),
+            )
+        return len(passaggi)
+
+    def passaggi(self, session_ids: list[int] | None = None) -> list[sqlite3.Row]:
+        """I passaggi indicizzati, col loro vettore, per la ricerca.
+
+        `session_ids` non è un'ottimizzazione: la ricerca semantica deve
+        rispettare gli stessi filtri di quella normale — cliente, periodo,
+        stato — e il modo di farlo è cercare solo dentro le call che quei
+        filtri hanno già lasciato passare. Che così si legga anche molto meno
+        dal disco è un effetto collaterale gradito.
+        """
+        dove, valori = "", []
+        if session_ids is not None:
+            if not session_ids:
+                return []
+            dove = f"WHERE p.session_id IN ({', '.join('?' * len(session_ids))})"
+            valori = list(session_ids)
+        return list(
+            self.conn.execute(
+                f"""
+                SELECT p.id, p.session_id, p.ord, p.t_start_ms, p.t_end_ms, p.testo, p.vettore
+                  FROM passages p {dove}
+                 ORDER BY p.session_id, p.ord
+                """,
+                valori,
+            )
+        )
+
+    def dimentica_indice(self, session_ids: list[int] | None = None) -> int:
+        """Butta via l'indice semantico. Torna quante call ne avevano uno."""
+        with self.tx() as conn:
+            if session_ids is None:
+                n = conn.execute("SELECT COUNT(*) AS n FROM passages_state").fetchone()["n"]
+                conn.execute("DELETE FROM passages")
+                conn.execute("DELETE FROM passages_state")
+                return int(n)
+            if not session_ids:
+                return 0
+            segnaposto = ", ".join("?" * len(session_ids))
+            n = conn.execute(
+                f"SELECT COUNT(*) AS n FROM passages_state WHERE session_id IN ({segnaposto})",
+                session_ids,
+            ).fetchone()["n"]
+            conn.execute(f"DELETE FROM passages WHERE session_id IN ({segnaposto})", session_ids)
+            conn.execute(
+                f"DELETE FROM passages_state WHERE session_id IN ({segnaposto})", session_ids
+            )
+            return int(n)
+
     # -------------------------------------------------------------- screenshot
 
     def add_screenshot(

@@ -166,6 +166,18 @@ def _scarica_canary() -> None:
     scarica_modello()
 
 
+def _scarica_embedder() -> None:
+    """Come sopra, per il modello della ricerca semantica.
+
+    Anche questo passa da `huggingface_hub`: sono due file (i pesi e il
+    tokenizzatore), e la logica di `_scarica` — un percorso solo, un hash, la
+    ripresa byte a byte — è scritta per un file singolo.
+    """
+    from .semantica.modello import scarica
+
+    scarica()
+
+
 # Quanto si sta ad aspettare che il server di analisi cominci a rispondere.
 # Generoso: un modello da 17 GB su disco lento ci mette minuti, e rinunciare
 # prima significherebbe dire «non è partito» di uno che sta ancora caricando.
@@ -250,6 +262,22 @@ CATALOGO: list[ModelloDisponibile] = [
         size_bytes=1_029_328_659,
         uso="trascrizione",
         scaricatore=_scarica_canary,
+    ),
+    ModelloDisponibile(
+        id="multilingual-e5-small",
+        repo="intfloat/multilingual-e5-small",
+        commit="614241f622f53c4eeff9890bdc4f31cfecc418b3",
+        file="",
+        etichetta="E5 small multilingue",
+        descrizione="Serve alla ricerca per significato nell'archivio: senza, restano la "
+        "ricerca per parole esatte e nient'altro. Gira su CPU e indicizza un'ora di call "
+        "in pochi secondi. La versione compressa pesa un quarto ma trova la risposta fra "
+        "i primi tre risultati l'83% delle volte invece del 94% "
+        "(misurato con spikes/bench_semantica.py): la differenza vale i megabyte.",
+        # Pesi (470 MB) più il tokenizzatore (17 MB), byte reali del repo.
+        size_bytes=487_351_240,
+        uso="ricerca",
+        scaricatore=_scarica_embedder,
     ),
 ]
 
@@ -1015,9 +1043,17 @@ class ModelsManager:
             rt.annulla.set()
             rt.thread.join(timeout=15.0)
 
-        percorso = self.percorso(modello)
-        percorso.unlink(missing_ok=True)
-        self._parziale(percorso).unlink(missing_ok=True)
+        if modello.scaricatore is not None:
+            # Non sta in una cartella nostra: l'ha scaricato huggingface_hub e
+            # vive nella sua cache, con un formato interno che non è nostro da
+            # smontare a mano. `self.percorso()` per questi modelli vale la
+            # cartella dei modelli — `file` è vuoto — e cancellarla sarebbe
+            # buttare via anche tutti gli altri.
+            self._elimina_gestito(modello)
+        else:
+            percorso = self.percorso(modello)
+            percorso.unlink(missing_ok=True)
+            self._parziale(percorso).unlink(missing_ok=True)
 
         if rt is not None:
             rt.stato = None
@@ -1028,6 +1064,48 @@ class ModelsManager:
 
         self._pubblica(modello)
         return self.descrivi(modello)
+
+    @staticmethod
+    def _elimina_gestito(modello: ModelloDisponibile) -> int:
+        """Toglie dalla cache di Hugging Face un modello che ci sta dentro.
+
+        Si passa dalla sua API — `scan_cache_dir().delete_revisions()` — e non
+        da `rmtree` sulla cartella: quella cache tiene i file una volta sola e
+        li collega da più revisioni, quindi cancellare a mano rischia di
+        lasciare collegamenti a un file che non c'è più, o di portarsi via i
+        pesi di un altro modello che condivide un blob.
+
+        Torna i byte liberati. Se il modello nella cache non c'è, non è un
+        errore: eliminare qualcosa che non c'è è già il risultato voluto. Vale
+        anche per la cache intera — su una macchina che non ha mai scaricato
+        niente quella cartella non esiste, e `scan_cache_dir` in quel caso
+        solleva. È il caso di ogni runner di CI appena avviato, ed è il motivo
+        per cui questo controllo sta prima: senza, eliminare un modello mai
+        installato falliva con un errore che parlava di cache invece che dire
+        semplicemente che non c'era niente da togliere.
+        """
+        if not _cartella_cache_hf().exists():
+            return 0
+        try:
+            from huggingface_hub import scan_cache_dir
+
+            info = scan_cache_dir()
+            revisioni = [
+                rev.commit_hash
+                for repo in info.repos
+                if repo.repo_id == modello.repo
+                for rev in repo.revisions
+            ]
+            if not revisioni:
+                return 0
+            strategia = info.delete_revisions(*revisioni)
+            liberati = int(strategia.expected_freed_size)
+            strategia.execute()
+            return liberati
+        except Exception as exc:
+            raise RuntimeError(
+                f"{modello.etichetta} non si è potuto eliminare dalla cache: {exc}"
+            ) from exc
 
     def attendi_download(self, model_id: str, timeout: float = 30.0) -> None:
         """Blocca finché il download in corso per questo modello non finisce.

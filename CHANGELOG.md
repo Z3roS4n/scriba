@@ -7,6 +7,53 @@ Each entry is split into three sections, and the highest one present decides
 the version bump: **Breaking changes** (major), **New features** (minor),
 **Fixes** (patch). A section with nothing in it is left out.
 
+## 1.3.0 — 2 September 2026
+
+### New features
+
+- **The archive can be searched three ways instead of one.** Above the box
+  there is now a choice between **Words**, **Meaning** and **Question**. Words
+  is what was there before and is still the best when you remember the exact
+  wording. Meaning finds where something was discussed even when nobody used
+  the words you typed: "a price rise" brings back the call where someone said
+  "it costs too much" and the one where the hourly rate was reopened. Question
+  lets you ask the archive outright — "what did we promise about deliveries?" —
+  and answers with the calls the answer comes from, why each one, and the
+  passage that says it.
+- **Calls that continue each other can be read as one conversation.** A client
+  followed for months is not one call, it is eight, and each picks up where the
+  last one left off. With the switch next to Question, calls of the same client
+  within thirty days of each other are handed to the model in time order, told
+  that the later one supersedes the earlier: a delivery agreed in March, moved
+  in April and confirmed in May now answers May, and says that March said
+  something else. Which calls were joined is written above the answer, so a
+  wrong pairing shows rather than hiding inside a sentence.
+- **The archive says what it cannot see.** A call that has not been indexed is
+  invisible to the two new searches, and the bar at the top says how many there
+  are and offers to read them — reading an hour of speech takes a few seconds.
+  Without that, "no results" and "I have not read that call yet" would look
+  exactly the same, which is the worst thing a search can say. Once the archive
+  has been read the first time, every new call joins the index on its own.
+
+### Worth knowing before you install
+
+- Meaning and Question need a model of their own, `multilingual-e5-small`, 470
+  MB, downloaded from Settings under Models. It runs on the processor, on this
+  computer: indexing means sending the whole archive somewhere, and there is no
+  reason for it to leave. Question also needs the analysis engine you already
+  use — locally, or through your API key, at that key's cost.
+- The choice of that model is measured rather than assumed
+  (`spikes/bench_semantica.py`): on 18 questions worded differently from the
+  speech, the right passage is among the first three 94% of the time, against
+  67% for a search by shared words. The compressed version of the same model
+  saves 350 MB and loses eleven points, which is why it is not the one shipped.
+- **What has not been verified:** any of this against a real archive of your
+  own calls. The numbers above come from twenty passages written for the
+  purpose, in Italian, about the kind of thing said in a work call — a fair
+  test, but not your archive.
+- The installer is still not signed (#57): Windows shows a SmartScreen warning
+  the first time you open it.
+
 ## 1.2.0 — 24 August 2026
 
 ### New features
