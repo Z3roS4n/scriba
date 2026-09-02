@@ -1043,9 +1043,17 @@ class ModelsManager:
             rt.annulla.set()
             rt.thread.join(timeout=15.0)
 
-        percorso = self.percorso(modello)
-        percorso.unlink(missing_ok=True)
-        self._parziale(percorso).unlink(missing_ok=True)
+        if modello.scaricatore is not None:
+            # Non sta in una cartella nostra: l'ha scaricato huggingface_hub e
+            # vive nella sua cache, con un formato interno che non è nostro da
+            # smontare a mano. `self.percorso()` per questi modelli vale la
+            # cartella dei modelli — `file` è vuoto — e cancellarla sarebbe
+            # buttare via anche tutti gli altri.
+            self._elimina_gestito(modello)
+        else:
+            percorso = self.percorso(modello)
+            percorso.unlink(missing_ok=True)
+            self._parziale(percorso).unlink(missing_ok=True)
 
         if rt is not None:
             rt.stato = None
@@ -1056,6 +1064,40 @@ class ModelsManager:
 
         self._pubblica(modello)
         return self.descrivi(modello)
+
+    @staticmethod
+    def _elimina_gestito(modello: ModelloDisponibile) -> int:
+        """Toglie dalla cache di Hugging Face un modello che ci sta dentro.
+
+        Si passa dalla sua API — `scan_cache_dir().delete_revisions()` — e non
+        da `rmtree` sulla cartella: quella cache tiene i file una volta sola e
+        li collega da più revisioni, quindi cancellare a mano rischia di
+        lasciare collegamenti a un file che non c'è più, o di portarsi via i
+        pesi di un altro modello che condivide un blob.
+
+        Torna i byte liberati. Se il modello nella cache non c'è, non è un
+        errore: eliminare qualcosa che non c'è è già il risultato voluto.
+        """
+        try:
+            from huggingface_hub import scan_cache_dir
+
+            info = scan_cache_dir()
+            revisioni = [
+                rev.commit_hash
+                for repo in info.repos
+                if repo.repo_id == modello.repo
+                for rev in repo.revisions
+            ]
+            if not revisioni:
+                return 0
+            strategia = info.delete_revisions(*revisioni)
+            liberati = int(strategia.expected_freed_size)
+            strategia.execute()
+            return liberati
+        except Exception as exc:
+            raise RuntimeError(
+                f"{modello.etichetta} non si è potuto eliminare dalla cache: {exc}"
+            ) from exc
 
     def attendi_download(self, model_id: str, timeout: float = 30.0) -> None:
         """Blocca finché il download in corso per questo modello non finisce.

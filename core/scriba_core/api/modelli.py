@@ -58,11 +58,20 @@ def crea_router(ctx: Contesto) -> APIRouter:
     @router.post("/modelli/{model_id}/elimina")
     async def elimina(model_id: str) -> dict:
         try:
-            return await asyncio.to_thread(manager.elimina_modello, model_id)
+            esito = await asyncio.to_thread(manager.elimina_modello, model_id)
         except ValueError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except RuntimeError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        if model_id == "multilingual-e5-small":
+            # I vettori senza il modello che li ha prodotti non servono a
+            # niente: nessuno può più confrontarci una domanda. Restare
+            # sarebbero megabyte nel database e, peggio, un conteggio di call
+            # «già lette» che non corrisponde più a niente di utilizzabile.
+            ctx.state.pop("embedder", None)
+            esito["indice_dimenticato"] = await asyncio.to_thread(ctx.store.dimentica_indice)
+        return esito
 
     @router.post("/modelli/{model_id}/avvia")
     async def avvia(model_id: str) -> dict:

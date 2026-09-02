@@ -28,7 +28,7 @@ from pydantic import BaseModel
 
 from ..ai.contesto import IndiceMancante, RicercaContestuale
 from ..i18n import LinguaUI
-from ..semantica import ErroreSemantica, Indice, IndiceVuoto, installato
+from ..semantica import EmbedderE5, ErroreSemantica, Indice, IndiceVuoto, installato
 from . import STATI_GREZZI, Contesto, traduci_stato_sessione
 
 log = logging.getLogger(__name__)
@@ -136,8 +136,18 @@ def crea_router(ctx: Contesto) -> APIRouter:
         c_è = installato()
         firme = await asyncio.to_thread(ctx.store.firme_trascrizioni)
         salvato = await asyncio.to_thread(ctx.store.stato_indice, list(firme) or None)
+        # Quale modello: quello caricato se ce n'è uno, altrimenti quello che
+        # l'applicazione spedisce. Non si carica niente per rispondere. Senza
+        # questo confronto un indice scritto da un altro modello risulterebbe
+        # aggiornato — la barra direbbe «letto tutto» e la ricerca non
+        # troverebbe niente, perché quei vettori non sono confrontabili.
+        attivo = getattr(ctx.state.get("embedder"), "id", EmbedderE5.id)
         aggiornate = sum(
-            1 for sid, firma in firme.items() if sid in salvato and salvato[sid]["firma"] == firma
+            1
+            for sid, firma in firme.items()
+            if sid in salvato
+            and salvato[sid]["firma"] == firma
+            and salvato[sid]["modello"] == attivo
         )
         return {
             "modello_installato": c_è,

@@ -105,6 +105,34 @@ class TestStatoDellIndice:
         assert client.post(auth("/ricerca/dimentica"), json={}).json()["call"] == 1
         assert client.get(auth("/ricerca/stato")).json()["call_indicizzate"] == 0
 
+    def test_un_indice_di_un_altro_modello_non_conta_come_letto(
+        self, client: TestClient
+    ) -> None:
+        # Altrimenti la barra direbbe «letto tutto» e la ricerca non troverebbe
+        # niente: quei vettori non sono confrontabili con questo modello, e un
+        # conteggio che dice il contrario manda a cercare il guasto altrove.
+        sid = call_con(client, "Una", ["prezzo tariffa"])
+        store = client.app.state.store
+        firma = store.firme_trascrizioni()[sid]
+        store.salva_passaggi(
+            sid, [(0, 0, 1000, "x", b"\x00" * 8)], modello="un-altro", dim=2, firma=firma
+        )
+        assert client.get(auth("/ricerca/stato")).json()["call_indicizzate"] == 0
+
+    def test_eliminare_il_modello_butta_via_anche_l_indice(self, client: TestClient) -> None:
+        # I vettori senza il modello che li ha prodotti non servono a niente:
+        # restare sarebbero megabyte nel database e un conteggio di call «già
+        # lette» che non corrisponde più a niente di utilizzabile.
+        call_con(client, "Una", ["prezzo tariffa"])
+        indicizza(client)
+        assert client.get(auth("/ricerca/stato")).json()["call_indicizzate"] == 1
+
+        r = client.post(auth("/modelli/multilingual-e5-small/elimina"), json={})
+        assert r.status_code == 200, r.text
+        assert r.json()["indice_dimenticato"] == 1
+        assert client.get(auth("/ricerca/stato")).json()["call_indicizzate"] == 0
+        assert client.app.state.store.passaggi() == []
+
     def test_non_si_indicizza_mentre_si_registra(self, client: TestClient) -> None:
         # Prendersi metà dei core per qualche minuto mentre la trascrizione
         # dal vivo sta lavorando è un rischio che può aspettare la fine.
